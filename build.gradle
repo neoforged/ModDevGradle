@@ -1,0 +1,17 @@
+plugins {
+    id 'java-gradle-plugin'
+}
+
+repositories {
+    mavenCentral()
+}
+
+gradlePlugin {
+    // Define the plugin
+    plugins {
+        greeting {
+            id = 'net.neoforged.neoforgegradle.moddev'
+            implementationClass = 'net.neoforged.neoforgegradle.ModDevPlugin'
+        }
+    }
+}

@@ -1,0 +1,8 @@
+
+plugins {
+    id 'net.neoforged.neoforgegradle.moddev'
+}
+
+neoForge {
+    version = "20.6.1-beta"
+}
