@@ -1,11 +1,14 @@
 package net.neoforged.neoforgegradle;
 
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.process.ExecOperations;
@@ -30,8 +33,9 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
     @InputFile
     abstract RegularFileProperty getArtifactManifestFile();
 
-    @InputFile
-    abstract RegularFileProperty getNeoFormInABox();
+    @Classpath
+    @InputFiles
+    abstract ConfigurableFileCollection getNeoFormInABox();
 
     @OutputFile
     abstract RegularFileProperty getCompiledArtifact();
@@ -44,8 +48,8 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
         var artifactId = getNeoForgeArtifact().get();
 
         execOperations.javaexec(execSpec -> {
-            // Executable jars can have only _one_ jar on the classpath.
-            execSpec.classpath(getNeoFormInABox().getAsFile());
+            execSpec.classpath(getNeoFormInABox());
+            execSpec.getMainClass().set("net.neoforged.neoforminabox.cli.Main");
             execSpec.args(
                     "--neoforge", artifactId + ":userdev",
                     "--artifact-manifest", getArtifactManifestFile().get().getAsFile().getAbsolutePath(),

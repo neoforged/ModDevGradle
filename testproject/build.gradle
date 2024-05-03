@@ -3,6 +3,10 @@ plugins {
     id 'net.neoforged.neoforgegradle.moddev'
 }
 
+repositories {
+    mavenLocal()
+}
+
 neoForge {
     version = "20.6.1-beta"
 }

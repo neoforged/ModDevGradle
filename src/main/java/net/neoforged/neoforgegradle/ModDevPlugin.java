@@ -35,9 +35,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var neoFormInABoxConfig = configurations.create("neoFormInABoxConfig", files -> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
-            files.setTransitive(false);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create(project.files("C:\\neo forged\\NeoFormInABox\\build\\libs\\NeoFormInABox-1.0-SNAPSHOT-all.jar")));
+                spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT"));
             });
         });
         var layout = project.getLayout();
@@ -88,7 +87,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
-            task.getNeoFormInABox().set(layout.file(project.provider(neoFormInABoxConfig::getSingleFile)));
+            task.getNeoFormInABox().from(neoFormInABoxConfig);//.set(layout.file(project.provider(neoFormInABoxConfig::getSingleFile)));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("minecraft-sources.jar"));
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("minecraft.jar"));
         });
