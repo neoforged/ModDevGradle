@@ -1,15 +1,67 @@
 plugins {
     id 'java-gradle-plugin'
+    id 'maven-publish'
 }
+
+group = "net.neoforged"
+version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
 }
 
+sourceSets {
+    java17
+}
+
+dependencies {
+    java17CompileOnly gradleApi()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+}
+
+jar {
+    into('META-INF/versions/17') {
+        from sourceSets.java17.output
+    }
+
+    manifest.attributes(
+            'Multi-Release': 'true'
+    )
+}
+
+tasks.named("compileJava").configure {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
+// This is a shameless ripoff from Fabric Loom:
+// https://github.com/FabricMC/fabric-loom/blob/dev/1.6/build.gradle
+// Need to tweak this file to pretend we are compatible with j8 so the bootstrap will run.
+tasks.withType(GenerateModuleMetadata) {
+    doLast {
+        def file = outputFile.get().asFile
+
+        def metadata = new groovy.json.JsonSlurper().parseText(file.text)
+
+        metadata.variants.each {
+            it.attributes["org.gradle.jvm.version"] = 8
+        }
+
+        file.text = groovy.json.JsonOutput.toJson(metadata)
+    }
+}
+
 gradlePlugin {
     // Define the plugin
     plugins {
-        greeting {
+        neoforgegradle {
             id = 'net.neoforged.neoforgegradle.moddev'
             implementationClass = 'net.neoforged.neoforgegradle.ModDevPlugin'
         }
