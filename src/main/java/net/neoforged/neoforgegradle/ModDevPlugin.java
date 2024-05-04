@@ -2,12 +2,13 @@ package net.neoforged.neoforgegradle;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.util.stream.Collectors;
 
 public class ModDevPlugin implements Plugin<Project> {
@@ -26,7 +27,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }));
         repositories.addLast(repositories.maven(repo -> {
             repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
-            repo.metadataSources(sources -> sources.gradleMetadata());
+            repo.metadataSources(sources -> sources.mavenPom());
         }));
 
         var configurations = project.getConfigurations();
@@ -70,8 +71,43 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
         });
 
+        var s2 = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar").get().getAsFile().toPath();
+        if (!Files.exists(s2)) {
+            try {
+                Files.createFile(s2);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        var s = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom").get().getAsFile().toPath();
+        if (!Files.exists(s)) {
+            try {
+                Files.createDirectories(s.getParent());
+                Files.writeString(s, """
+                    <project xmlns="http://maven.apache.org/POM/4.0.0"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                        <modelVersion>4.0.0</modelVersion>
+
+                        <groupId>minecraft</groupId>
+                        <artifactId>minecraft-joined</artifactId>
+                        <version>local</version>
+                        <packaging>jar</packaging>
+                    </project>
+                    """);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         var prepRepo = tasks.register("prepRepo", PrepRepoTask.class, task -> {
-            task.getRepoFolder().set(layout.getBuildDirectory().file("repo"));
+            task.getPomFile().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom"));
+        });
+        tasks.all(task -> {
+            if (!task.equals(prepRepo.get())) {
+                task.dependsOn(prepRepo);
+            }
         });
 
         var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
@@ -82,8 +118,8 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setCanBeConsumed(false);
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
-        project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
-        //project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
+        //project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
+        project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
         project.getTasks().named("init", task -> {
