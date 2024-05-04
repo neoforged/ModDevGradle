@@ -74,6 +74,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var s2 = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar").get().getAsFile().toPath();
         if (!Files.exists(s2)) {
             try {
+                Files.createDirectories(s2.getParent());
                 Files.createFile(s2);
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -83,19 +84,18 @@ public class ModDevPlugin implements Plugin<Project> {
         var s = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom").get().getAsFile().toPath();
         if (!Files.exists(s)) {
             try {
-                Files.createDirectories(s.getParent());
                 Files.writeString(s, """
-                    <project xmlns="http://maven.apache.org/POM/4.0.0"
-                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-                        <modelVersion>4.0.0</modelVersion>
+                        <project xmlns="http://maven.apache.org/POM/4.0.0"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                            <modelVersion>4.0.0</modelVersion>
 
-                        <groupId>minecraft</groupId>
-                        <artifactId>minecraft-joined</artifactId>
-                        <version>local</version>
-                        <packaging>jar</packaging>
-                    </project>
-                    """);
+                            <groupId>minecraft</groupId>
+                            <artifactId>minecraft-joined</artifactId>
+                            <version>local</version>
+                            <packaging>jar</packaging>
+                        </project>
+                        """);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -118,7 +118,7 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setCanBeConsumed(false);
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
-        //project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
+        project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
         project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
