@@ -9,6 +9,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.file.FileTree;
+import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.JavaExec;
@@ -91,35 +92,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
             task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-resources.jar"));
         });
 
-        var s2 = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar").get().getAsFile().toPath();
-        if (!Files.exists(s2)) {
-            try {
-                Files.createDirectories(s2.getParent());
-                Files.createFile(s2);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        var s = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom").get().getAsFile().toPath();
-        if (!Files.exists(s)) {
-            try {
-                Files.writeString(s, """
-                        <project xmlns="http://maven.apache.org/POM/4.0.0"
-                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-                            <modelVersion>4.0.0</modelVersion>
-
-                            <groupId>minecraft</groupId>
-                            <artifactId>minecraft-joined</artifactId>
-                            <version>local</version>
-                            <packaging>jar</packaging>
-                        </project>
-                        """);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        createDummyFilesInLocalRepository(layout);
 
         var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         project.getDependencies().add("compileOnly", minecraftBinaries.get());
@@ -226,6 +199,38 @@ public class ModDevPluginImpl implements Plugin<Project> {
             });
             runClientTask.setWorkingDir(project.file("run/"));
         });
+    }
+
+    private static void createDummyFilesInLocalRepository(ProjectLayout layout) {
+        var emptyJarFile = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar").get().getAsFile().toPath();
+        if (!Files.exists(emptyJarFile)) {
+            try {
+                Files.createDirectories(emptyJarFile.getParent());
+                Files.createFile(emptyJarFile);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        var pomFile = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom").get().getAsFile().toPath();
+        if (!Files.exists(pomFile)) {
+            try {
+                Files.writeString(pomFile, """
+                        <project xmlns="http://maven.apache.org/POM/4.0.0"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+                            <modelVersion>4.0.0</modelVersion>
+
+                            <groupId>minecraft</groupId>
+                            <artifactId>minecraft-joined</artifactId>
+                            <version>local</version>
+                            <packaging>jar</packaging>
+                        </project>
+                        """);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static JsonObject readUserdevJson(FileTree zf) {
