@@ -1,20 +1,13 @@
 package net.neoforged.neoforgegradle;
 
-import org.codehaus.groovy.runtime.StackTraceUtils;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.stream.Collectors;
 
 public class ModDevPlugin implements Plugin<Project> {
@@ -33,7 +26,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }));
         repositories.addLast(repositories.maven(repo -> {
             repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
-            repo.metadataSources(MavenArtifactRepository.MetadataSources::gradleMetadata);
+            repo.metadataSources(sources -> sources.gradleMetadata());
         }));
 
         var configurations = project.getConfigurations();
@@ -76,18 +69,26 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
         });
-        tasks.named("compileJava").configure(compileJava -> {
-            compileJava.dependsOn(createArtifacts);
+
+        var prepRepo = tasks.register("prepRepo", PrepRepoTask.class, task -> {
+            task.getRepoFolder().set(layout.getBuildDirectory().file("repo"));
         });
 
-        var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact().get()));
-        var localRuntime = configurations.create("neoForgeGeneratedArtifacts");
-        project.getDependencies().add(localRuntime.getName(), minecraftBinaries);
+        var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
+        project.getDependencies().add("compileOnly", minecraftBinaries.get());
+
+        var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+        });
         project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
         project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
-        project.getDependencies().add("compileOnly", minecraftBinaries);
-        project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
+        //project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
+
+        project.getTasks().named("init", task -> {
+            task.dependsOn(prepRepo);
+        });
     }
 
     private static String guessMavenGav(ResolvedArtifactResult result) {
