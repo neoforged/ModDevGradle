@@ -101,15 +101,6 @@ public class ModDevPlugin implements Plugin<Project> {
             }
         }
 
-        var prepRepo = tasks.register("prepRepo", PrepRepoTask.class, task -> {
-            task.getPomFile().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom"));
-        });
-        tasks.all(task -> {
-            if (!task.equals(prepRepo.get())) {
-                task.dependsOn(prepRepo);
-            }
-        });
-
         var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         project.getDependencies().add("compileOnly", minecraftBinaries.get());
 
@@ -121,10 +112,6 @@ public class ModDevPlugin implements Plugin<Project> {
         project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
         project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
-
-        project.getTasks().named("init", task -> {
-            task.dependsOn(prepRepo);
-        });
     }
 
     private static String guessMavenGav(ResolvedArtifactResult result) {
