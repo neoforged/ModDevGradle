@@ -8,10 +8,10 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
-import org.gradle.api.file.FileTree;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -19,11 +19,14 @@ import org.gradle.util.GradleVersion;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.ZipFile;
 
 public class ModDevPluginImpl implements Plugin<Project> {
     private static final GradleVersion MIN_VERSION = GradleVersion.version("8.7");
@@ -36,6 +39,9 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
         project.getPlugins().apply(JavaLibraryPlugin.class);
         var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
+        var dependencyFactory = project.getDependencyFactory();
+        var neoForgeUserdevDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev"));
+        var neoForgeUniversalDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal"));
 
         var repositories = project.getRepositories();
         repositories.addLast(repositories.maven(repo -> {
@@ -51,13 +57,10 @@ public class ModDevPluginImpl implements Plugin<Project> {
         }));
 
         var configurations = project.getConfigurations();
-        var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDev = configurations.create("neoForgeModDev", files -> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
-            files.defaultDependencies(spec -> {
-                spec.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev")));
-            });
+            files.defaultDependencies(spec -> spec.addLater(neoForgeUserdevDependency));
         });
         var neoFormInABoxConfig = configurations.create("neoFormInABoxConfig", files -> {
             files.setCanBeConsumed(false);
@@ -105,7 +108,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
             config.setCanBeConsumed(false);
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
-        project.getDependencies().add("implementation", extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal")));
+        project.getDependencies().add("implementation", neoForgeUniversalDependency);
         project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
@@ -118,16 +121,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        var userdevJarConfiguration = configurations.create("userdevJar", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev"))));
-        });
-        var userDevJarTree = project.provider(() -> {
-            return project.zipTree(userdevJarConfiguration.getSingleFile());
-        });
-        var userDevConfig = userDevJarTree.map(ModDevPluginImpl::readUserdevJson);
+        var userDevConfig = getUserdevConfigProvider(project, neoForgeUserdevDependency);
 
         var legacyClasspathConfiguration = configurations.create("legacyClassPath", spec -> {
             spec.setCanBeResolved(true);
@@ -245,13 +239,35 @@ public class ModDevPluginImpl implements Plugin<Project> {
         }
     }
 
-    private static JsonObject readUserdevJson(FileTree zf) {
-        var zipFile = zf.matching(pf -> pf.include("config.json")).getSingleFile();
-        try (var reader = Files.newBufferedReader(zipFile.toPath())) {
-            return JsonParser.parseReader(reader).getAsJsonObject();
-        } catch (IOException exception) {
-            throw new UncheckedIOException("Failed to read userdev config.json", exception);
-        }
+    private static Provider<JsonObject> getUserdevConfigProvider(Project project, Provider<? extends Dependency> userdevDependency) {
+        var configuration = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setTransitive(false);
+            spec.withDependencies(set -> set.addLater(userdevDependency));
+        });
+
+        return configuration.getIncoming().getArtifacts().getArtifactFiles().getElements().map(files -> {
+            if (files.size() != 1) {
+                throw new GradleException("Expected the NeoForge userdev artifact to be resolved to exactly one file: " + files);
+            }
+
+            var userdefFile = files.iterator().next().getAsFile();
+
+            try (var zf = new ZipFile(userdefFile)) {
+                var configEntry = zf.getEntry("config.json");
+                if (configEntry == null) {
+                    throw new IOException("The NeoForge Userdev artifact is missing a config.json file");
+                }
+
+                try (var in = zf.getInputStream(configEntry);
+                     var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                    return JsonParser.parseReader(reader).getAsJsonObject();
+                }
+            } catch (Exception e) {
+                throw new GradleException("Failed to read NeoForge config file from " + userdefFile, e);
+            }
+        });
     }
 
     private static String guessMavenGav(ResolvedArtifactResult result) {
