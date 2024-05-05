@@ -24,6 +24,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 
@@ -127,6 +128,11 @@ public class ModDevPluginImpl implements Plugin<Project> {
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
             task.getResourcesArtifact().set(extraJarPath);
         });
+        var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+            task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
+            task.getNeoFormInABox().from(neoFormInABoxConfig);
+        });
+        var assetsPath = Paths.get(System.getProperty("user.home")).resolve(".neoform").resolve("assets");
 
         createDummyFilesInLocalRepository(layout);
 
@@ -204,11 +210,14 @@ public class ModDevPluginImpl implements Plugin<Project> {
             });
 
             var runs = userDevConfig.get().runs();
-            var clientRun = runs.get("server");
+            var clientRun = runs.get("client");
 
             // This should probably all be done using providers; but that's for later :)
             runClientTask.getMainClass().set(clientRun.main());
             for (var arg : clientRun.args()) {
+//                if (arg.equals("{asset_index}")) {
+//                    arg = assetsPath.resolve("indexes")
+//                }
                 runClientTask.args(arg);
             }
             for (var jvmArg : clientRun.jvmArgs()) {
