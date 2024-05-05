@@ -83,13 +83,16 @@ public class ModDevPluginImpl implements Plugin<Project> {
             task.getManifestFile().set(layout.getBuildDirectory().file("neoform_artifact_manifest.properties"));
         });
 
+        // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
+        var extraJarPath = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-resources-aka-client-extra.jar");
+
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
-            task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-resources.jar"));
+            task.getResourcesArtifact().set(extraJarPath);
         });
 
         createDummyFilesInLocalRepository(layout);
@@ -130,16 +133,24 @@ public class ModDevPluginImpl implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addAllLater(userDevConfig.map(config -> {
-                return Stream.of(config.getAsJsonArray("libraries"))
-                        .flatMap(a -> a.asList().stream())
-                        .map(lib -> (Dependency) dependencyFactory.create(lib.getAsString()))
-                        .toList();
-            })));
+            spec.withDependencies(set -> {
+                set.addAllLater(userDevConfig.map(config -> {
+                    return Stream.of(config.getAsJsonArray("libraries"))
+                            .flatMap(a -> a.asList().stream())
+                            .map(lib -> (Dependency) dependencyFactory.create(lib.getAsString()))
+                            .toList();
+                }));
+
+                // We need the userdev JAR on the legacy classpath for it to be loaded by FML
+                set.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev")));
+                // Same for the MC jar... :(
+                set.add(dependencyFactory.create("minecraft:minecraft-joined:local"));
+            });
         });
 
         var writeLcpTask = tasks.register("writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.getEntries().from(legacyClasspathConfiguration);
+            writeLcp.getEntries().from(extraJarPath);
         });
 
         tasks.register("runClient", JavaExec.class, runClientTask -> {
@@ -155,7 +166,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
             });
 
             var runs = userDevConfig.get().getAsJsonObject("runs");
-            var clientRun = runs.getAsJsonObject("client");
+            var clientRun = runs.getAsJsonObject("server");
 
             // This should probably all be done using providers; but that's for later :)
             runClientTask.getMainClass().set(clientRun.get("main").getAsString());
@@ -190,9 +201,10 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
             runClientTask.classpath(configurations.named("runtimeClasspath"));
             // Create directory if needed
+            var runDir = project.file("run/").toPath(); // store here, can't reference project inside doFirst for the config cache
             runClientTask.doFirst(t -> {
                 try {
-                    Files.createDirectories(project.file("run/").toPath());
+                    Files.createDirectories(runDir);
                 } catch (IOException e) {
                     throw new UncheckedIOException("Failed to create run directory", e);
                 }

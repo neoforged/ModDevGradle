@@ -8,5 +8,5 @@ repositories {
 }
 
 neoForge {
-    version = "20.6.1-beta"
+    version = "20.6.42-beta"
 }
