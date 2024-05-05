@@ -9,6 +9,7 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
@@ -22,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.Properties;
 import java.util.stream.Collectors;
 
 @CacheableTask
@@ -39,6 +41,10 @@ public abstract class RunGameTask extends DefaultTask {
     @Classpath
     @InputFiles
     abstract ConfigurableFileCollection getClasspath();
+
+    @InputFile
+    @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getAssetProperties();
 
     @Internal
     abstract DirectoryProperty getGameDirectory();
@@ -65,6 +71,18 @@ public abstract class RunGameTask extends DefaultTask {
 
     @TaskAction
     public void runGame() throws Exception {
+        Properties assetProperties = new Properties();
+        try (var input = Files.newInputStream(getAssetProperties().get().getAsFile().toPath())) {
+            assetProperties.load(input);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load asset properties", e);
+        }
+        if (!assetProperties.containsKey("assets_root")) {
+            throw new IllegalStateException("Asset properties file does not contain assets_root");
+        }
+        if (!assetProperties.containsKey("asset_index")) {
+            throw new IllegalStateException("Asset properties file does not contain asset_index");
+        }
 
         // Create directory if needed
         var runDir = getGameDirectory().get().getAsFile(); // store here, can't reference project inside doFirst for the config cache
@@ -81,9 +99,11 @@ public abstract class RunGameTask extends DefaultTask {
             // This should probably all be done using providers; but that's for later :)
             spec.getMainClass().set(getMainClass().get());
             for (var arg : getArgs().get()) {
-//                if (arg.equals("{asset_index}")) {
-//                    arg = assetsPath.resolve("indexes")
-//                }
+                if (arg.equals("{assets_root}")) {
+                    arg = assetProperties.getProperty("assets_root");
+                } else if (arg.equals("{asset_index}")) {
+                    arg = assetProperties.getProperty("asset_index");
+                }
                 spec.args(arg);
             }
             for (var jvmArg : getJvmArgs().get()) {

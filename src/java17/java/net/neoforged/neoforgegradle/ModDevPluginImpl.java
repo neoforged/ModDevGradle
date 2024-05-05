@@ -126,9 +126,11 @@ public class ModDevPluginImpl implements Plugin<Project> {
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
             task.getResourcesArtifact().set(extraJarPath);
         });
+        var assetPropertiesFile = layout.getBuildDirectory().file("minecraft_assets.properties");
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
+            task.getAssetPropertiesFile().set(assetPropertiesFile);
         });
         var assetsPath = Paths.get(System.getProperty("user.home")).resolve(".neoform").resolve("assets");
 
@@ -210,6 +212,8 @@ public class ModDevPluginImpl implements Plugin<Project> {
             runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             runClientTask.getModules().from(modulesConfiguration);
             runClientTask.getClasspath().from(configurations.named("runtimeClasspath"));
+            runClientTask.getAssetProperties().set(assetPropertiesFile);
+            runClientTask.dependsOn(downloadAssets);
             runClientTask.getGameDirectory().set(project.file("run/"));
             var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
             runClientTask.getMainClass().set(runType.main());
