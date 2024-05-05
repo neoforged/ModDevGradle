@@ -108,7 +108,6 @@ public class ModDevPluginImpl implements Plugin<Project> {
             config.setCanBeConsumed(false);
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
-        project.getDependencies().add("implementation", neoForgeUniversalDependency);
         project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
@@ -134,11 +133,6 @@ public class ModDevPluginImpl implements Plugin<Project> {
                             .map(lib -> (Dependency) dependencyFactory.create(lib.getAsString()))
                             .toList();
                 }));
-
-                // We need the userdev JAR on the legacy classpath for it to be loaded by FML
-                set.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev")));
-                // Same for the MC jar... :(
-                set.add(dependencyFactory.create("minecraft:minecraft-joined:local"));
             });
         });
 
@@ -204,6 +198,9 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 }
             });
             runClientTask.setWorkingDir(project.file("run/"));
+
+            // Enable debug logging; doesn't work for FML???
+//            runClientTask.systemProperty("forge.logging.console.level", "debug");
         });
     }
 
