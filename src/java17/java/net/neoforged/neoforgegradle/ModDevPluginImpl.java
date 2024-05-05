@@ -1,7 +1,6 @@
 package net.neoforged.neoforgegradle;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.Gson;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Plugin;
@@ -26,7 +25,6 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.ZipFile;
 
 public class ModDevPluginImpl implements Plugin<Project> {
@@ -87,7 +85,6 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 }));
             });
         });
-        System.out.println(minecraftClientLibraries.resolve());
 
         var minecraftServerLibraries = configurations.create("minecraftServerLibraries", spec -> {
             spec.setCanBeResolved(true);
@@ -159,6 +156,12 @@ public class ModDevPluginImpl implements Plugin<Project> {
         // I don't like having to use a configuration for this...
         var userDevConfig = getUserdevConfigProvider(project, neoForgeUserdevDependency);
 
+        project.getConfigurations().named("compileOnly").configure(configuration -> {
+            configuration.withDependencies(dependencies -> {
+                dependencies.addAllLater(userDevConfig.map(config -> config.libraries().stream().map(library -> (Dependency) project.getDependencyFactory().create(library)).toList()));
+            });
+        });
+
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
@@ -175,9 +178,9 @@ public class ModDevPluginImpl implements Plugin<Project> {
             });
             spec.withDependencies(set -> {
                 set.addAllLater(userDevConfig.map(config -> {
-                    return Stream.of(config.getAsJsonArray("libraries"))
-                            .flatMap(a -> a.asList().stream())
-                            .map(lib -> (Dependency) dependencyFactory.create(lib.getAsString()))
+                    return config.libraries()
+                            .stream()
+                            .map(lib -> (Dependency) dependencyFactory.create(lib))
                             .toList();
                 }));
             });
@@ -194,22 +197,22 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 c.setCanBeConsumed(false);
                 c.setCanBeResolved(true);
                 c.withDependencies(set -> {
-                    for (var moduleDep : userDevConfig.get().getAsJsonArray("modules")) {
-                        set.add(dependencyFactory.create(moduleDep.getAsString()));
+                    for (var moduleDep : userDevConfig.get().modules()) {
+                        set.add(dependencyFactory.create(moduleDep));
                     }
                 });
             });
 
-            var runs = userDevConfig.get().getAsJsonObject("runs");
-            var clientRun = runs.getAsJsonObject("server");
+            var runs = userDevConfig.get().runs();
+            var clientRun = runs.get("server");
 
             // This should probably all be done using providers; but that's for later :)
-            runClientTask.getMainClass().set(clientRun.get("main").getAsString());
-            for (var arg : clientRun.getAsJsonArray("args")) {
-                runClientTask.args(arg.getAsString());
+            runClientTask.getMainClass().set(clientRun.main());
+            for (var arg : clientRun.args()) {
+                runClientTask.args(arg);
             }
-            for (var jvmArg : clientRun.getAsJsonArray("jvmArgs")) {
-                String arg = jvmArg.getAsString();
+            for (var jvmArg : clientRun.jvmArgs()) {
+                String arg = jvmArg;
                 if (arg.equals("{modules}")) {
                     arg = modulesConfiguration.getFiles().stream()
                             .map(File::getAbsolutePath)
@@ -217,15 +220,15 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 }
                 runClientTask.jvmArgs(arg);
             }
-            for (var env : clientRun.getAsJsonObject("env").entrySet()) {
-                var envValue = env.getValue().getAsString();
+            for (var env : clientRun.env().entrySet()) {
+                var envValue = env.getValue();
                 if (envValue.equals("{source_roots}")) {
                     continue; // This is MOD_CLASSES, skip for now.
                 }
                 runClientTask.environment(env.getKey(), envValue);
             }
-            for (var prop : clientRun.getAsJsonObject("props").entrySet()) {
-                var propValue = prop.getValue().getAsString();
+            for (var prop : clientRun.props().entrySet()) {
+                var propValue = prop.getValue();
                 if (propValue.equals("{minecraft_classpath_file}")) {
                     propValue = writeLcpTask.flatMap(WriteLegacyClasspath::getLegacyClasspathFile).get().getAsFile().getAbsolutePath();
                     runClientTask.dependsOn(writeLcpTask); // I think this is needed because Gradle can't track who called .get()? to be confirmed... I need to check that I didn't make the same mistake elsewhere
@@ -283,7 +286,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
         }
     }
 
-    private static Provider<JsonObject> getUserdevConfigProvider(Project project, Provider<? extends Dependency> userdevDependency) {
+    private static Provider<UserDevConfig> getUserdevConfigProvider(Project project, Provider<? extends Dependency> userdevDependency) {
         var configuration = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -306,7 +309,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
                 try (var in = zf.getInputStream(configEntry);
                      var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                    return JsonParser.parseReader(reader).getAsJsonObject();
+                    return new Gson().fromJson(reader, UserDevConfig.class);
                 }
             } catch (Exception e) {
                 throw new GradleException("Failed to read NeoForge config file from " + userdefFile, e);
