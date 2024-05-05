@@ -12,19 +12,17 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.JavaExec;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.util.GradleVersion;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 
@@ -197,9 +195,9 @@ public class ModDevPluginImpl implements Plugin<Project> {
             writeLcp.getEntries().from(extraJarPath);
         });
 
-        tasks.register("runClient", JavaExec.class, runClientTask -> {
+        tasks.register("runClient", RunGameTask.class, runClientTask -> {
             // Modules: these will be used to generate the module path
-            var modulesConfiguration = configurations.create("modules", c -> {
+            var modulesConfiguration = configurations.create("runClientModules", c -> {
                 c.setCanBeConsumed(false);
                 c.setCanBeResolved(true);
                 c.withDependencies(set -> {
@@ -209,57 +207,16 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 });
             });
 
-            var runs = userDevConfig.get().runs();
-            var clientRun = runs.get("client");
-
-            // This should probably all be done using providers; but that's for later :)
-            runClientTask.getMainClass().set(clientRun.main());
-            for (var arg : clientRun.args()) {
-//                if (arg.equals("{asset_index}")) {
-//                    arg = assetsPath.resolve("indexes")
-//                }
-                runClientTask.args(arg);
-            }
-            for (var jvmArg : clientRun.jvmArgs()) {
-                String arg = jvmArg;
-                if (arg.equals("{modules}")) {
-                    arg = modulesConfiguration.getFiles().stream()
-                            .map(File::getAbsolutePath)
-                            .collect(Collectors.joining(File.pathSeparator));
-                }
-                runClientTask.jvmArgs(arg);
-            }
-            for (var env : clientRun.env().entrySet()) {
-                var envValue = env.getValue();
-                if (envValue.equals("{source_roots}")) {
-                    continue; // This is MOD_CLASSES, skip for now.
-                }
-                runClientTask.environment(env.getKey(), envValue);
-            }
-            for (var prop : clientRun.props().entrySet()) {
-                var propValue = prop.getValue();
-                if (propValue.equals("{minecraft_classpath_file}")) {
-                    propValue = writeLcpTask.flatMap(WriteLegacyClasspath::getLegacyClasspathFile).get().getAsFile().getAbsolutePath();
-                    runClientTask.dependsOn(writeLcpTask); // I think this is needed because Gradle can't track who called .get()? to be confirmed... I need to check that I didn't make the same mistake elsewhere
-                }
-
-                runClientTask.systemProperty(prop.getKey(), propValue);
-            }
-
-            runClientTask.classpath(configurations.named("runtimeClasspath"));
-            // Create directory if needed
-            var runDir = project.file("run/").toPath(); // store here, can't reference project inside doFirst for the config cache
-            runClientTask.doFirst(t -> {
-                try {
-                    Files.createDirectories(runDir);
-                } catch (IOException e) {
-                    throw new UncheckedIOException("Failed to create run directory", e);
-                }
-            });
-            runClientTask.setWorkingDir(project.file("run/"));
-
-            // Enable debug logging; doesn't work for FML???
-//            runClientTask.systemProperty("forge.logging.console.level", "debug");
+            runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            runClientTask.getModules().from(modulesConfiguration);
+            runClientTask.getClasspath().from(configurations.named("runtimeClasspath"));
+            runClientTask.getGameDirectory().set(project.file("run/"));
+            var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
+            runClientTask.getMainClass().set(runType.main());
+            runClientTask.getArgs().set(runType.args());
+            runClientTask.getJvmArgs().set(runType.jvmArgs());
+            runClientTask.getEnvironment().set(runType.env());
+            runClientTask.getSystemProperties().set(runType.props());
         });
     }
 
