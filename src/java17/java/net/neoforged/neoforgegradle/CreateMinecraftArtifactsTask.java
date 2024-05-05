@@ -52,6 +52,7 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
             execSpec.classpath(getNeoFormInABox());
             execSpec.getMainClass().set("net.neoforged.neoforminabox.cli.Main");
             execSpec.args(
+                    "run",
                     "--neoforge", artifactId + ":userdev",
                     "--artifact-manifest", getArtifactManifestFile().get().getAsFile().getAbsolutePath(),
                     "--dist", "joined",
