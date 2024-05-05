@@ -8,6 +8,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -30,6 +31,8 @@ import java.util.zip.ZipFile;
 
 public class ModDevPluginImpl implements Plugin<Project> {
     private static final GradleVersion MIN_VERSION = GradleVersion.version("8.7");
+    private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
+    private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
 
     @Override
     public void apply(Project project) {
@@ -55,6 +58,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
             repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
             repo.metadataSources(sources -> sources.mavenPom());
         }));
+        repositories.add(repositories.mavenLocal()); // TODO TEMP
 
         var configurations = project.getConfigurations();
         var neoForgeModDev = configurations.create("neoForgeModDev", files -> {
@@ -69,6 +73,35 @@ public class ModDevPluginImpl implements Plugin<Project> {
                 spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT"));
             });
         });
+
+        var minecraftClientLibraries = configurations.create("minecraftClientLibraries", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.attributes(attributes -> {
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+            });
+            spec.withDependencies(set -> {
+                set.add(project.getDependencyFactory().create("net.neoforged:minecraft:1.20.6").capabilities(caps -> {
+                    caps.requireCapability("net.neoforged:minecraft-dependencies");
+                }));
+            });
+        });
+        System.out.println(minecraftClientLibraries.resolve());
+
+        var minecraftServerLibraries = configurations.create("minecraftServerLibraries", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.withDependencies(set -> {
+                set.add(project.getDependencyFactory().create("net.neoforged:minecraft:1.20.6").attributes(attributes -> {
+                    attributes.attribute(ATTRIBUTE_DISTRIBUTION, "server");
+                    attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+                }).capabilities(caps -> {
+                    caps.requireCapability("net.neoforged:minecraft-dependencies");
+                }));
+            });
+        });
+
         var layout = project.getLayout();
 
         var tasks = project.getTasks();
@@ -115,17 +148,31 @@ public class ModDevPluginImpl implements Plugin<Project> {
         if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
             var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
             var toolchainSpec = javaExtension.getToolchain();
-            toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
+            try {
+                toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
+            } catch (IllegalStateException ignored) {
+                // We tried our best
+            }
         }
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
         var userDevConfig = getUserdevConfigProvider(project, neoForgeUserdevDependency);
 
+        project.getDependencies().attributesSchema(attributesSchema -> {
+            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
+            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
+        });
+
         var legacyClasspathConfiguration = configurations.create("legacyClassPath", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.setTransitive(false);
+            spec.setTransitive(true);
+            spec.extendsFrom(minecraftClientLibraries);
+            spec.attributes(attributes -> {
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+            });
             spec.withDependencies(set -> {
                 set.addAllLater(userDevConfig.map(config -> {
                     return Stream.of(config.getAsJsonArray("libraries"))
