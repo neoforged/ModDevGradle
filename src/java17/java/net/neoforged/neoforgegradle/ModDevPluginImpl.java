@@ -126,13 +126,11 @@ public class ModDevPluginImpl {
             task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
             task.getDummyArtifact().set(layout.getBuildDirectory().file("dummy_artifact.jar"));
         });
-        var assetPropertiesFile = layout.getBuildDirectory().file("minecraft_assets.properties");
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
-            task.getAssetPropertiesFile().set(assetPropertiesFile);
+            task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
         });
-        var assetsPath = Paths.get(System.getProperty("user.home")).resolve(".neoform").resolve("assets");
 
         createDummyFilesInLocalRepository(layout);
 
@@ -227,7 +225,7 @@ public class ModDevPluginImpl {
             task.getRunType().set("client");
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            task.getAssetProperties().set(assetPropertiesFile);
+            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
             task.getModules().from(modulesConfiguration);
         });
 
@@ -246,8 +244,7 @@ public class ModDevPluginImpl {
             runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             runClientTask.getModules().from(modulesConfiguration);
             runClientTask.getClasspathProvider().from(configurations.named("runtimeClasspath"));
-            runClientTask.getAssetProperties().set(assetPropertiesFile);
-            runClientTask.dependsOn(downloadAssets);
+            runClientTask.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
             runClientTask.getGameDirectory().set(project.file("run/"));
             var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
             runClientTask.getMainClass().set(runType.main());

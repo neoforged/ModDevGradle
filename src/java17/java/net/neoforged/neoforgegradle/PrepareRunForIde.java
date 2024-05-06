@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -125,11 +126,13 @@ public abstract class PrepareRunForIde extends DefaultTask {
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
         for (var arg : runConfig.args()) {
             if (arg.equals("{assets_root}")) {
-                arg = assetProperties.assetsRoot();
+                arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
             } else if (arg.equals("{asset_index}")) {
-                arg = assetProperties.assetIndex();
+                arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add(arg);
+            if (arg != null) {
+                lines.add("\"" + arg.replace("\\", "\\\\") + "\"");
+            }
         }
 
         Files.write(getArgsFile().get().getAsFile().toPath(), lines);

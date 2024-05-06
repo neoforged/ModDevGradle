@@ -27,7 +27,7 @@ public final class RunUtils {
         }
 
         return new AssetProperties(
-                assetProperties.getProperty("assets_index"),
+                assetProperties.getProperty("asset_index"),
                 assetProperties.getProperty("assets_root")
         );
     }
