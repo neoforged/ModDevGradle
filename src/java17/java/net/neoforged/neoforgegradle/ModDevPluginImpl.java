@@ -256,10 +256,10 @@ public class ModDevPluginImpl {
             a.setModuleRef(new ModuleRef(project));
             a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
             a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
-            var gradleTaskBeforeRun = new GradleTask("prepareRunClientForIde");
-            a.getBeforeRun().add(gradleTaskBeforeRun);
+            a.getBeforeRun().create("Prepare", GradleTask.class, gradleTask -> {
+                gradleTask.setTask(writeArgsFile.get());
+            });
             runConfigurations.add(a);
-
         });
     }
 
