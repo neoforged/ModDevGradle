@@ -120,9 +120,13 @@ public abstract class PrepareRunForIde extends DefaultTask {
             lines.add("\"-D" + prop.getKey() + "=" + propValue.replace("\\", "\\\\") + "\"");
         }
 
+        lines.add("");
+        lines.add("# Main Class");
         lines.add(runConfig.main());
 
         // This should probably all be done using providers; but that's for later :)
+        lines.add("");
+        lines.add("# Program Arguments");
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
         for (var arg : runConfig.args()) {
             if (arg.equals("{assets_root}")) {
@@ -130,9 +134,7 @@ public abstract class PrepareRunForIde extends DefaultTask {
             } else if (arg.equals("{asset_index}")) {
                 arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            if (arg != null) {
-                lines.add("\"" + arg.replace("\\", "\\\\") + "\"");
-            }
+            lines.add("\"" + arg.replace("\\", "\\\\") + "\"");
         }
 
         Files.write(getArgsFile().get().getAsFile().toPath(), lines);
