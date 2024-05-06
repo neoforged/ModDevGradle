@@ -181,78 +181,105 @@ public class ModDevPluginImpl {
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
         });
 
-        var legacyClasspathConfiguration = configurations.create("legacyClassPath", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.setTransitive(true);
-            spec.extendsFrom(minecraftClientLibraries);
-            spec.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
-            });
-            spec.withDependencies(set -> {
-                set.addAllLater(userDevConfig.map(config -> {
-                    return config.libraries()
-                            .stream()
-                            .map(lib -> (Dependency) dependencyFactory.create(lib))
-                            .toList();
-                }));
-            });
-        });
+        var idePostSyncTask = tasks.register("idePostSync");
 
-        var writeLcpTask = tasks.register("writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.getEntries().from(legacyClasspathConfiguration);
-            writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
-        });
-
-        var runDirectory = layout.getProjectDirectory().dir("run");
-        var argsFile = layout.getBuildDirectory().file("runClientArgs.txt");
-        var writeArgsFile = tasks.register("prepareRunClientForIde", PrepareRunForIde.class, task -> {
-
-            // Modules: these will be used to generate the module path
-            // TODO: Instead of this junk, pass a Provider for the resolved artifacts and fish out the modules from that by their GAV
-            var modulesConfiguration = configurations.create("prepareRunClientForIdeModules", c -> {
-                c.setCanBeConsumed(false);
-                c.setCanBeResolved(true);
-                c.withDependencies(set -> {
-                    for (var moduleDep : userDevConfig.get().modules()) {
-                        set.add(dependencyFactory.create(moduleDep));
-                    }
+        extension.getRuns().configureEach(run -> {
+            var legacyClasspathConfiguration = configurations.create(run.getName() + "legacyClassPath", spec -> {
+                spec.setCanBeResolved(true);
+                spec.setCanBeConsumed(false);
+                spec.setTransitive(true);
+                spec.extendsFrom(minecraftClientLibraries);
+                spec.attributes(attributes -> {
+                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, run.getType().map(t -> t.equals("client") ? "client" : "server"));
+                    attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
+                });
+                spec.withDependencies(set -> {
+                    set.addAllLater(userDevConfig.map(config -> {
+                        return config.libraries()
+                                .stream()
+                                .map(lib -> (Dependency) dependencyFactory.create(lib))
+                                .toList();
+                    }));
                 });
             });
 
-            task.getRunDirectory().set(runDirectory);
-            task.getArgsFile().set(argsFile);
-            task.getRunType().set("client");
-            task.getNeoForgeModDevConfig().from(userDevConfigOnly);
-            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-            task.getModules().from(modulesConfiguration);
-        });
-
-        tasks.register("runClient", RunGameTask.class, runClientTask -> {
-            // Modules: these will be used to generate the module path
-            var modulesConfiguration = configurations.create("runClientModules", c -> {
-                c.setCanBeConsumed(false);
-                c.setCanBeResolved(true);
-                c.withDependencies(set -> {
-                    for (var moduleDep : userDevConfig.get().modules()) {
-                        set.add(dependencyFactory.create(moduleDep));
-                    }
-                });
+            var writeLcpTask = tasks.register(run.getName() + "writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file(run.getName() + "_legacy_classpath.txt"));
+                writeLcp.getEntries().from(legacyClasspathConfiguration);
+                writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
-            runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            runClientTask.getModules().from(modulesConfiguration);
-            runClientTask.getClasspathProvider().from(configurations.named("runtimeClasspath"));
-            runClientTask.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-            runClientTask.getGameDirectory().set(project.file("run/"));
-            var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
-            runClientTask.getMainClass().set(runType.main());
-            runClientTask.getRunCommandLineArgs().set(runType.args());
-            runClientTask.getRunJvmArgs().set(runType.jvmArgs());
-            runClientTask.getRunEnvironment().set(runType.env());
-            runClientTask.getRunSystemProperties().set(runType.props());
+            var runDirectory = layout.getProjectDirectory().dir("run");
+            var argsFile = layout.getBuildDirectory().file(run.getName() + "_run_args.txt");
+            var writeArgsFile = tasks.register(run.getName() + "prepareRunForIde", PrepareRunForIde.class, task -> {
+                // Modules: these will be used to generate the module path
+                // TODO: Instead of this junk, pass a Provider for the resolved artifacts and fish out the modules from that by their GAV
+                var modulesConfiguration = configurations.create(run.getName() + "prepareRunForIdeModules", c -> {
+                    c.setCanBeConsumed(false);
+                    c.setCanBeResolved(true);
+                    c.withDependencies(set -> {
+                        for (var moduleDep : userDevConfig.get().modules()) {
+                            set.add(dependencyFactory.create(moduleDep));
+                        }
+                    });
+                });
+
+                task.getRunDirectory().set(runDirectory);
+                task.getArgsFile().set(argsFile);
+                task.getRunType().set(run.getType());
+                task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+                task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                task.getModules().from(modulesConfiguration);
+            });
+            idePostSyncTask.configure(task -> task.dependsOn(writeArgsFile));
+
+            tasks.register(run.getName() + "run", RunGameTask.class, runClientTask -> {
+                // Modules: these will be used to generate the module path
+                var modulesConfiguration = configurations.create(run.getName() + "runModules", c -> {
+                    c.setCanBeConsumed(false);
+                    c.setCanBeResolved(true);
+                    c.withDependencies(set -> {
+                        for (var moduleDep : userDevConfig.get().modules()) {
+                            set.add(dependencyFactory.create(moduleDep));
+                        }
+                    });
+                });
+
+                runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+                runClientTask.getModules().from(modulesConfiguration);
+                runClientTask.getClasspathProvider().from(configurations.named("runtimeClasspath"));
+                runClientTask.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                runClientTask.getGameDirectory().set(project.file("run/"));
+                var runType = run.getType().zip(
+                        userDevConfig.map(UserDevConfig::runs),
+                        (rt, runs) -> Objects.requireNonNull(runs.get(rt), "missing run type: " + rt));
+                runClientTask.getMainClass().set(runType.map(UserDevRunType::main));
+                runClientTask.getRunCommandLineArgs().set(runType.map(UserDevRunType::args));
+                runClientTask.getRunJvmArgs().set(runType.map(UserDevRunType::jvmArgs));
+                runClientTask.getRunEnvironment().set(runType.map(UserDevRunType::env));
+                runClientTask.getRunSystemProperties().set(runType.map(UserDevRunType::props));
+            });
+
+            IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
+
+            if (ideaModel != null && ideaModel.getProject() != null) {
+                var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
+                var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
+                        ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
+
+                Application a = new Application(run.getName(), project);
+                //
+                //a.setModuleName(String.format("%s.main", template.projectName));
+                var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
+                a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
+                a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
+                a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
+                a.getBeforeRun().create("Prepare", GradleTask.class, gradleTask -> {
+                    gradleTask.setTask(writeArgsFile.get());
+                });
+                runConfigurations.add(a);
+            }
         });
 
         // IDEA Sync has no real notion of tasks or providers or similar
@@ -264,25 +291,6 @@ public class ModDevPluginImpl {
             }
 
             var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
-            var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
-                    ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
-            ActionDelegationConfig delegateActions = ((ExtensionAware) settings).getExtensions().getByType(ActionDelegationConfig.class);
-
-            Application a = new Application("runClient", project);
-            //
-            //a.setModuleName(String.format("%s.main", template.projectName));
-            var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
-            a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
-            a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
-            a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
-            a.getBeforeRun().create("Prepare", GradleTask.class, gradleTask -> {
-                gradleTask.setTask(writeArgsFile.get());
-            });
-            runConfigurations.add(a);
-
-            var idePostSyncTask = tasks.register("idePostSync", task -> {
-                task.dependsOn(writeArgsFile);
-            });
 
             var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
             // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)

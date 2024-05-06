@@ -9,4 +9,16 @@ repositories {
 
 neoForge {
     version = "20.6.42-beta"
+
+    runs {
+        client {
+            client()
+        }
+        data {
+            data()
+        }
+        server {
+            server()
+        }
+    }
 }

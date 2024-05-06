@@ -16,9 +16,7 @@ import java.util.TreeSet;
 
 abstract class WriteLegacyClasspath extends DefaultTask {
     @Inject
-    public WriteLegacyClasspath(Project project) {
-        getLegacyClasspathFile().convention(() -> project.file("build/legacy-classpath.txt"));
-    }
+    public WriteLegacyClasspath() {}
 
     @InputFiles
     abstract ConfigurableFileCollection getEntries();
