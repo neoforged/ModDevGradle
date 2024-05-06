@@ -116,15 +116,14 @@ public class ModDevPluginImpl implements Plugin<Project> {
         });
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var extraJarPath = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-resources-aka-client-extra.jar");
-
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
-            task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar"));
-            task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local-sources.jar"));
-            task.getResourcesArtifact().set(extraJarPath);
+            task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
+            task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
+            task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
+            task.getDummyArtifact().set(layout.getBuildDirectory().file("dummy_artifact.jar"));
         });
         var assetPropertiesFile = layout.getBuildDirectory().file("minecraft_assets.properties");
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
@@ -136,15 +135,18 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
         createDummyFilesInLocalRepository(layout);
 
-        var minecraftBinaries = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
-        project.getDependencies().add("compileOnly", minecraftBinaries.get());
+        // This is an empty, but otherwise valid jar file that creates an implicit dependency on the task
+        // creating our repo, while not creating duplicates on the classpath.
+        var minecraftDummyArtifact = createArtifacts.map(task -> project.files(task.getDummyArtifact()));
 
         var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
         });
-        project.getDependencies().add(localRuntime.getName(), "minecraft:minecraft-joined:local");
-        project.getDependencies().add("compileOnly", "minecraft:minecraft-joined:local");
+        project.getDependencies().add(localRuntime.getName(), "minecraft:neoforge-minecraft-joined:local");
+        project.getDependencies().addProvider(localRuntime.getName(), minecraftDummyArtifact);
+        project.getDependencies().add("compileOnly", "minecraft:neoforge-minecraft-joined:local");
+        project.getDependencies().addProvider("compileOnly", minecraftDummyArtifact);
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
         // Setup java toolchains if the current JVM isn't already J21 (how the hell did you load this plugin...)
@@ -194,7 +196,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
         var writeLcpTask = tasks.register("writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.getEntries().from(legacyClasspathConfiguration);
-            writeLcp.getEntries().from(extraJarPath);
+            writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
         tasks.register("runClient", RunGameTask.class, runClientTask -> {
@@ -211,21 +213,21 @@ public class ModDevPluginImpl implements Plugin<Project> {
 
             runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             runClientTask.getModules().from(modulesConfiguration);
-            runClientTask.getClasspath().from(configurations.named("runtimeClasspath"));
+            runClientTask.getClasspathProvider().from(configurations.named("runtimeClasspath"));
             runClientTask.getAssetProperties().set(assetPropertiesFile);
             runClientTask.dependsOn(downloadAssets);
             runClientTask.getGameDirectory().set(project.file("run/"));
             var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
             runClientTask.getMainClass().set(runType.main());
-            runClientTask.getArgs().set(runType.args());
-            runClientTask.getJvmArgs().set(runType.jvmArgs());
-            runClientTask.getEnvironment().set(runType.env());
-            runClientTask.getSystemProperties().set(runType.props());
+            runClientTask.getArgsProvider().set(runType.args());
+            runClientTask.getJvmArgsProvider().set(runType.jvmArgs());
+            runClientTask.getEnvironmentProvider().set(runType.env());
+            runClientTask.getSystemPropertiesProvider().set(runType.props());
         });
     }
 
     private static void createDummyFilesInLocalRepository(ProjectLayout layout) {
-        var emptyJarFile = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.jar").get().getAsFile().toPath();
+        var emptyJarFile = layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar").get().getAsFile().toPath();
         if (!Files.exists(emptyJarFile)) {
             try {
                 Files.createDirectories(emptyJarFile.getParent());
@@ -235,7 +237,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
             }
         }
 
-        var pomFile = layout.getBuildDirectory().file("repo/minecraft/minecraft-joined/local/minecraft-joined-local.pom").get().getAsFile().toPath();
+        var pomFile = layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.pom").get().getAsFile().toPath();
         if (!Files.exists(pomFile)) {
             try {
                 Files.writeString(pomFile, """
@@ -245,7 +247,7 @@ public class ModDevPluginImpl implements Plugin<Project> {
                             <modelVersion>4.0.0</modelVersion>
 
                             <groupId>minecraft</groupId>
-                            <artifactId>minecraft-joined</artifactId>
+                            <artifactId>neoforge-minecraft-joined</artifactId>
                             <version>local</version>
                             <packaging>jar</packaging>
                         </project>

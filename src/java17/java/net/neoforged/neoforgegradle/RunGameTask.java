@@ -1,22 +1,21 @@
 package net.neoforged.neoforgegradle;
 
-import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.CacheableTask;
 import org.gradle.api.tasks.Classpath;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.process.ExecOperations;
+import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -26,8 +25,8 @@ import java.nio.file.Files;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-@CacheableTask
-public abstract class RunGameTask extends DefaultTask {
+@DisableCachingByDefault
+public abstract class RunGameTask extends JavaExec {
     private final ExecOperations execOperations;
 
     @InputFile
@@ -40,29 +39,26 @@ public abstract class RunGameTask extends DefaultTask {
 
     @Classpath
     @InputFiles
-    abstract ConfigurableFileCollection getClasspath();
+    public abstract ConfigurableFileCollection getClasspathProvider();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
-    abstract RegularFileProperty getAssetProperties();
+    public abstract RegularFileProperty getAssetProperties();
 
     @Internal
-    abstract DirectoryProperty getGameDirectory();
+    public abstract DirectoryProperty getGameDirectory();
 
     @Internal
-    abstract Property<String> getMainClass();
+    public abstract ListProperty<String> getArgsProvider();
 
     @Internal
-    abstract ListProperty<String> getArgs();
+    public abstract ListProperty<String> getJvmArgsProvider();
 
     @Internal
-    abstract ListProperty<String> getJvmArgs();
+    public abstract MapProperty<String, String> getEnvironmentProvider();
 
     @Internal
-    abstract MapProperty<String, String> getEnvironment();
-
-    @Internal
-    abstract MapProperty<String, String> getSystemProperties();
+    public abstract MapProperty<String, String> getSystemPropertiesProvider();
 
     @Inject
     public RunGameTask(ExecOperations execOperations) {
@@ -70,7 +66,7 @@ public abstract class RunGameTask extends DefaultTask {
     }
 
     @TaskAction
-    public void runGame() throws Exception {
+    public void exec() {
         Properties assetProperties = new Properties();
         try (var input = Files.newInputStream(getAssetProperties().get().getAsFile().toPath())) {
             assetProperties.load(input);
@@ -93,12 +89,18 @@ public abstract class RunGameTask extends DefaultTask {
         }
 
         // Write log4j2 configuration file
-        var log4j2xml = writeLog4j2Configuration(runDir);
+        File log4j2xml;
+        try {
+            log4j2xml = writeLog4j2Configuration(runDir);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         execOperations.javaexec(spec -> {
+            spec.getMainClass().set(getMainClass());
+
             // This should probably all be done using providers; but that's for later :)
-            spec.getMainClass().set(getMainClass().get());
-            for (var arg : getArgs().get()) {
+            for (var arg : getArgsProvider().get()) {
                 if (arg.equals("{assets_root}")) {
                     arg = assetProperties.getProperty("assets_root");
                 } else if (arg.equals("{asset_index}")) {
@@ -106,7 +108,7 @@ public abstract class RunGameTask extends DefaultTask {
                 }
                 spec.args(arg);
             }
-            for (var jvmArg : getJvmArgs().get()) {
+            for (var jvmArg : getJvmArgsProvider().get()) {
                 String arg = jvmArg;
                 if (arg.equals("{modules}")) {
                     arg = getModules().getFiles().stream()
@@ -115,16 +117,15 @@ public abstract class RunGameTask extends DefaultTask {
                 }
                 spec.jvmArgs(arg);
             }
-            for (var env : getEnvironment().get().entrySet()) {
+            for (var env : getEnvironmentProvider().get().entrySet()) {
                 var envValue = env.getValue();
                 if (envValue.equals("{source_roots}")) {
                     continue; // This is MOD_CLASSES, skip for now.
                 }
                 spec.environment(env.getKey(), envValue);
             }
-
             spec.systemProperty("log4j2.configurationFile", log4j2xml.getAbsolutePath());
-            for (var prop : getSystemProperties().get().entrySet()) {
+            for (var prop : getSystemPropertiesProvider().get().entrySet()) {
                 var propValue = prop.getValue();
                 if (propValue.equals("{minecraft_classpath_file}")) {
                     propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
@@ -133,7 +134,7 @@ public abstract class RunGameTask extends DefaultTask {
                 spec.systemProperty(prop.getKey(), propValue);
             }
 
-            spec.classpath(getClasspath());
+            spec.classpath(getClasspathProvider());
             spec.setWorkingDir(runDir);
         });
         // Enable debug logging; doesn't work for FML???
@@ -165,7 +166,7 @@ public abstract class RunGameTask extends DefaultTask {
                         <MarkerFilter marker="CORE" onMatch="${sys:forge.logging.marker.core:-ACCEPT}" onMismatch="NEUTRAL"/>
                     </filters>
                     <Appenders>
-                        <TerminalConsole name="Console">
+                        <Console name="Console">
                             <PatternLayout>
                                 <LoggerNamePatternSelector defaultPattern="%highlightForge{[%d{HH:mm:ss}] [%t/%level] [%c{2.}/%markerSimpleName]: %minecraftFormatting{%msg{nolookup}}%n%tEx}">
                                     <!-- don't include the full logger name for Mojang's logs since they use full class names and it's very verbose -->
@@ -173,7 +174,7 @@ public abstract class RunGameTask extends DefaultTask {
                                     <PatternMatch key="com.mojang." pattern="%highlightForge{[%d{HH:mm:ss}] [%t/%level] [mojang/%logger{1}]: %minecraftFormatting{%msg{nolookup}}%n%tEx}"/>
                                 </LoggerNamePatternSelector>
                             </PatternLayout>
-                        </TerminalConsole>
+                        </Console>
                         <Queue name="ServerGuiConsole" ignoreExceptions="true">
                             <PatternLayout>
                                 <LoggerNamePatternSelector defaultPattern="[%d{HH:mm:ss}] [%t/%level] [%c{2.}/%markerSimpleName]: %minecraftFormatting{%msg{nolookup}}{strip}%n">
@@ -223,8 +224,9 @@ public abstract class RunGameTask extends DefaultTask {
                     </Loggers>
                 </Configuration>
 
-                                """);
+                """);
 
         return log4j2Xml;
     }
+
 }
