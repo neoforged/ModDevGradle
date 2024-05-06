@@ -1,10 +1,10 @@
 package net.neoforged.neoforgegradle;
 
-import com.google.gson.Gson;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
@@ -25,14 +25,11 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfiguration;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.zip.ZipFile;
 
 public class ModDevPluginImpl {
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
@@ -165,7 +162,13 @@ public class ModDevPluginImpl {
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        var userDevConfig = getUserdevConfigProvider(project, neoForgeUserdevDependency);
+        var userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setTransitive(false);
+            spec.withDependencies(set -> set.addLater(neoForgeUserdevDependency));
+        });
+        var userDevConfig = getUserdevConfigProvider(project, userDevConfigOnly);
 
         project.getConfigurations().named("compileOnly").configure(configuration -> {
             configuration.withDependencies(dependencies -> {
@@ -176,15 +179,6 @@ public class ModDevPluginImpl {
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
-        });
-
-        var runDirectory = layout.getProjectDirectory().dir("run");
-        var argsFile = layout.getBuildDirectory().file("runClientArgs.txt");
-        var writeArgsFile = tasks.register("prepareRunClientForIde", PrepareRunForIde.class, task -> {
-            task.getRunDirectory().set(runDirectory);
-            task.getArgsFile().set(argsFile);
-            task.getRunType().set("client");
-            task.getNeoForgeModDev().from(neoForgeModDev);
         });
 
         var legacyClasspathConfiguration = configurations.create("legacyClassPath", spec -> {
@@ -209,6 +203,17 @@ public class ModDevPluginImpl {
         var writeLcpTask = tasks.register("writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
+        });
+
+        var runDirectory = layout.getProjectDirectory().dir("run");
+        var argsFile = layout.getBuildDirectory().file("runClientArgs.txt");
+        var writeArgsFile = tasks.register("prepareRunClientForIde", PrepareRunForIde.class, task -> {
+            task.getRunDirectory().set(runDirectory);
+            task.getArgsFile().set(argsFile);
+            task.getRunType().set("client");
+            task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            task.getAssetProperties().set(assetPropertiesFile);
         });
 
         tasks.register("runClient", RunGameTask.class, runClientTask -> {
@@ -295,34 +300,16 @@ public class ModDevPluginImpl {
         }
     }
 
-    private static Provider<UserDevConfig> getUserdevConfigProvider(Project project, Provider<? extends Dependency> userdevDependency) {
-        var configuration = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(userdevDependency));
-        });
+    private static Provider<UserDevConfig> getUserdevConfigProvider(Project project, Configuration configuration) {
 
         return configuration.getIncoming().getArtifacts().getArtifactFiles().getElements().map(files -> {
             if (files.size() != 1) {
                 throw new GradleException("Expected the NeoForge userdev artifact to be resolved to exactly one file: " + files);
             }
 
-            var userdefFile = files.iterator().next().getAsFile();
+            var userDevFile = files.iterator().next().getAsFile();
 
-            try (var zf = new ZipFile(userdefFile)) {
-                var configEntry = zf.getEntry("config.json");
-                if (configEntry == null) {
-                    throw new IOException("The NeoForge Userdev artifact is missing a config.json file");
-                }
-
-                try (var in = zf.getInputStream(configEntry);
-                     var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                    return new Gson().fromJson(reader, UserDevConfig.class);
-                }
-            } catch (Exception e) {
-                throw new GradleException("Failed to read NeoForge config file from " + userdefFile, e);
-            }
+            return UserDevConfig.from(userDevFile);
         });
     }
 
