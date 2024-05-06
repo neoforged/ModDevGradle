@@ -73,28 +73,14 @@ public class ModDevPluginImpl {
             });
         });
 
-        var minecraftClientLibraries = configurations.create("minecraftClientLibraries", spec -> {
+        var minecraftLibraries = configurations.create("minecraftLibraries", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
                 attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
             });
             spec.withDependencies(set -> {
                 set.add(project.getDependencyFactory().create("net.neoforged:minecraft:1.20.6").capabilities(caps -> {
-                    caps.requireCapability("net.neoforged:minecraft-dependencies");
-                }));
-            });
-        });
-
-        var minecraftServerLibraries = configurations.create("minecraftServerLibraries", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.withDependencies(set -> {
-                set.add(project.getDependencyFactory().create("net.neoforged:minecraft:1.20.6").attributes(attributes -> {
-                    attributes.attribute(ATTRIBUTE_DISTRIBUTION, "server");
-                    attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
-                }).capabilities(caps -> {
                     caps.requireCapability("net.neoforged:minecraft-dependencies");
                 }));
             });
@@ -188,7 +174,7 @@ public class ModDevPluginImpl {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.setTransitive(true);
-                spec.extendsFrom(minecraftClientLibraries);
+                spec.extendsFrom(minecraftLibraries);
                 spec.attributes(attributes -> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, run.getType().map(t -> t.equals("client") ? "client" : "server"));
                     attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
