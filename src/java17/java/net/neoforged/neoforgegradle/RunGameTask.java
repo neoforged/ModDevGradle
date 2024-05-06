@@ -5,7 +5,6 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
@@ -14,6 +13,7 @@ import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.process.CommandLineArgumentProvider;
 import org.gradle.process.ExecOperations;
 import org.gradle.work.DisableCachingByDefault;
 
@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -63,6 +65,21 @@ public abstract class RunGameTask extends JavaExec {
     @Inject
     public RunGameTask(ExecOperations execOperations) {
         this.execOperations = execOperations;
+        super.getJvmArgumentProviders().add(this::getInterpolatedJvmArgs);
+    }
+
+    private List<String> getInterpolatedJvmArgs() {
+        var result = new ArrayList<String>();
+        for (var jvmArg : getJvmArgsProvider().get()) {
+            String arg = jvmArg;
+            if (arg.equals("{modules}")) {
+                arg = getModules().getFiles().stream()
+                        .map(File::getAbsolutePath)
+                        .collect(Collectors.joining(File.pathSeparator));
+            }
+            result.add(arg);
+        }
+        return result;
     }
 
     @TaskAction
@@ -96,47 +113,36 @@ public abstract class RunGameTask extends JavaExec {
             throw new RuntimeException(e);
         }
 
-        execOperations.javaexec(spec -> {
-            spec.getMainClass().set(getMainClass());
+        // This should probably all be done using providers; but that's for later :)
+        for (var arg : getArgsProvider().get()) {
+            if (arg.equals("{assets_root}")) {
+                arg = assetProperties.getProperty("assets_root");
+            } else if (arg.equals("{asset_index}")) {
+                arg = assetProperties.getProperty("asset_index");
+            }
+            args(arg);
+        }
 
-            // This should probably all be done using providers; but that's for later :)
-            for (var arg : getArgsProvider().get()) {
-                if (arg.equals("{assets_root}")) {
-                    arg = assetProperties.getProperty("assets_root");
-                } else if (arg.equals("{asset_index}")) {
-                    arg = assetProperties.getProperty("asset_index");
-                }
-                spec.args(arg);
+        for (var env : getEnvironmentProvider().get().entrySet()) {
+            var envValue = env.getValue();
+            if (envValue.equals("{source_roots}")) {
+                continue; // This is MOD_CLASSES, skip for now.
             }
-            for (var jvmArg : getJvmArgsProvider().get()) {
-                String arg = jvmArg;
-                if (arg.equals("{modules}")) {
-                    arg = getModules().getFiles().stream()
-                            .map(File::getAbsolutePath)
-                            .collect(Collectors.joining(File.pathSeparator));
-                }
-                spec.jvmArgs(arg);
-            }
-            for (var env : getEnvironmentProvider().get().entrySet()) {
-                var envValue = env.getValue();
-                if (envValue.equals("{source_roots}")) {
-                    continue; // This is MOD_CLASSES, skip for now.
-                }
-                spec.environment(env.getKey(), envValue);
-            }
-            spec.systemProperty("log4j2.configurationFile", log4j2xml.getAbsolutePath());
-            for (var prop : getSystemPropertiesProvider().get().entrySet()) {
-                var propValue = prop.getValue();
-                if (propValue.equals("{minecraft_classpath_file}")) {
-                    propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
-                }
-
-                spec.systemProperty(prop.getKey(), propValue);
+            environment(env.getKey(), envValue);
+        }
+        systemProperty("log4j2.configurationFile", log4j2xml.getAbsolutePath());
+        for (var prop : getSystemPropertiesProvider().get().entrySet()) {
+            var propValue = prop.getValue();
+            if (propValue.equals("{minecraft_classpath_file}")) {
+                propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
             }
 
-            spec.classpath(getClasspathProvider());
-            spec.setWorkingDir(runDir);
-        });
+            systemProperty(prop.getKey(), propValue);
+        }
+
+        classpath(getClasspathProvider());
+        setWorkingDir(runDir);
+        super.exec();
         // Enable debug logging; doesn't work for FML???
 //            runClientTask.systemProperty("forge.logging.console.level", "debug");
     }
