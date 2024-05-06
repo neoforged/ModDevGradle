@@ -24,6 +24,7 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfiguration;
+import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
 import java.io.IOException;
 import java.net.URI;
@@ -278,6 +279,14 @@ public class ModDevPluginImpl {
                 gradleTask.setTask(writeArgsFile.get());
             });
             runConfigurations.add(a);
+
+            var idePostSyncTask = tasks.register("idePostSync", task -> {
+                task.dependsOn(writeArgsFile);
+            });
+
+            var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
+            // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
+            taskTriggers.afterSync(idePostSyncTask);
         });
     }
 
