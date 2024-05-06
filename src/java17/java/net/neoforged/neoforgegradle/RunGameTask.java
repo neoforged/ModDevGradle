@@ -13,8 +13,6 @@ import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.process.CommandLineArgumentProvider;
-import org.gradle.process.ExecOperations;
 import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
@@ -27,10 +25,12 @@ import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
+/**
+ * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making
+ * these runs easy and nice to work with.
+ */
 @DisableCachingByDefault
 public abstract class RunGameTask extends JavaExec {
-    private final ExecOperations execOperations;
-
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract RegularFileProperty getLegacyClasspathFile();
@@ -51,26 +51,25 @@ public abstract class RunGameTask extends JavaExec {
     public abstract DirectoryProperty getGameDirectory();
 
     @Internal
-    public abstract ListProperty<String> getArgsProvider();
+    public abstract ListProperty<String> getRunCommandLineArgs();
 
     @Internal
-    public abstract ListProperty<String> getJvmArgsProvider();
+    public abstract ListProperty<String> getRunJvmArgs();
 
     @Internal
-    public abstract MapProperty<String, String> getEnvironmentProvider();
+    public abstract MapProperty<String, String> getRunEnvironment();
 
     @Internal
-    public abstract MapProperty<String, String> getSystemPropertiesProvider();
+    public abstract MapProperty<String, String> getRunSystemProperties();
 
     @Inject
-    public RunGameTask(ExecOperations execOperations) {
-        this.execOperations = execOperations;
+    public RunGameTask() {
         super.getJvmArgumentProviders().add(this::getInterpolatedJvmArgs);
     }
 
     private List<String> getInterpolatedJvmArgs() {
         var result = new ArrayList<String>();
-        for (var jvmArg : getJvmArgsProvider().get()) {
+        for (var jvmArg : getRunJvmArgs().get()) {
             String arg = jvmArg;
             if (arg.equals("{modules}")) {
                 arg = getModules().getFiles().stream()
@@ -114,7 +113,7 @@ public abstract class RunGameTask extends JavaExec {
         }
 
         // This should probably all be done using providers; but that's for later :)
-        for (var arg : getArgsProvider().get()) {
+        for (var arg : getRunCommandLineArgs().get()) {
             if (arg.equals("{assets_root}")) {
                 arg = assetProperties.getProperty("assets_root");
             } else if (arg.equals("{asset_index}")) {
@@ -123,7 +122,7 @@ public abstract class RunGameTask extends JavaExec {
             args(arg);
         }
 
-        for (var env : getEnvironmentProvider().get().entrySet()) {
+        for (var env : getRunEnvironment().get().entrySet()) {
             var envValue = env.getValue();
             if (envValue.equals("{source_roots}")) {
                 continue; // This is MOD_CLASSES, skip for now.
@@ -131,7 +130,7 @@ public abstract class RunGameTask extends JavaExec {
             environment(env.getKey(), envValue);
         }
         systemProperty("log4j2.configurationFile", log4j2xml.getAbsolutePath());
-        for (var prop : getSystemPropertiesProvider().get().entrySet()) {
+        for (var prop : getRunSystemProperties().get().entrySet()) {
             var propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {
                 propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();

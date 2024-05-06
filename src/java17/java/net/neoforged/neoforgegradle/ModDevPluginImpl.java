@@ -219,10 +219,10 @@ public class ModDevPluginImpl implements Plugin<Project> {
             runClientTask.getGameDirectory().set(project.file("run/"));
             var runType = Objects.requireNonNull(userDevConfig.get().runs().get("client"), "missing run: client");
             runClientTask.getMainClass().set(runType.main());
-            runClientTask.getArgsProvider().set(runType.args());
-            runClientTask.getJvmArgsProvider().set(runType.jvmArgs());
-            runClientTask.getEnvironmentProvider().set(runType.env());
-            runClientTask.getSystemPropertiesProvider().set(runType.props());
+            runClientTask.getRunCommandLineArgs().set(runType.args());
+            runClientTask.getRunJvmArgs().set(runType.jvmArgs());
+            runClientTask.getRunEnvironment().set(runType.env());
+            runClientTask.getRunSystemProperties().set(runType.props());
         });
     }
 
