@@ -13,6 +13,7 @@ import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -208,12 +209,26 @@ public class ModDevPluginImpl {
         var runDirectory = layout.getProjectDirectory().dir("run");
         var argsFile = layout.getBuildDirectory().file("runClientArgs.txt");
         var writeArgsFile = tasks.register("prepareRunClientForIde", PrepareRunForIde.class, task -> {
+
+            // Modules: these will be used to generate the module path
+            // TODO: Instead of this junk, pass a Provider for the resolved artifacts and fish out the modules from that by their GAV
+            var modulesConfiguration = configurations.create("prepareRunClientForIdeModules", c -> {
+                c.setCanBeConsumed(false);
+                c.setCanBeResolved(true);
+                c.withDependencies(set -> {
+                    for (var moduleDep : userDevConfig.get().modules()) {
+                        set.add(dependencyFactory.create(moduleDep));
+                    }
+                });
+            });
+
             task.getRunDirectory().set(runDirectory);
             task.getArgsFile().set(argsFile);
             task.getRunType().set("client");
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             task.getAssetProperties().set(assetPropertiesFile);
+            task.getModules().from(modulesConfiguration);
         });
 
         tasks.register("runClient", RunGameTask.class, runClientTask -> {
@@ -258,7 +273,8 @@ public class ModDevPluginImpl {
             Application a = new Application("runClient", project);
             //
             //a.setModuleName(String.format("%s.main", template.projectName));
-            a.setModuleRef(new ModuleRef(project));
+            var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
+            a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
             a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
             a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
             a.getBeforeRun().create("Prepare", GradleTask.class, gradleTask -> {

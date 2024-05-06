@@ -10,6 +10,7 @@ import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -20,6 +21,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Performs preparation for running the game through the IDE:
@@ -48,8 +51,26 @@ public abstract class PrepareRunForIde extends DefaultTask {
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract RegularFileProperty getLegacyClasspathFile();
 
+    @Classpath
+    @InputFiles
+    abstract ConfigurableFileCollection getModules();
+
     @Inject
     public PrepareRunForIde() {
+    }
+
+    private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
+        var result = new ArrayList<String>();
+        for (var jvmArg : runConfig.jvmArgs()) {
+            String arg = jvmArg;
+            if (arg.equals("{modules}")) {
+                arg = getModules().getFiles().stream()
+                        .map(File::getAbsolutePath)
+                        .collect(Collectors.joining(File.pathSeparator));
+            }
+            result.add("\"" + arg.replace("\\", "\\\\") + "\"");
+        }
+        return result;
     }
 
     @TaskAction
@@ -69,6 +90,8 @@ public abstract class PrepareRunForIde extends DefaultTask {
         // Resolve and write all JVM arguments, main class and main program arguments to an args-file
         var lines = new ArrayList<String>();
 
+        lines.addAll(getInterpolatedJvmArgs(runConfig));
+
         // Write log4j2 configuration file
         File log4j2xml;
         try {
@@ -86,14 +109,14 @@ public abstract class PrepareRunForIde extends DefaultTask {
 //            environment(env.getKey(), envValue);
 //        }
 
-        lines.add("\"-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath() + "\"");
+        lines.add("\"-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath().replace("\\", "\\\\") + "\"");
         for (var prop : runConfig.props().entrySet()) {
             var propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {
                 propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
             }
 
-            lines.add("\"-D" + prop.getKey() + "=" + propValue + "\"");
+            lines.add("\"-D" + prop.getKey() + "=" + propValue.replace("\\", "\\\\") + "\"");
         }
 
         lines.add(runConfig.main());
