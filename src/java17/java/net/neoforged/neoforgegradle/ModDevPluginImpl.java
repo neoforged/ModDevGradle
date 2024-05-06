@@ -16,7 +16,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.util.GradleVersion;
 import org.jetbrains.gradle.ext.ActionDelegationConfig;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
@@ -179,6 +178,15 @@ public class ModDevPluginImpl {
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
         });
 
+        var runDirectory = layout.getProjectDirectory().dir("run");
+        var argsFile = layout.getBuildDirectory().file("runClientArgs.txt");
+        var writeArgsFile = tasks.register("prepareRunClientForIde", PrepareRunForIde.class, task -> {
+            task.getRunDirectory().set(runDirectory);
+            task.getArgsFile().set(argsFile);
+            task.getRunType().set("client");
+            task.getNeoForgeModDev().from(neoForgeModDev);
+        });
+
         var legacyClasspathConfiguration = configurations.create("legacyClassPath", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -233,26 +241,25 @@ public class ModDevPluginImpl {
         project.afterEvaluate(ignored -> {
             IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
 
-            if (ideaModel == null) return;
-
-            if (ideaModel.getProject() != null) {
-                var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
-                var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
-                        ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
-                ActionDelegationConfig delegateActions = ((ExtensionAware) settings).getExtensions().getByType(ActionDelegationConfig.class);
-
-                Application a = new Application("runClient", project);
-                //a.setMainClass(template.mainClass);
-                //a.setModuleName(String.format("%s.main", template.projectName));
-                //a.setProgramParameters(template.programArgs);
-                //a.setJvmArgs(template.vmArgs);
-                a.setModuleRef(new ModuleRef(project));
-                a.setWorkingDirectory(project.getProjectDir() + "/run/");
-                var gradleTaskBeforeRun = new GradleTask("runClient");
-                a.getBeforeRun().add(gradleTaskBeforeRun);
-                runConfigurations.add(a);
-
+            if (ideaModel == null || ideaModel.getProject() == null) {
+                return;
             }
+
+            var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
+            var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
+                    ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
+            ActionDelegationConfig delegateActions = ((ExtensionAware) settings).getExtensions().getByType(ActionDelegationConfig.class);
+
+            Application a = new Application("runClient", project);
+            //
+            //a.setModuleName(String.format("%s.main", template.projectName));
+            a.setModuleRef(new ModuleRef(project));
+            a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
+            a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
+            var gradleTaskBeforeRun = new GradleTask("prepareRunClientForIde");
+            a.getBeforeRun().add(gradleTaskBeforeRun);
+            runConfigurations.add(a);
+
         });
     }
 
