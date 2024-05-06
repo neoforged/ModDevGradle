@@ -3,18 +3,27 @@ package net.neoforged.neoforgegradle;
 import com.google.gson.Gson;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
-import org.gradle.api.Plugin;
+import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.util.GradleVersion;
+import org.jetbrains.gradle.ext.ActionDelegationConfig;
+import org.jetbrains.gradle.ext.Application;
+import org.jetbrains.gradle.ext.GradleTask;
+import org.jetbrains.gradle.ext.IdeaExtPlugin;
+import org.jetbrains.gradle.ext.ModuleRef;
+import org.jetbrains.gradle.ext.ProjectSettings;
+import org.jetbrains.gradle.ext.RunConfiguration;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -26,18 +35,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 
-public class ModDevPluginImpl implements Plugin<Project> {
-    private static final GradleVersion MIN_VERSION = GradleVersion.version("8.7");
+public class ModDevPluginImpl {
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
 
-    @Override
     public void apply(Project project) {
-        if (GradleVersion.current().compareTo(MIN_VERSION) < 0) {
-            throw new GradleException("To use the NeoForge plugin, please use at least " + MIN_VERSION + ". You are currently using " + GradleVersion.current() + ".");
-        }
-
         project.getPlugins().apply(JavaLibraryPlugin.class);
+        project.getPlugins().apply(IdeaExtPlugin.class);
         var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeUserdevDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev"));
@@ -223,6 +227,32 @@ public class ModDevPluginImpl implements Plugin<Project> {
             runClientTask.getRunJvmArgs().set(runType.jvmArgs());
             runClientTask.getRunEnvironment().set(runType.env());
             runClientTask.getRunSystemProperties().set(runType.props());
+        });
+
+        // IDEA Sync has no real notion of tasks or providers or similar
+        project.afterEvaluate(ignored -> {
+            IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
+
+            if (ideaModel == null) return;
+
+            if (ideaModel.getProject() != null) {
+                var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
+                var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
+                        ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
+                ActionDelegationConfig delegateActions = ((ExtensionAware) settings).getExtensions().getByType(ActionDelegationConfig.class);
+
+                Application a = new Application("runClient", project);
+                //a.setMainClass(template.mainClass);
+                //a.setModuleName(String.format("%s.main", template.projectName));
+                //a.setProgramParameters(template.programArgs);
+                //a.setJvmArgs(template.vmArgs);
+                a.setModuleRef(new ModuleRef(project));
+                a.setWorkingDirectory(project.getProjectDir() + "/run/");
+                var gradleTaskBeforeRun = new GradleTask("runClient");
+                a.getBeforeRun().add(gradleTaskBeforeRun);
+                runConfigurations.add(a);
+
+            }
         });
     }
 
