@@ -8,6 +8,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.Category;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
@@ -42,8 +43,12 @@ public class ModDevPluginImpl {
         project.getPlugins().apply(IdeaExtPlugin.class);
         var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
-        var neoForgeUserdevDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":userdev"));
-        var neoForgeUniversalDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version + ":universal"));
+        var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
+            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-moddev-libraries:" + version);
+                    });
+        });
 
         var repositories = project.getRepositories();
         repositories.addLast(repositories.maven(repo -> {
@@ -63,7 +68,7 @@ public class ModDevPluginImpl {
         var neoForgeModDev = configurations.create("neoForgeModDev", files -> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
-            files.defaultDependencies(spec -> spec.addLater(neoForgeUserdevDependency));
+            //files.defaultDependencies(spec -> spec.addLater(neoForgeUserdevDependency));
         });
         var neoFormInABoxConfig = configurations.create("neoFormInABoxConfig", files -> {
             files.setCanBeConsumed(false);
@@ -152,19 +157,34 @@ public class ModDevPluginImpl {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(neoForgeUserdevDependency));
+            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version))));
+            spec.attributes(attributes -> {
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, "data"));
+                attributes.attribute(DataType.DATA_TYPE_ATTRIBUTE, project.getObjects().named(DataType.class, DataType.NEOFORGE_MODDEV_CONFIG));
+            });
         });
-        var userDevConfig = getUserdevConfigProvider(project, userDevConfigOnly);
+        var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                        });
+            })));
+        });
 
         project.getConfigurations().named("compileOnly").configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addAllLater(userDevConfig.map(config -> config.libraries().stream().map(library -> (Dependency) project.getDependencyFactory().create(library)).toList()));
+            configuration.withDependencies(set -> {
+                set.addLater(neoForgeModDevLibrariesDependency);
             });
         });
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
+            attributesSchema.attribute(Category.CATEGORY_ATTRIBUTE);
+            attributesSchema.attribute(DataType.DATA_TYPE_ATTRIBUTE);
         });
 
         var idePostSyncTask = tasks.register("idePostSync");
@@ -180,12 +200,7 @@ public class ModDevPluginImpl {
                     attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
                 });
                 spec.withDependencies(set -> {
-                    set.addAllLater(userDevConfig.map(config -> {
-                        return config.libraries()
-                                .stream()
-                                .map(lib -> (Dependency) dependencyFactory.create(lib))
-                                .toList();
-                    }));
+                    set.addLater(neoForgeModDevLibrariesDependency);
                 });
             });
 
@@ -198,53 +213,24 @@ public class ModDevPluginImpl {
             var runDirectory = layout.getProjectDirectory().dir("run");
             var argsFile = layout.getBuildDirectory().file(run.getName() + "_run_args.txt");
             var writeArgsFile = tasks.register(run.getName() + "prepareRunForIde", PrepareRunForIde.class, task -> {
-                // Modules: these will be used to generate the module path
-                // TODO: Instead of this junk, pass a Provider for the resolved artifacts and fish out the modules from that by their GAV
-                var modulesConfiguration = configurations.create(run.getName() + "prepareRunForIdeModules", c -> {
-                    c.setCanBeConsumed(false);
-                    c.setCanBeResolved(true);
-                    c.withDependencies(set -> {
-                        for (var moduleDep : userDevConfig.get().modules()) {
-                            set.add(dependencyFactory.create(moduleDep));
-                        }
-                    });
-                });
-
                 task.getRunDirectory().set(runDirectory);
                 task.getArgsFile().set(argsFile);
                 task.getRunType().set(run.getType());
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+                task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
                 task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-                task.getModules().from(modulesConfiguration);
             });
             idePostSyncTask.configure(task -> task.dependsOn(writeArgsFile));
 
-            tasks.register(run.getName() + "run", RunGameTask.class, runClientTask -> {
-                // Modules: these will be used to generate the module path
-                var modulesConfiguration = configurations.create(run.getName() + "runModules", c -> {
-                    c.setCanBeConsumed(false);
-                    c.setCanBeResolved(true);
-                    c.withDependencies(set -> {
-                        for (var moduleDep : userDevConfig.get().modules()) {
-                            set.add(dependencyFactory.create(moduleDep));
-                        }
-                    });
-                });
-
-                runClientTask.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-                runClientTask.getModules().from(modulesConfiguration);
-                runClientTask.getClasspathProvider().from(configurations.named("runtimeClasspath"));
-                runClientTask.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-                runClientTask.getGameDirectory().set(project.file("run/"));
-                var runType = run.getType().zip(
-                        userDevConfig.map(UserDevConfig::runs),
-                        (rt, runs) -> Objects.requireNonNull(runs.get(rt), "missing run type: " + rt));
-                runClientTask.getMainClass().set(runType.map(UserDevRunType::main));
-                runClientTask.getRunCommandLineArgs().set(runType.map(UserDevRunType::args));
-                runClientTask.getRunJvmArgs().set(runType.map(UserDevRunType::jvmArgs));
-                runClientTask.getRunEnvironment().set(runType.map(UserDevRunType::env));
-                runClientTask.getRunSystemProperties().set(runType.map(UserDevRunType::props));
+            tasks.register(run.getName() + "run", RunGameTask.class, task -> {
+                task.getRunType().set(run.getType());
+                task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+                task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+                task.getModules().from(neoForgeModDevModules);
+                task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
+                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                task.getGameDirectory().set(project.file("run/"));
             });
 
             IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
@@ -329,7 +315,7 @@ public class ModDevPluginImpl {
         });
     }
 
-    private static String guessMavenGav(ResolvedArtifactResult result) {
+    static String guessMavenGav(ResolvedArtifactResult result) {
         String artifactId;
         String ext = "";
         String classifier = null;

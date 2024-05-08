@@ -1,11 +1,15 @@
 package net.neoforged.neoforgegradle;
 
+import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
@@ -22,6 +26,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -29,8 +34,15 @@ import java.util.stream.Collectors;
  * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making
  * these runs easy and nice to work with.
  */
+// TODO: look into shared abstraction with PrepareRunForIde
 @DisableCachingByDefault
 public abstract class RunGameTask extends JavaExec {
+    @Classpath
+    public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
+
+    @Input
+    public abstract Property<String> getRunType();
+
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
     abstract RegularFileProperty getLegacyClasspathFile();
@@ -81,8 +93,24 @@ public abstract class RunGameTask extends JavaExec {
         return result;
     }
 
+    private void finishConfiguration() {
+        var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
+        var runConfig = userDevConfig.runs().get(getRunType().get());
+        if (runConfig == null) {
+            throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
+        }
+
+        getMainClass().set(runConfig.main());
+        getRunCommandLineArgs().set(runConfig.args());
+        getRunJvmArgs().set(runConfig.jvmArgs());
+        getRunEnvironment().set(runConfig.env());
+        getRunSystemProperties().set(runConfig.props());
+    }
+
     @TaskAction
     public void exec() {
+        finishConfiguration();
+
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
 
         // Create directory if needed

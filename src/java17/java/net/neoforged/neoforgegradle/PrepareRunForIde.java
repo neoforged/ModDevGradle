@@ -2,6 +2,7 @@ package net.neoforged.neoforgegradle;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -76,7 +77,6 @@ public abstract class PrepareRunForIde extends DefaultTask {
 
     @TaskAction
     public void prepareRun() throws IOException {
-
         // Make sure the run directory exists
         // IntelliJ refuses to start a run configuration whose working directory does not exist
         var runDir = getRunDirectory().get().getAsFile();
