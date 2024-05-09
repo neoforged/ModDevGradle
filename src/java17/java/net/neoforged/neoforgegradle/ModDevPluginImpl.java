@@ -5,7 +5,6 @@ import org.gradle.api.JavaVersion;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -18,8 +17,9 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.jetbrains.gradle.ext.ActionDelegationConfig;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
@@ -31,9 +31,7 @@ import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ModDevPluginImpl {
@@ -42,6 +40,8 @@ public class ModDevPluginImpl {
 
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+        var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
+
         project.getPlugins().apply(IdeaExtPlugin.class);
         var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
@@ -114,6 +114,8 @@ public class ModDevPluginImpl {
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+            task.getVerbose().set(extension.getVerbose());
+            task.getEnableCache().set(extension.getEnableCache());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
@@ -146,7 +148,6 @@ public class ModDevPluginImpl {
 
         // Setup java toolchains if the current JVM isn't already J21 (how the hell did you load this plugin...)
         if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
-            var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
             var toolchainSpec = javaExtension.getToolchain();
             try {
                 toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
