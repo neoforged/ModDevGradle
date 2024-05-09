@@ -2,16 +2,18 @@ package net.neoforged.neoforgegradle;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -57,8 +59,12 @@ public abstract class PrepareRunForIde extends DefaultTask {
     @InputFiles
     abstract ConfigurableFileCollection getModules();
 
+    @Nested
+    public abstract SetProperty<Mod> getMods();
+
     @Inject
-    public PrepareRunForIde() {
+    public PrepareRunForIde(Project project) {
+        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
     }
 
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
@@ -118,6 +124,17 @@ public abstract class PrepareRunForIde extends DefaultTask {
             }
 
             lines.add("\"-D" + prop.getKey() + "=" + propValue.replace("\\", "\\\\") + "\"");
+        }
+
+        // Mods :)
+        if (!getMods().get().isEmpty()) {
+            lines.add("\"-Dfml.modFolders=%s\"".formatted(getMods().get().stream()
+                    .<String>mapMulti((settings, output) -> {
+                        for (var directory : settings.getModFiles()) {
+                            output.accept(settings.getName() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
+                        }
+                    })
+                    .collect(Collectors.joining(File.pathSeparator))));
         }
 
         lines.add("");

@@ -1,17 +1,14 @@
 package net.neoforged.neoforgegradle;
 
+import org.gradle.api.Named;
 import org.gradle.api.provider.Property;
 
-public abstract class Run {
-    private final String name;
+import javax.inject.Inject;
 
-    public Run(String name) {
-        this.name = name;
-    }
-
-    // TODO: this probably needs to be sanitized for spaces and other weird characters
-    public String getName() {
-        return name;
+// TODO: the name probably needs to be sanitized for spaces and other weird characters
+public abstract class Run implements Named {
+    @Inject
+    public Run() {
     }
 
     abstract Property<String> getType();
