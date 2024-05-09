@@ -1,7 +1,9 @@
 package net.neoforged.neoforgegradle;
 
 import org.gradle.api.Named;
+import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.SetProperty;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
@@ -14,15 +16,18 @@ public abstract class Run implements Named {
     private final String baseName;
 
     @Inject
-    public Run(String name) {
+    public Run(String name, Project project) {
         this.name = name;
         this.baseName = StringUtils.toCamelCase(name, false);
+        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
     }
 
     @Override
     public String getName() {
         return name;
     }
+
+    abstract SetProperty<Mod> getMods();
 
     abstract Property<String> getType();
 

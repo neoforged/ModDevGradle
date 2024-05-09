@@ -59,13 +59,8 @@ public abstract class PrepareRunForIde extends DefaultTask {
     @InputFiles
     abstract ConfigurableFileCollection getModules();
 
-    @Nested
-    public abstract SetProperty<Mod> getMods();
-
     @Inject
-    public PrepareRunForIde(Project project) {
-        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
-    }
+    public PrepareRunForIde() {}
 
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
         var result = new ArrayList<String>();
@@ -124,17 +119,6 @@ public abstract class PrepareRunForIde extends DefaultTask {
             }
 
             lines.add("\"-D" + prop.getKey() + "=" + propValue.replace("\\", "\\\\") + "\"");
-        }
-
-        // Mods :)
-        if (!getMods().get().isEmpty()) {
-            lines.add("\"-Dfml.modFolders=%s\"".formatted(getMods().get().stream()
-                    .<String>mapMulti((settings, output) -> {
-                        for (var directory : settings.getModFiles()) {
-                            output.accept(settings.getName() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
-                        }
-                    })
-                    .collect(Collectors.joining(File.pathSeparator))));
         }
 
         lines.add("");

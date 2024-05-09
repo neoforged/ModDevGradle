@@ -9,17 +9,22 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
@@ -28,9 +33,12 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfiguration;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
+import javax.inject.Inject;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -235,6 +243,21 @@ public class ModDevPluginImpl {
                 task.getGameDirectory().set(project.file("run/"));
                 // This should record a dependency ;)
                 task.getMainClass().set(writeArgsFile.flatMap(PrepareRunForIde::getArgsFile).map(f -> "@" + f.getAsFile().getAbsolutePath()));
+
+                var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+                modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
+                        .collect(Collectors.toMap(mod -> mod.getName(), mod -> {
+                            var modFolder = project.getObjects().newInstance(ModFolder.class);
+                            for (var sourceSet : mod.getModSourceSets().get()) {
+                                modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
+                                modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
+                            }
+                            return modFolder;
+                        }))));
+                task.getJvmArgumentProviders().add(modFoldersProvider);
+
+                // TODO: how do we do this in a clean way for all source sets?
+                task.dependsOn(tasks.named("processResources"));
             });
 
             IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
@@ -350,5 +373,33 @@ public class ModDevPluginImpl {
             gav += "@" + ext;
         }
         return gav;
+    }
+}
+
+abstract class ModFolder {
+    @Inject
+    public ModFolder() {}
+
+    @InputFiles
+    abstract ConfigurableFileCollection getFolders();
+}
+
+abstract class ModFoldersProvider implements CommandLineArgumentProvider {
+    @Inject
+    public ModFoldersProvider() {}
+
+    @Nested
+    abstract MapProperty<String, ModFolder> getModFolders();
+
+    @Override
+    public Iterable<String> asArguments() {
+        return List.of("\"-Dfml.modFolders=%s\"".formatted(getModFolders().get().entrySet().stream()
+                .<String>mapMulti((entry, output) -> {
+                    for (var directory : entry.getValue().getFolders()) {
+                        // Resources
+                        output.accept(entry.getKey() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
+                    }
+                })
+                .collect(Collectors.joining(File.pathSeparator))));
     }
 }
