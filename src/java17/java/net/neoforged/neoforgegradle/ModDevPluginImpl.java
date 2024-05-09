@@ -158,11 +158,12 @@ public class ModDevPluginImpl {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version))));
-            spec.attributes(attributes -> {
-                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, "data"));
-                attributes.attribute(DataType.DATA_TYPE_ATTRIBUTE, project.getObjects().named(DataType.class, DataType.NEOFORGE_MODDEV_CONFIG));
-            });
+            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-config");
+                        });
+            })));
         });
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
             spec.setCanBeResolved(true);
@@ -187,7 +188,6 @@ public class ModDevPluginImpl {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
             attributesSchema.attribute(Category.CATEGORY_ATTRIBUTE);
-            attributesSchema.attribute(DataType.DATA_TYPE_ATTRIBUTE);
         });
 
         var idePostSyncTask = tasks.register("idePostSync");
