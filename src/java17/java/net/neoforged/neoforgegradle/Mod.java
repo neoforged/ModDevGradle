@@ -13,7 +13,9 @@ import javax.inject.Inject;
 
 public abstract class Mod implements Named {
     @Inject
-    public Mod() {}
+    public Mod() {
+        // TODO: We could potentially do a bit of name validation
+    }
 
     @Inject
     protected abstract Project getProject();

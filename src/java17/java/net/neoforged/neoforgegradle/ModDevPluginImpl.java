@@ -193,7 +193,7 @@ public class ModDevPluginImpl {
         var idePostSyncTask = tasks.register("idePostSync");
 
         extension.getRuns().configureEach(run -> {
-            var legacyClasspathConfiguration = configurations.create(run.getName() + "legacyClassPath", spec -> {
+            var legacyClasspathConfiguration = configurations.create(run.nameOf("", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.setTransitive(true);
@@ -207,15 +207,15 @@ public class ModDevPluginImpl {
                 });
             });
 
-            var writeLcpTask = tasks.register(run.getName() + "writeLegacyClasspath", WriteLegacyClasspath.class, writeLcp -> {
-                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file(run.getName() + "_legacy_classpath.txt"));
+            var writeLcpTask = tasks.register(run.nameOf("write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/" + run.nameOf("", "legacyClasspath") + ".txt"));
                 writeLcp.getEntries().from(legacyClasspathConfiguration);
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
             var runDirectory = layout.getProjectDirectory().dir("run");
-            var argsFile = layout.getBuildDirectory().file(run.getName() + "_run_args.txt");
-            var writeArgsFile = tasks.register(run.getName() + "prepareRunForIde", PrepareRunForIde.class, task -> {
+            var argsFile = layout.getBuildDirectory().file("moddev/" + run.nameOf("", "runArgs") + ".txt");
+            var writeArgsFile = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getRunDirectory().set(runDirectory);
                 task.getArgsFile().set(argsFile);
                 task.getRunType().set(run.getType());
@@ -226,7 +226,7 @@ public class ModDevPluginImpl {
             });
             idePostSyncTask.configure(task -> task.dependsOn(writeArgsFile));
 
-            tasks.register(run.getName() + "run", RunGameTask.class, task -> {
+            tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
                 task.getGameDirectory().set(project.file("run/"));
                 // This should record a dependency ;)
@@ -240,7 +240,7 @@ public class ModDevPluginImpl {
                 var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
                         ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
 
-                Application a = new Application(run.getName(), project);
+                Application a = new Application(StringUtils.capitalize(run.getName()), project);
                 //
                 //a.setModuleName(String.format("%s.main", template.projectName));
                 var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
