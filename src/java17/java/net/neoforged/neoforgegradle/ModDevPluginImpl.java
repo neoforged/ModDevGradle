@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -170,7 +171,9 @@ public class ModDevPluginImpl {
                 return dependencyFactory.create("net.neoforged:neoforge:" + version)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                        });
+                        })
+                        // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                        .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
             })));
         });
 
@@ -224,13 +227,10 @@ public class ModDevPluginImpl {
             idePostSyncTask.configure(task -> task.dependsOn(writeArgsFile));
 
             tasks.register(run.getName() + "run", RunGameTask.class, task -> {
-                task.getRunType().set(run.getType());
-                task.getNeoForgeModDevConfig().from(userDevConfigOnly);
-                task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-                task.getModules().from(neoForgeModDevModules);
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
-                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
                 task.getGameDirectory().set(project.file("run/"));
+                // This should record a dependency ;)
+                task.getMainClass().set(writeArgsFile.flatMap(PrepareRunForIde::getArgsFile).map(f -> "@" + f.getAsFile().getAbsolutePath()));
             });
 
             IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
