@@ -37,7 +37,6 @@ abstract class DownloadAssetsTask extends DefaultTask {
 
         execOperations.javaexec(execSpec -> {
             execSpec.classpath(getNeoFormInABox());
-            execSpec.getMainClass().set("net.neoforged.neoforminabox.cli.Main");
             execSpec.args(
                     "download-assets",
                     "--neoforge", artifactId + ":userdev",

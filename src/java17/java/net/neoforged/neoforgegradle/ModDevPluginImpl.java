@@ -8,6 +8,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.ExtensionAware;
@@ -75,7 +76,9 @@ public class ModDevPluginImpl {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT"));
+                spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT").attributes(attributes -> {
+                    attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
+                }));
             });
         });
 

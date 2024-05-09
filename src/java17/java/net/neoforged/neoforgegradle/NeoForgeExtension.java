@@ -15,11 +15,18 @@ public abstract class NeoForgeExtension {
     public NeoForgeExtension(Project project) {
         mods = project.container(Mod.class);
         runs = project.container(Run.class);
+
+        getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
+        getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
     }
 
     abstract Property<String> getVersion();
 
     abstract Property<String> getNeoFormVersion();
+
+    abstract Property<Boolean> getVerbose();
+
+    abstract Property<Boolean> getEnableCache();
 
     public NamedDomainObjectSet<Mod> getMods() {
         return mods;
