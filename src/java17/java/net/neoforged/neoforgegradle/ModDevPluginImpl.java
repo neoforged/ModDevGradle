@@ -9,6 +9,7 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.ExtensionAware;
@@ -21,8 +22,6 @@ import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.jvm.toolchain.JavaLauncher;
-import org.gradle.jvm.toolchain.JavaToolchainSpec;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.gradle.ext.Application;
@@ -55,8 +54,11 @@ public class ModDevPluginImpl {
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                    .attributes(attributes -> {
+                        attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
+                    })
                     .capabilities(caps -> {
-                        caps.requireCapability("net.neoforged:neoforge-moddev-libraries:" + version);
+                        caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
         });
 
@@ -103,6 +105,20 @@ public class ModDevPluginImpl {
             });
         });
 
+        // This configuration will include the classpath needed to decompile and recompile Minecraft,
+        // and has to include the libraries added by NeoForm and NeoForge.
+        var minecraftCompileClasspath = configurations.create("minecraftCompileClasspath", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setVisible(false);
+            spec.withDependencies(set -> set.addLater(neoForgeModDevLibrariesDependency));
+            spec.attributes(attributes -> {
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+            });
+        });
+
         var layout = project.getLayout();
 
         var tasks = project.getTasks();
@@ -127,6 +143,7 @@ public class ModDevPluginImpl {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormInABox().from(neoFormInABoxConfig);
+            task.getCompileClasspath().from(minecraftCompileClasspath);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
             task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
@@ -153,6 +170,29 @@ public class ModDevPluginImpl {
         project.getDependencies().add("compileOnly", "minecraft:neoforge-minecraft-joined:local");
         project.getDependencies().addProvider("compileOnly", minecraftDummyArtifact);
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
+
+        project.getDependencies().attributesSchema(attributesSchema -> {
+            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
+            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
+            attributesSchema.attribute(Category.CATEGORY_ATTRIBUTE);
+        });
+
+        configurations.named("compileOnly").configure(configuration -> {
+            configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+        });
+
+        configurations.named("runtimeClasspath").configure(configuration -> {
+            configuration.attributes(attributes -> {
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+            });
+        });
+        configurations.named("compileClasspath").configure(configuration -> {
+            configuration.attributes(attributes -> {
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
+            });
+        });
 
         // Setup java toolchains if the current JVM isn't already J21 (how the hell did you load this plugin...)
         if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
@@ -188,18 +228,6 @@ public class ModDevPluginImpl {
                         // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
                         .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
             })));
-        });
-
-        project.getConfigurations().named("compileOnly").configure(configuration -> {
-            configuration.withDependencies(set -> {
-                set.addLater(neoForgeModDevLibrariesDependency);
-            });
-        });
-
-        project.getDependencies().attributesSchema(attributesSchema -> {
-            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
-            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
-            attributesSchema.attribute(Category.CATEGORY_ATTRIBUTE);
         });
 
         var idePostSyncTask = tasks.register("idePostSync");
@@ -327,19 +355,6 @@ public class ModDevPluginImpl {
                 throw new RuntimeException(e);
             }
         }
-    }
-
-    private static Provider<UserDevConfig> getUserdevConfigProvider(Project project, Configuration configuration) {
-
-        return configuration.getIncoming().getArtifacts().getArtifactFiles().getElements().map(files -> {
-            if (files.size() != 1) {
-                throw new GradleException("Expected the NeoForge userdev artifact to be resolved to exactly one file: " + files);
-            }
-
-            var userDevFile = files.iterator().next().getAsFile();
-
-            return UserDevConfig.from(userDevFile);
-        });
     }
 
     static String guessMavenGav(ResolvedArtifactResult result) {

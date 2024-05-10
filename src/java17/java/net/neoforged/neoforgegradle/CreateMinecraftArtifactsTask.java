@@ -41,6 +41,10 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
 
     @Classpath
     @InputFiles
+    abstract ConfigurableFileCollection getCompileClasspath();
+
+    @Classpath
+    @InputFiles
     abstract ConfigurableFileCollection getNeoFormInABox();
 
     @OutputFile
@@ -91,6 +95,8 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
         if (!getEnableCache().get()) {
             args.add("--disable-cache");
         }
+
+        var compileClasspath = getCompileClasspath().getFiles();
 
         Collections.addAll(
                 args,
