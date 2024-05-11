@@ -1,7 +1,7 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFiles;
@@ -10,13 +10,12 @@ import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.TreeSet;
 
 abstract class WriteLegacyClasspath extends DefaultTask {
     @Inject
-    public WriteLegacyClasspath() {}
+    public WriteLegacyClasspath() {
+    }
 
     @InputFiles
     abstract ConfigurableFileCollection getEntries();
@@ -32,6 +31,7 @@ abstract class WriteLegacyClasspath extends DefaultTask {
             legacyClasspath.append(entry.getAbsolutePath()).append(System.lineSeparator());
         }
 
-        Files.writeString(getLegacyClasspathFile().getAsFile().get().toPath(), legacyClasspath.toString(), StandardOpenOption.CREATE);
+        var destination = getLegacyClasspathFile().getAsFile().get().toPath();
+        FileUtils.writeStringSafe(destination, legacyClasspath.toString());
     }
 }
