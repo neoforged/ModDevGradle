@@ -1,10 +1,10 @@
 package net.neoforged.neoforgegradle;
 
-import org.gradle.api.GradleException;
-import org.gradle.api.JavaVersion;
+import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
+import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
+import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -16,7 +16,6 @@ import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -54,9 +53,6 @@ public class ModDevPluginImpl {
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                    .attributes(attributes -> {
-                        attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
-                    })
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
@@ -69,6 +65,7 @@ public class ModDevPluginImpl {
         repositories.addLast(repositories.maven(repo -> {
             repo.setUrl(URI.create("https://libraries.minecraft.net/"));
             repo.metadataSources(sources -> sources.artifact());
+            // TODO: Filter known groups that they ship and dont just run everything against it
         }));
         repositories.addLast(repositories.maven(repo -> {
             repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
@@ -88,19 +85,6 @@ public class ModDevPluginImpl {
             files.defaultDependencies(spec -> {
                 spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
-                }));
-            });
-        });
-
-        var minecraftLibraries = configurations.create("minecraftLibraries", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
-            });
-            spec.withDependencies(set -> {
-                set.add(project.getDependencyFactory().create("net.neoforged:minecraft:1.20.6").capabilities(caps -> {
-                    caps.requireCapability("net.neoforged:minecraft-dependencies");
                 }));
             });
         });
@@ -236,11 +220,10 @@ public class ModDevPluginImpl {
             var legacyClasspathConfiguration = configurations.create(run.nameOf("", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
-                spec.setTransitive(true);
-                spec.extendsFrom(minecraftLibraries);
                 spec.attributes(attributes -> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, run.getType().map(t -> t.equals("client") ? "client" : "server"));
                     attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
+                    attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
                 spec.withDependencies(set -> {
                     set.addLater(neoForgeModDevLibrariesDependency);

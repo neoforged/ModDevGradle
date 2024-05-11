@@ -1,4 +1,4 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.dsl;
 
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectSet;
@@ -20,13 +20,19 @@ public abstract class NeoForgeExtension {
         getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
     }
 
-    abstract Property<String> getVersion();
+    /**
+     * NeoForge version number.
+     */
+    public abstract Property<String> getVersion();
 
-    abstract Property<String> getNeoFormVersion();
+    /**
+     * TODO: Allow overriding the NeoForm version used specifically or use only NeoForm.
+     */
+    public abstract Property<String> getNeoFormVersion();
 
-    abstract Property<Boolean> getVerbose();
+    public abstract Property<Boolean> getVerbose();
 
-    abstract Property<Boolean> getEnableCache();
+    public abstract Property<Boolean> getEnableCache();
 
     public NamedDomainObjectSet<Mod> getMods() {
         return mods;

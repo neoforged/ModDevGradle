@@ -1,9 +1,11 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.dsl;
 
+import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
@@ -27,9 +29,9 @@ public abstract class Run implements Named {
         return name;
     }
 
-    abstract SetProperty<Mod> getMods();
+    public abstract SetProperty<Mod> getMods();
 
-    abstract Property<String> getType();
+    public abstract Property<String> getType();
 
     public void client() {
         getType().set("client");
@@ -43,11 +45,15 @@ public abstract class Run implements Named {
         getType().set("server");
     }
 
-    String getBaseName() {
+    // TODO: Move out of DSL class
+    @ApiStatus.Internal
+    public String getBaseName() {
         return baseName;
     }
 
-    String nameOf(@Nullable String prefix, @Nullable String suffix) {
+    // TODO: Move out of DSL class
+    @ApiStatus.Internal
+    public String nameOf(@Nullable String prefix, @Nullable String suffix) {
         return StringUtils.uncapitalize((prefix == null ? "" : prefix) + this.baseName + (suffix == null ? "" : StringUtils.capitalize(suffix)));
     }
 }

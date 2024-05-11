@@ -1,9 +1,11 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal.utils;
 
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+@ApiStatus.Internal
 public final class ExtensionUtils {
     private ExtensionUtils() {
     }

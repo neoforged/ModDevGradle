@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * Writes the JVM arguments for running the game to an args-file compatible with the JVM spec.
  * This is used only for IDEs.
  */
-public abstract class PrepareRunForIde extends DefaultTask {
+abstract class PrepareRunForIde extends DefaultTask {
     @InputDirectory
     public abstract DirectoryProperty getRunDirectory();
 

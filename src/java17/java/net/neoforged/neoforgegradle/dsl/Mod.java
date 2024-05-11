@@ -1,4 +1,4 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.dsl;
 
 import org.gradle.api.Named;
 import org.gradle.api.Project;

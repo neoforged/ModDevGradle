@@ -8,7 +8,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.Properties;
 
-public final class RunUtils {
+final class RunUtils {
     private RunUtils() {
     }
 

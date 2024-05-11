@@ -1,8 +1,11 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal.utils;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
 
+@ApiStatus.Internal
 public final class StringUtils {
     private StringUtils() {}
 
