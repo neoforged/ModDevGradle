@@ -194,15 +194,15 @@ public class ModDevPluginImpl {
             });
         });
 
-        // Setup java toolchains if the current JVM isn't already J21 (how the hell did you load this plugin...)
-        if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
+        // Try to give people at least a fighting chance to run on the correct java version
+        project.afterEvaluate(ignored -> {
             var toolchainSpec = javaExtension.getToolchain();
             try {
                 toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
-            } catch (IllegalStateException ignored) {
+            } catch (IllegalStateException ignoredException) {
                 // We tried our best
             }
-        }
+        });
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
