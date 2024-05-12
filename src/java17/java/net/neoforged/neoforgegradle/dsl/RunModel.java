@@ -3,6 +3,9 @@ package net.neoforged.neoforgegradle.dsl;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.dsl.Dependencies;
+import org.gradle.api.artifacts.dsl.DependencyCollector;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
@@ -13,12 +16,14 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 
-public abstract class RunModel implements Named {
+public abstract class RunModel implements Named, Dependencies {
     private final String name;
     /**
      * Sanitized name: converted to upper camel case and with invalid characters removed.
      */
     private final String baseName;
+
+    private final Configuration configuration;
 
     @Inject
     public RunModel(String name, Project project) {
@@ -27,6 +32,11 @@ public abstract class RunModel implements Named {
         getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
+
+        configuration = project.getConfigurations().create(nameOf("", "additionalRuntimeClasspath"), configuration -> {
+            configuration.setCanBeResolved(false);
+            configuration.setCanBeConsumed(false);
+        });
     }
 
     @Override
@@ -55,6 +65,12 @@ public abstract class RunModel implements Named {
     public void server() {
         getType().set("server");
     }
+
+    public Configuration getAdditionalRuntimeClasspathConfiguration() {
+        return configuration;
+    }
+
+    public abstract DependencyCollector getAdditionalRuntimeClasspath();
 
     // TODO: Move out of DSL class
     @ApiStatus.Internal

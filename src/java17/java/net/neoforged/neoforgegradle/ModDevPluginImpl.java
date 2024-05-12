@@ -231,6 +231,8 @@ public class ModDevPluginImpl {
                 spec.withDependencies(set -> {
                     set.addLater(neoForgeModDevLibrariesDependency);
                 });
+                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
+                spec.getDependencies().addAllLater(run.getAdditionalRuntimeClasspath().getDependencies());
             });
 
             var writeLcpTask = tasks.register(run.nameOf("write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
