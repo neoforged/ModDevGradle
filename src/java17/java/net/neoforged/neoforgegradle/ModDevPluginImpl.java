@@ -9,23 +9,22 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
-import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
-import org.gradle.api.file.Directory;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
+import org.gradle.plugins.ide.idea.model.IdeaModule;
+import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
@@ -175,9 +174,8 @@ public class ModDevPluginImpl {
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
         project.getDependencies().attributesSchema(attributesSchema -> {
-            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION);
-            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM);
-            attributesSchema.attribute(Category.CATEGORY_ATTRIBUTE);
+            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
+            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
         });
 
         configurations.named("compileOnly").configure(configuration -> {
@@ -202,7 +200,7 @@ public class ModDevPluginImpl {
             var toolchainSpec = javaExtension.getToolchain();
             try {
                 toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
-            } catch (IllegalStateException ignoredException) {
+            } catch (IllegalStateException e) {
                 // We tried our best
             }
         });
@@ -236,11 +234,13 @@ public class ModDevPluginImpl {
         var idePostSyncTask = tasks.register("idePostSync");
 
         extension.getRuns().configureEach(run -> {
+            var type = RunUtils.getRequiredType(project, run);
+
             var legacyClasspathConfiguration = configurations.create(run.nameOf("", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.attributes(attributes -> {
-                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, run.getType().map(t -> t.equals("client") ? "client" : "server"));
+                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") ? "client" : "server"));
                     attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
@@ -257,22 +257,23 @@ public class ModDevPluginImpl {
 
             var runDirectory = layout.getProjectDirectory().dir("run");
             var argsFile = layout.getBuildDirectory().file("moddev/" + run.nameOf("", "runArgs") + ".txt");
-            var writeArgsFile = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
-                task.getRunDirectory().set(runDirectory);
+            var writeArgsFileTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
+                task.getGameDirectory().set(runDirectory);
                 task.getArgsFile().set(argsFile);
                 task.getRunType().set(run.getType());
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
                 task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                task.getSystemProperties().set(run.getSystemProperties());
+                task.getProgramArguments().set(run.getProgramArguments());
             });
-            idePostSyncTask.configure(task -> task.dependsOn(writeArgsFile));
+            idePostSyncTask.configure(task -> task.dependsOn(writeArgsFileTask));
 
             tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
-                task.getGameDirectory().set(project.file("run/"));
+                task.getGameDirectory().set(run.getGameDirectory());
                 // This should record a dependency ;)
-                task.getMainClass().set(writeArgsFile.flatMap(PrepareRunForIde::getArgsFile).map(f -> "@" + f.getAsFile().getAbsolutePath()));
 
                 var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
                 modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
@@ -290,7 +291,7 @@ public class ModDevPluginImpl {
                 task.dependsOn(tasks.named("processResources"));
             });
 
-            addIntelliJRunConfiguration(project, run, runDirectory, argsFile);
+            addIntelliJRunConfiguration(project, run, argsFile.get());
         });
 
         // IDEA Sync has no real notion of tasks or providers or similar
@@ -304,7 +305,9 @@ public class ModDevPluginImpl {
         });
     }
 
-    private static void addIntelliJRunConfiguration(Project project, RunModel run, Directory runDirectory, Provider<RegularFile> argsFile) {
+    private static void addIntelliJRunConfiguration(Project project,
+                                                    RunModel run,
+                                                    RegularFile argsFile) {
         var runConfigurations = getIntelliJRunConfigurations(project);
 
         if (runConfigurations == null) {
@@ -312,21 +315,28 @@ public class ModDevPluginImpl {
             return;
         }
 
-        Application a = new Application(StringUtils.capitalize(run.getName()), project);
-        //
-        //a.setModuleName(String.format("%s.main", template.projectName));
+        var a = new Application(StringUtils.capitalize(run.getName()), project);
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
-        a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
-        a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath().replace('\\', '/'));
+        a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
+        a.setMainClass("@" + argsFile.getAsFile().getAbsolutePath().replace('\\', '/'));
         runConfigurations.add(a);
     }
 
     @Nullable
-    private static ProjectSettings getIntelliJProjectSettings(Project project) {
+    private static IdeaProject getIntelliJProject(Project project) {
         var ideaModel = ExtensionUtils.findExtension(project, "idea", IdeaModel.class);
-        if (ideaModel != null && ideaModel.getProject() != null) {
-            return ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
+        if (ideaModel != null) {
+            return ideaModel.getProject();
+        }
+        return null;
+    }
+
+    @Nullable
+    private static ProjectSettings getIntelliJProjectSettings(Project project) {
+        var ideaProject = getIntelliJProject(project);
+        if (ideaProject != null) {
+            return ((ExtensionAware) ideaProject).getExtensions().getByType(ProjectSettings.class);
         }
         return null;
     }

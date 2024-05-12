@@ -1,5 +1,9 @@
 # Gradle Plugin for Developing Minecraft Mods on NeoForge
 
+## Features
+
+- Automatically creates and uses a development-friendly logging configuration for the game
+
 ## Usage
 
 In `gradle.properties`:

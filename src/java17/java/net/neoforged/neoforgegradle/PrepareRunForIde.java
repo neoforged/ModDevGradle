@@ -1,19 +1,19 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
-import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -35,8 +35,8 @@ import java.util.stream.Collectors;
  * This is used only for IDEs.
  */
 abstract class PrepareRunForIde extends DefaultTask {
-    @InputDirectory
-    public abstract DirectoryProperty getRunDirectory();
+    @Internal
+    public abstract DirectoryProperty getGameDirectory();
 
     @OutputFile
     public abstract RegularFileProperty getArgsFile();
@@ -59,8 +59,15 @@ abstract class PrepareRunForIde extends DefaultTask {
     @InputFiles
     abstract ConfigurableFileCollection getModules();
 
+    @Input
+    public abstract MapProperty<String, String> getSystemProperties();
+
+    @Input
+    public abstract ListProperty<String> getProgramArguments();
+
     @Inject
-    public PrepareRunForIde() {}
+    public PrepareRunForIde() {
+    }
 
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
         var result = new ArrayList<String>();
@@ -80,7 +87,7 @@ abstract class PrepareRunForIde extends DefaultTask {
     public void prepareRun() throws IOException {
         // Make sure the run directory exists
         // IntelliJ refuses to start a run configuration whose working directory does not exist
-        var runDir = getRunDirectory().get().getAsFile();
+        var runDir = getGameDirectory().get().getAsFile();
         Files.createDirectories(runDir.toPath());
 
         var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
@@ -118,7 +125,11 @@ abstract class PrepareRunForIde extends DefaultTask {
                 propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
             }
 
-            lines.add("\"-D" + prop.getKey() + "=" + propValue.replace("\\", "\\\\") + "\"");
+            addSystemProp(prop.getKey(), propValue, lines);
+        }
+
+        for (var entry : getSystemProperties().get().entrySet()) {
+            addSystemProp(entry.getKey(), entry.getValue(), lines);
         }
 
         lines.add("");
@@ -127,7 +138,7 @@ abstract class PrepareRunForIde extends DefaultTask {
 
         // This should probably all be done using providers; but that's for later :)
         lines.add("");
-        lines.add("# Program Arguments");
+        lines.add("# NeoForge Run-Type Program Arguments");
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
         for (var arg : runConfig.args()) {
             if (arg.equals("{assets_root}")) {
@@ -138,7 +149,13 @@ abstract class PrepareRunForIde extends DefaultTask {
             lines.add("\"" + arg.replace("\\", "\\\\") + "\"");
         }
 
-        Files.write(getArgsFile().get().getAsFile().toPath(), lines);
+        lines.add("# User Supplied Program Arguments");
+        lines.addAll(getProgramArguments().get());
 
+        FileUtils.writeLinesSafe(getArgsFile().get().getAsFile().toPath(), lines);
+    }
+
+    private static void addSystemProp(String name, String value, List<String> lines) {
+        lines.add("\"-D" + name + "=" + value.replace("\\", "\\\\") + "\"");
     }
 }

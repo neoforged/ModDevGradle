@@ -4,6 +4,8 @@ import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 import org.jetbrains.annotations.ApiStatus;
@@ -24,7 +26,7 @@ public abstract class RunModel implements Named {
         this.baseName = StringUtils.toCamelCase(name, false);
         getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
-        getWorkingDirectory().convention(project.getLayout().getBuildDirectory().dir("run"));
+        getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
     }
 
     @Override
@@ -32,7 +34,11 @@ public abstract class RunModel implements Named {
         return name;
     }
 
-    public abstract DirectoryProperty getWorkingDirectory();
+    public abstract DirectoryProperty getGameDirectory();
+
+    public abstract MapProperty<String, String> getSystemProperties();
+
+    public abstract ListProperty<String> getProgramArguments();
 
     public abstract SetProperty<ModModel> getMods();
 

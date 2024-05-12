@@ -11,6 +11,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 @ApiStatus.Internal
 public final class FileUtils {
@@ -28,22 +29,29 @@ public final class FileUtils {
         }
     }
 
+    public static void writeLinesSafe(Path destination, List<String> lines) throws IOException {
+        writeStringSafe(destination, String.join("\n", lines));
+    }
+
     public static OutputStream newSafeFileOutputStream(Path destination) throws IOException {
         var uniqueId = ProcessHandle.current().pid() + "." + Thread.currentThread().getId();
 
-        var tempFile = destination.resolveSibling(destination.getFileName().toString() + uniqueId + ".tmp");
+        var tempFile = destination.resolveSibling(destination.getFileName().toString() + "." + uniqueId + ".tmp");
+        var closed = new boolean[1];
         return new FilterOutputStream(Files.newOutputStream(tempFile)) {
             @Override
             public void close() throws IOException {
                 try {
                     super.close();
-
-                    atomicMoveIfPossible(tempFile, destination);
+                    if (!closed[0]) {
+                        atomicMoveIfPossible(tempFile, destination);
+                    }
                 } finally {
                     try {
                         Files.deleteIfExists(tempFile);
                     } catch (IOException ignored) {
                     }
+                    closed[0] = true;
                 }
             }
         };

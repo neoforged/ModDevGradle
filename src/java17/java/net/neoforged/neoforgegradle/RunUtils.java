@@ -1,5 +1,10 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.dsl.RunModel;
+import org.gradle.api.GradleException;
+import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,6 +15,12 @@ import java.util.Properties;
 
 final class RunUtils {
     private RunUtils() {
+    }
+
+    public static Provider<String> getRequiredType(Project project, RunModel runModel) {
+        return runModel.getType().orElse(project.getProviders().provider(() -> {
+            throw new GradleException("The run '" + runModel.getName() + "' did not specify a type property");
+        }));
     }
 
     public static AssetProperties loadAssetProperties(File file) {
