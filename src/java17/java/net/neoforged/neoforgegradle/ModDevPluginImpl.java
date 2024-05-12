@@ -1,9 +1,10 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
+import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
-import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
@@ -11,11 +12,14 @@ import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -23,11 +27,12 @@ import org.gradle.internal.component.external.model.ModuleComponentArtifactIdent
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.process.CommandLineArgumentProvider;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
-import org.jetbrains.gradle.ext.RunConfiguration;
+import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
 import javax.inject.Inject;
@@ -271,7 +276,7 @@ public class ModDevPluginImpl {
 
                 var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
                 modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
-                        .collect(Collectors.toMap(mod -> mod.getName(), mod -> {
+                        .collect(Collectors.toMap(ModModel::getName, mod -> {
                             var modFolder = project.getObjects().newInstance(ModFolder.class);
                             for (var sourceSet : mod.getModSourceSets().get()) {
                                 modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
@@ -285,38 +290,54 @@ public class ModDevPluginImpl {
                 task.dependsOn(tasks.named("processResources"));
             });
 
-            IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
-
-            if (ideaModel != null && ideaModel.getProject() != null) {
-                var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
-                var runConfigurations = (NamedDomainObjectContainer<RunConfiguration>)
-                        ((ExtensionAware) settings).getExtensions().getByName("runConfigurations");
-
-                Application a = new Application(StringUtils.capitalize(run.getName()), project);
-                //
-                //a.setModuleName(String.format("%s.main", template.projectName));
-                var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
-                a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
-                a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
-                a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath().replace('\\', '/'));
-                runConfigurations.add(a);
-            }
+            addIntelliJRunConfiguration(project, run, runDirectory, argsFile);
         });
 
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
-            IdeaModel ideaModel = ((IdeaModel) project.getExtensions().findByName("idea"));
-
-            if (ideaModel == null || ideaModel.getProject() == null) {
-                return;
+            var settings = getIntelliJProjectSettings(project);
+            if (settings != null) {
+                var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
+                // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
+                taskTriggers.afterSync(idePostSyncTask);
             }
-
-            var settings = ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
-
-            var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
-            // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
-            taskTriggers.afterSync(idePostSyncTask);
         });
+    }
+
+    private static void addIntelliJRunConfiguration(Project project, RunModel run, Directory runDirectory, Provider<RegularFile> argsFile) {
+        var runConfigurations = getIntelliJRunConfigurations(project);
+
+        if (runConfigurations == null) {
+            project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configuration {}", run);
+            return;
+        }
+
+        Application a = new Application(StringUtils.capitalize(run.getName()), project);
+        //
+        //a.setModuleName(String.format("%s.main", template.projectName));
+        var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
+        a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
+        a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
+        a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath().replace('\\', '/'));
+        runConfigurations.add(a);
+    }
+
+    @Nullable
+    private static ProjectSettings getIntelliJProjectSettings(Project project) {
+        var ideaModel = ExtensionUtils.findExtension(project, "idea", IdeaModel.class);
+        if (ideaModel != null && ideaModel.getProject() != null) {
+            return ((ExtensionAware) ideaModel.getProject()).getExtensions().getByType(ProjectSettings.class);
+        }
+        return null;
+    }
+
+    @Nullable
+    private static RunConfigurationContainer getIntelliJRunConfigurations(Project project) {
+        var projectSettings = getIntelliJProjectSettings(project);
+        if (projectSettings != null) {
+            return ExtensionUtils.findExtension((ExtensionAware) projectSettings, "runConfigurations", RunConfigurationContainer.class);
+        }
+        return null;
     }
 
     private static void createDummyFilesInLocalRepository(ProjectLayout layout) {

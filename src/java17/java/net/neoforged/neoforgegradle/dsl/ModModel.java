@@ -9,9 +9,9 @@ import org.gradle.api.tasks.SourceSetContainer;
 import javax.inject.Inject;
 import java.util.List;
 
-public abstract class Mod implements Named {
+public abstract class ModModel implements Named {
     @Inject
-    public Mod() {
+    public ModModel() {
         // TODO: We could potentially do a bit of name validation
         getModSourceSets().convention(List.of());
         getModSourceSets().finalizeValueOnRead();

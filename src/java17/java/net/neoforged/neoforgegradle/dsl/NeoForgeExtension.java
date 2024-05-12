@@ -10,13 +10,13 @@ import javax.inject.Inject;
 import java.util.List;
 
 public abstract class NeoForgeExtension {
-    private final NamedDomainObjectContainer<Mod> mods;
-    private final NamedDomainObjectContainer<Run> runs;
+    private final NamedDomainObjectContainer<ModModel> mods;
+    private final NamedDomainObjectContainer<RunModel> runs;
 
     @Inject
     public NeoForgeExtension(Project project) {
-        mods = project.container(Mod.class);
-        runs = project.container(Run.class);
+        mods = project.container(ModModel.class);
+        runs = project.container(RunModel.class);
 
         getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
         getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
@@ -48,11 +48,11 @@ public abstract class NeoForgeExtension {
 
     public abstract ListProperty<String> getAccessTransformers();
 
-    public NamedDomainObjectSet<Mod> getMods() {
+    public NamedDomainObjectSet<ModModel> getMods() {
         return mods;
     }
 
-    public NamedDomainObjectSet<Run> getRuns() {
+    public NamedDomainObjectSet<RunModel> getRuns() {
         return runs;
     }
 }
