@@ -5,6 +5,7 @@ import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.dsl.DependencyFactory;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -100,7 +101,7 @@ public class ModDevPluginImpl {
                 dependencies.addLater(
                         extension.getAccessTransformers()
                                 .map(project::files)
-                                .map(project.getDependencyFactory()::create)
+                                .map(dependencyFactory::create)
                 );
             });
         });
@@ -167,9 +168,6 @@ public class ModDevPluginImpl {
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:neoforge-minecraft-joined:local");
         project.getDependencies().addProvider(localRuntime.getName(), minecraftDummyArtifact);
-        project.getDependencies().add("compileOnly", "minecraft:neoforge-minecraft-joined:local");
-        project.getDependencies().addProvider("compileOnly", minecraftDummyArtifact);
-        configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
@@ -177,8 +175,23 @@ public class ModDevPluginImpl {
         });
 
         configurations.named("compileOnly").configure(configuration -> {
-            configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            configuration.withDependencies(dependencies -> {
+                dependencies.add(dependencyFactory.create("minecraft:neoforge-minecraft-joined:local"));
+                dependencies.addLater(minecraftDummyArtifact.map(dependencyFactory::create));
+                dependencies.addLater(neoForgeModDevLibrariesDependency);
+            });
         });
+        configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
+
+        // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
+        configurations.named("testCompileOnly").configure(configuration -> {
+            configuration.withDependencies(dependencies -> {
+                dependencies.add(dependencyFactory.create("minecraft:neoforge-minecraft-joined:local"));
+                dependencies.addLater(minecraftDummyArtifact.map(dependencyFactory::create));
+                dependencies.addLater(neoForgeModDevLibrariesDependency);
+            });
+        });
+        configurations.named("testRuntimeClasspath", files -> files.extendsFrom(localRuntime));
 
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {

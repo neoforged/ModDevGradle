@@ -105,7 +105,7 @@ public final class FileUtils {
     private static void atomicMoveIfPossible(final Path source, final Path destination) throws IOException {
         try {
             Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (final AtomicMoveNotSupportedException ex) {
+        } catch (AtomicMoveNotSupportedException ex) {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
     }
