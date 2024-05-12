@@ -1,6 +1,5 @@
 package net.neoforged.neoforgegradle;
 
-import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
@@ -23,7 +22,6 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.idea.model.IdeaModule;
 import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.annotations.Nullable;
@@ -39,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -265,7 +264,11 @@ public class ModDevPluginImpl {
                 task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
                 task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-                task.getSystemProperties().set(run.getSystemProperties());
+                task.getJvmArguments().set(project.provider(RunUtils.getModFoldersProvider(project, run)::asArguments));
+                task.getSystemProperties().set(run.getSystemProperties().map(props -> {
+                    props = new HashMap<>(props);
+                    return props;
+                }));
                 task.getProgramArguments().set(run.getProgramArguments());
             });
             idePostSyncTask.configure(task -> task.dependsOn(writeArgsFileTask));
@@ -275,17 +278,7 @@ public class ModDevPluginImpl {
                 task.getGameDirectory().set(run.getGameDirectory());
                 // This should record a dependency ;)
 
-                var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-                modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
-                        .collect(Collectors.toMap(ModModel::getName, mod -> {
-                            var modFolder = project.getObjects().newInstance(ModFolder.class);
-                            for (var sourceSet : mod.getModSourceSets().get()) {
-                                modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
-                                modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
-                            }
-                            return modFolder;
-                        }))));
-                task.getJvmArgumentProviders().add(modFoldersProvider);
+                task.getJvmArgumentProviders().add(RunUtils.getModFoldersProvider(project, run));
 
                 // TODO: how do we do this in a clean way for all source sets?
                 task.dependsOn(tasks.named("processResources"));

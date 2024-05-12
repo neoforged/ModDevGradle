@@ -1,9 +1,11 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
+import org.gradle.process.CommandLineArgumentProvider;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -11,7 +13,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 final class RunUtils {
     private RunUtils() {
@@ -129,6 +133,20 @@ final class RunUtils {
                 """);
 
         return log4j2Xml;
+    }
+
+    public static CommandLineArgumentProvider getModFoldersProvider(Project project, RunModel run) {
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
+                .collect(Collectors.toMap(ModModel::getName, mod -> {
+                    var modFolder = project.getObjects().newInstance(ModFolder.class);
+                    for (var sourceSet : mod.getModSourceSets().get()) {
+                        modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
+                        modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
+                    }
+                    return modFolder;
+                }))));
+        return modFoldersProvider;
     }
 }
 

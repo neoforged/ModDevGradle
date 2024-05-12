@@ -63,6 +63,9 @@ abstract class PrepareRunForIde extends DefaultTask {
     public abstract MapProperty<String, String> getSystemProperties();
 
     @Input
+    public abstract ListProperty<String> getJvmArguments();
+
+    @Input
     public abstract ListProperty<String> getProgramArguments();
 
     @Inject
@@ -107,6 +110,14 @@ abstract class PrepareRunForIde extends DefaultTask {
             log4j2xml = RunUtils.writeLog4j2Configuration(runDir);
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+
+        var userJvmArgs = getJvmArguments().get();
+        if (!userJvmArgs.isEmpty()) {
+            lines.add("");
+            lines.add("# User JVM Arguments");
+            lines.addAll(userJvmArgs);
+            lines.add("");
         }
 
         // TODO Can't set env
