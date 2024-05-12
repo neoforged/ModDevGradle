@@ -284,10 +284,7 @@ public class ModDevPluginImpl {
                 var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
                 a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
                 a.setWorkingDirectory(runDirectory.getAsFile().getAbsolutePath());
-                a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath());
-                a.getBeforeRun().create("Prepare", GradleTask.class, gradleTask -> {
-                    gradleTask.setTask(writeArgsFile.get());
-                });
+                a.setMainClass("@" + argsFile.get().getAsFile().getAbsolutePath().replace('\\', '/'));
                 runConfigurations.add(a);
             }
         });

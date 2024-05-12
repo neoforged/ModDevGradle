@@ -8,7 +8,7 @@ repositories {
 }
 
 neoForge {
-    version = "20.6.52-beta-features-gradle-metadata-tech"
+    version = project.neoforge_version
 
     runs {
         client {
