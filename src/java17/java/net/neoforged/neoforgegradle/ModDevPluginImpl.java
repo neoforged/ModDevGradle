@@ -115,7 +115,6 @@ public class ModDevPluginImpl {
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
             });
         });
 
@@ -181,19 +180,6 @@ public class ModDevPluginImpl {
             configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
-        configurations.named("runtimeClasspath").configure(configuration -> {
-            configuration.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
-            });
-        });
-        configurations.named("compileClasspath").configure(configuration -> {
-            configuration.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-                attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows");
-            });
-        });
-
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
             var toolchainSpec = javaExtension.getToolchain();
@@ -240,7 +226,6 @@ public class ModDevPluginImpl {
                 spec.setCanBeConsumed(false);
                 spec.attributes(attributes -> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") ? "client" : "server"));
-                    attributes.attribute(ATTRIBUTE_OPERATING_SYSTEM, "windows"); // TODO: don't hardcode current OS like that :D
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
                 spec.withDependencies(set -> {
