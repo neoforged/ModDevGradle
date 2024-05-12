@@ -1,5 +1,6 @@
 package net.neoforged.neoforgegradle;
 
+import net.neoforged.neoforgegradle.dsl.InternalModelHelper;
 import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import org.gradle.api.GradleException;
@@ -13,7 +14,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -140,6 +140,7 @@ final class RunUtils {
         modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
+                    modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
                     for (var sourceSet : mod.getModSourceSets().get()) {
                         modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
                         modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
