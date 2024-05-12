@@ -24,7 +24,6 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.gradle.ext.Application;
-import org.jetbrains.gradle.ext.GradleTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
@@ -89,6 +88,20 @@ public class ModDevPluginImpl {
             });
         });
 
+
+        // Create an access transformer configuration
+        var accessTransformers = configurations.create("accessTransformers", files -> {
+            files.setCanBeConsumed(false);
+            files.setCanBeResolved(true);
+            files.defaultDependencies(dependencies -> {
+                dependencies.addLater(
+                        extension.getAccessTransformers()
+                                .map(project::files)
+                                .map(project.getDependencyFactory()::create)
+                );
+            });
+        });
+
         // This configuration will include the classpath needed to decompile and recompile Minecraft,
         // and has to include the libraries added by NeoForm and NeoForge.
         var minecraftCompileClasspath = configurations.create("minecraftCompileClasspath", spec -> {
@@ -126,6 +139,7 @@ public class ModDevPluginImpl {
             task.getEnableCache().set(extension.getEnableCache());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
+            task.getAccessTransformers().from(accessTransformers);
             task.getNeoFormInABox().from(neoFormInABoxConfig);
             task.getCompileClasspath().from(minecraftCompileClasspath);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
@@ -373,7 +387,8 @@ public class ModDevPluginImpl {
 
 abstract class ModFolder {
     @Inject
-    public ModFolder() {}
+    public ModFolder() {
+    }
 
     @InputFiles
     abstract ConfigurableFileCollection getFolders();
@@ -381,7 +396,8 @@ abstract class ModFolder {
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
-    public ModFoldersProvider() {}
+    public ModFoldersProvider() {
+    }
 
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();

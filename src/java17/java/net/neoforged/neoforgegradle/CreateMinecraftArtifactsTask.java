@@ -17,11 +17,13 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.process.ExecOperations;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Collectors;
 
 abstract class CreateMinecraftArtifactsTask extends DefaultTask {
     private final ExecOperations execOperations;
@@ -46,6 +48,9 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
     @Classpath
     @InputFiles
     abstract ConfigurableFileCollection getNeoFormInABox();
+
+    @InputFiles
+    abstract ConfigurableFileCollection getAccessTransformers();
 
     @OutputFile
     abstract RegularFileProperty getCompiledArtifact();
@@ -97,6 +102,16 @@ abstract class CreateMinecraftArtifactsTask extends DefaultTask {
         }
 
         var compileClasspath = getCompileClasspath().getFiles();
+        if (!compileClasspath.isEmpty()) {
+            args.add("--compile-classpath");
+            args.add(compileClasspath.stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator)));
+        }
+
+        var accessTransformers = getAccessTransformers().getFiles();
+        for (var accessTransformer : accessTransformers) {
+            args.add("--access-transformer");
+            args.add(accessTransformer.getAbsolutePath());
+        }
 
         Collections.addAll(
                 args,

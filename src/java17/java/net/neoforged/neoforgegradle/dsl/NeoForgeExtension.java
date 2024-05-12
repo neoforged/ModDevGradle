@@ -3,9 +3,11 @@ package net.neoforged.neoforgegradle.dsl;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectSet;
 import org.gradle.api.Project;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 
 import javax.inject.Inject;
+import java.util.List;
 
 public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<Mod> mods;
@@ -18,6 +20,16 @@ public abstract class NeoForgeExtension {
 
         getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
         getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
+
+        getAccessTransformers().convention(project.provider(() -> {
+            // TODO Can we scan the source sets for the main source sets resource dir?
+            // Only return this when it actually exists
+            var defaultPath = "src/main/resources/META-INF/accesstransformer.cfg";
+            if (!project.file(defaultPath).exists()) {
+                return List.of();
+            }
+            return List.of(defaultPath);
+        }));
     }
 
     /**
@@ -33,6 +45,8 @@ public abstract class NeoForgeExtension {
     public abstract Property<Boolean> getVerbose();
 
     public abstract Property<Boolean> getEnableCache();
+
+    public abstract ListProperty<String> getAccessTransformers();
 
     public NamedDomainObjectSet<Mod> getMods() {
         return mods;
