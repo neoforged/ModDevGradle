@@ -1,5 +1,6 @@
 package net.neoforged.neoforgegradle.internal;
 
+import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
@@ -37,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -254,7 +256,7 @@ public class ModDevPluginImpl {
             });
 
             var runDirectory = layout.getProjectDirectory().dir("run");
-            var argsFile = layout.getBuildDirectory().file("moddev/" + run.nameOf("", "runArgs") + ".txt");
+            var argsFile = RunUtils.getArgFile(project, run);
             var writeArgsFileTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(runDirectory);
                 task.getArgsFile().set(argsFile);
@@ -263,7 +265,6 @@ public class ModDevPluginImpl {
                 task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
                 task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
-                task.getJvmArguments().set(project.provider(RunUtils.getModFoldersProvider(project, run)::asArguments));
                 task.getSystemProperties().set(run.getSystemProperties().map(props -> {
                     props = new HashMap<>(props);
                     return props;
@@ -277,13 +278,11 @@ public class ModDevPluginImpl {
                 task.getGameDirectory().set(run.getGameDirectory());
                 // This should record a dependency ;)
 
-                task.getJvmArgumentProviders().add(RunUtils.getModFoldersProvider(project, run));
+                task.getArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
 
                 // TODO: how do we do this in a clean way for all source sets?
                 task.dependsOn(tasks.named("processResources"));
             });
-
-            addIntelliJRunConfiguration(project, run, argsFile.get());
         });
 
         // IDEA Sync has no real notion of tasks or providers or similar
@@ -294,10 +293,13 @@ public class ModDevPluginImpl {
                 // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
                 taskTriggers.afterSync(idePostSyncTask);
             }
+
+            extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run, RunUtils.getArgFile(project, run).get()));
         });
     }
 
     private static void addIntelliJRunConfiguration(Project project,
+                                                    ExtraIdeaModel extraIdea,
                                                     RunModel run,
                                                     RegularFile argsFile) {
         var runConfigurations = getIntelliJRunConfigurations(project);
@@ -312,6 +314,9 @@ public class ModDevPluginImpl {
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
         a.setMainClass("@" + argsFile.getAsFile().getAbsolutePath().replace('\\', '/'));
+        a.setEnvs(Map.of(
+                "MOD_CLASSES", RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getEncodedFolders()
+        ));
         runConfigurations.add(a);
     }
 
@@ -425,15 +430,19 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();
 
-    @Override
-    public Iterable<String> asArguments() {
-        return List.of("\"-Dfml.modFolders=%s\"".formatted(getModFolders().get().entrySet().stream()
+    public String getEncodedFolders() {
+        return getModFolders().get().entrySet().stream()
                 .<String>mapMulti((entry, output) -> {
                     for (var directory : entry.getValue().getFolders()) {
                         // Resources
                         output.accept(entry.getKey() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
                     }
                 })
-                .collect(Collectors.joining(File.pathSeparator))));
+                .collect(Collectors.joining(File.pathSeparator));
+    }
+
+    @Override
+    public Iterable<String> asArguments() {
+        return List.of("\"-Dfml.modFolders=%s\"".formatted(getEncodedFolders()));
     }
 }

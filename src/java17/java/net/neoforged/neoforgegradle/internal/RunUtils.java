@@ -1,11 +1,14 @@
 package net.neoforged.neoforgegradle.internal;
 
+import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
 import net.neoforged.neoforgegradle.dsl.InternalModelHelper;
 import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
 
 import java.io.BufferedInputStream;
@@ -14,6 +17,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
@@ -135,9 +139,46 @@ final class RunUtils {
         return log4j2Xml;
     }
 
-    public static CommandLineArgumentProvider getModFoldersProvider(Project project, RunModel run) {
+    public static Provider<RegularFile> getArgFile(Project project, RunModel run) {
+        return project.getLayout().getBuildDirectory().file("moddev/" + run.nameOf("", "runArgs") + ".txt");
+    }
+
+    public static CommandLineArgumentProvider getGradleModFoldersProvider(Project project, RunModel run) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
+        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, run));
+        return modFoldersProvider;
+    }
+
+    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, ExtraIdeaModel idea, RunModel run) {
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        modFoldersProvider.getModFolders().set(idea.getRunWithIdea().flatMap(runWithIdea -> {
+            if (runWithIdea) {
+                return run.getMods().map(mods -> mods.stream()
+                        .collect(Collectors.toMap(ModModel::getName, mod -> {
+                            var modFolder = project.getObjects().newInstance(ModFolder.class);
+                            modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
+                            for (var sourceSet : mod.getModSourceSets().get()) {
+                                // TODO: this is probably broken in multiproject builds
+                                var outDir = idea.getOutDirectory().get().getAsFile().toPath();
+                                var sourceSetDir = outDir.resolve(getIdeaOutName(sourceSet));
+                                modFolder.getFolders().from(sourceSetDir.resolve("classes"));
+                                modFolder.getFolders().from(sourceSetDir.resolve("resources"));
+                            }
+                            return modFolder;
+                        })));
+            } else {
+                return getModFoldersForGradle(project, run);
+            }
+        }));
+        return modFoldersProvider;
+    }
+
+    private static String getIdeaOutName(final SourceSet sourceSet) {
+        return sourceSet.getName().equals(SourceSet.MAIN_SOURCE_SET_NAME) ? "production" : sourceSet.getName();
+    }
+
+    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, RunModel run) {
+        return run.getMods().map(mods -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
                     modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
@@ -146,8 +187,7 @@ final class RunUtils {
                         modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
                     }
                     return modFolder;
-                }))));
-        return modFoldersProvider;
+                })));
     }
 }
 
