@@ -1,17 +1,13 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal;
 
 import com.google.gson.Gson;
 import org.gradle.api.GradleException;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipFile;
 
 public record UserDevConfig(String mcp, String sources, String universal, List<String> libraries, List<String> modules,
                             Map<String, UserDevRunType> runs) implements Serializable {

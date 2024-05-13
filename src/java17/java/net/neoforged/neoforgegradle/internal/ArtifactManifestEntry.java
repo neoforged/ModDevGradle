@@ -1,4 +1,4 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal;
 
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;

@@ -1,4 +1,4 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal;
 
 import net.neoforged.neoforgegradle.dsl.InternalModelHelper;
 import net.neoforged.neoforgegradle.dsl.ModModel;

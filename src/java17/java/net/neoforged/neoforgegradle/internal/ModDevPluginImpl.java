@@ -1,11 +1,10 @@
-package net.neoforged.neoforgegradle;
+package net.neoforged.neoforgegradle.internal;
 
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.dsl.DependencyFactory;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
