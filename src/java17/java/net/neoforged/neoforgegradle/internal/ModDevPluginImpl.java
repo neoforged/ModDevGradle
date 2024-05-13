@@ -18,6 +18,7 @@ import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
@@ -276,9 +277,11 @@ public class ModDevPluginImpl {
             tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
                 task.getGameDirectory().set(run.getGameDirectory());
-                // This should record a dependency ;)
+                // We use the arg file for runs as well,
+                // using the property from the writeArgsFileTask to record a dependency on that task.
+                task.getMainClass().set(writeArgsFileTask.flatMap(PrepareRunForIde::getArgsFile).map(f -> "@" + f.getAsFile().getAbsolutePath()));
 
-                task.getArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
+                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
 
                 // TODO: how do we do this in a clean way for all source sets?
                 task.dependsOn(tasks.named("processResources"));
@@ -430,6 +433,7 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();
 
+    @Internal
     public String getEncodedFolders() {
         return getModFolders().get().entrySet().stream()
                 .<String>mapMulti((entry, output) -> {
