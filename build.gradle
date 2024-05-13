@@ -20,6 +20,13 @@ repositories {
             includeModule("net.fabricmc", "fabric-loom-native")
         }
     }
+    maven {
+        name = "NeoForged"
+        url = "https://maven.neoforged.net/releases"
+        content {
+            includeGroup "net.neoforged"
+        }
+    }
 }
 
 sourceSets {
@@ -31,7 +38,9 @@ dependencies {
     java17Implementation "com.google.code.gson:gson:2.10.1"
     java17Implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
     java17Implementation "net.fabricmc:fabric-loom-native:0.2.1"
+    java17Implementation "net.neoforged:JarJarMetadata:0.4.1"
     api "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
+    api "net.neoforged:JarJarMetadata:0.4.1"
 }
 
 java {

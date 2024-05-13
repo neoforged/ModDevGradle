@@ -1,8 +1,10 @@
 package net.neoforged.neoforgegradle.internal;
 
 import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
+import net.neoforged.neoforgegradle.dsl.JarJar;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
+import net.neoforged.neoforgegradle.internal.jarjar.JarJarExtension;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import org.gradle.api.Project;
@@ -299,6 +301,10 @@ public class ModDevPluginImpl {
 
             extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run, RunUtils.getArgFile(project, run).get()));
         });
+
+        // TODO: Not a fan of having an extension that's not under neoforge
+        var jarJar = project.getExtensions().create(JarJar.class, "jarJar", JarJarExtension.class);
+        ((JarJarExtension) jarJar).createTaskAndConfiguration();
     }
 
     private static void addIntelliJRunConfiguration(Project project,
