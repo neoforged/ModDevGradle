@@ -48,7 +48,15 @@ public abstract class RunModel implements Named, Dependencies {
 
     public abstract MapProperty<String, String> getSystemProperties();
 
+    public void systemProperty(String key, String value) {
+        getSystemProperties().put(key, value);
+    }
+
     public abstract ListProperty<String> getProgramArguments();
+
+    public void programArgument(String arg) {
+        getProgramArguments().add(arg);
+    }
 
     public abstract SetProperty<ModModel> getMods();
 
