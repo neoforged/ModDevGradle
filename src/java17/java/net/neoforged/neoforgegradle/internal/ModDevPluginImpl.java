@@ -41,7 +41,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,11 +85,11 @@ public class ModDevPluginImpl {
             files.setCanBeResolved(true);
             //files.defaultDependencies(spec -> spec.addLater(neoForgeUserdevDependency));
         });
-        var neoFormInABoxConfig = configurations.create("neoFormInABoxConfig", files -> {
+        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", files -> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:NeoFormInABox:1.0-SNAPSHOT").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.4").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
@@ -147,7 +146,7 @@ public class ModDevPluginImpl {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getAccessTransformers().from(accessTransformers);
-            task.getNeoFormInABox().from(neoFormInABoxConfig);
+            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getCompileClasspath().from(minecraftCompileClasspath);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
@@ -156,7 +155,7 @@ public class ModDevPluginImpl {
         });
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
-            task.getNeoFormInABox().from(neoFormInABoxConfig);
+            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
         });
 

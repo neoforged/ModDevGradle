@@ -15,7 +15,7 @@ abstract public class NeoFormTask extends DefaultTask {
 
     @Classpath
     @InputFiles
-    abstract ConfigurableFileCollection getNeoFormInABox();
+    abstract ConfigurableFileCollection getNeoFormRuntime();
 
     protected final void run(List<String> args) {
         var launcher = getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)));
@@ -24,7 +24,7 @@ abstract public class NeoFormTask extends DefaultTask {
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
             execSpec.executable(launcher.get().getExecutablePath().getAsFile());
-            execSpec.classpath(getNeoFormInABox());
+            execSpec.classpath(getNeoFormRuntime());
             execSpec.args(args);
         });
     }
