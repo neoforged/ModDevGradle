@@ -1,47 +1,60 @@
-package net.neoforged.neoforgegradle.internal.jarjar;
+package net.neoforged.neoforgegradle.tasks;
 
 import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
+import net.neoforged.neoforgegradle.internal.jarjar.JarJarArtifacts;
+import net.neoforged.neoforgegradle.internal.jarjar.ResolvedJarJarArtifact;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.file.CopySpec;
-import org.gradle.api.file.DuplicatesStrategy;
+import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.api.tasks.bundling.Jar;
+import org.jetbrains.annotations.ApiStatus;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public abstract class JarJarTask extends Jar {
+public abstract class JarJar extends DefaultTask {
 
     @Nested
-    public abstract JarJarArtifacts getJarJarArtifacts();
+    @ApiStatus.Internal
+    protected abstract JarJarArtifacts getJarJarArtifacts();
 
-    private final CopySpec jarJarCopySpec;
+    @OutputDirectory
+    public abstract DirectoryProperty getOutputDirectory();
 
-    public JarJarTask() {
-        this.jarJarCopySpec = this.getMainSpec().addChild();
-        this.jarJarCopySpec.into("META-INF/jarjar");
+    private final FileSystemOperations fileSystemOperations;
 
-        setDuplicatesStrategy(DuplicatesStrategy.EXCLUDE); //As opposed to shadow, we do not filter out our entries early!, So we need to handle them accordingly.
+    @Inject
+    public JarJar(FileSystemOperations fileSystemOperations) {
+        this.fileSystemOperations = fileSystemOperations;
+        this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("jarJar/"+getName()));
     }
 
     @TaskAction
-    @Override
-    protected void copy() {
+    protected void run() {
         List<ResolvedJarJarArtifact> includedJars = getJarJarArtifacts().getResolvedArtifacts().get();
-        this.jarJarCopySpec.from(
-                includedJars.stream().map(ResolvedJarJarArtifact::getFile).collect(Collectors.toList())
-        );
-        if (!writeMetadata(includedJars).jars().isEmpty()) {
-            // Only copy metadata if not empty.
-            this.jarJarCopySpec.from(getJarJarMetadataPath().toFile());
-        }
-        super.copy();
+        fileSystemOperations.delete(spec -> {
+            spec.delete(getOutputDirectory());
+        });
+        fileSystemOperations.copy(spec -> {
+            spec.into(getOutputDirectory());
+            spec.from(
+                    includedJars.stream().map(ResolvedJarJarArtifact::getFile).collect(Collectors.toList())
+            );
+            if (!writeMetadata(includedJars).jars().isEmpty()) {
+                // Only copy metadata if not empty.
+                spec.from(getJarJarMetadataPath().toFile());
+            }
+        });
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
@@ -64,6 +77,11 @@ public abstract class JarJarTask extends Jar {
     public void configuration(Configuration jarJarConfiguration) {
         getJarJarArtifacts().configuration(jarJarConfiguration);
         dependsOn(jarJarConfiguration);
+    }
+
+    public void setConfigurations(Collection<? extends Configuration> configurations) {
+        getJarJarArtifacts().setConfigurations(configurations);
+        configurations.forEach(this::dependsOn);
     }
 
     private Path getJarJarMetadataPath() {

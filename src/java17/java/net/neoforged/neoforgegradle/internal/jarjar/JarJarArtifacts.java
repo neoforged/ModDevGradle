@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -70,6 +71,14 @@ public abstract class JarJarArtifacts {
         getIncludedRootComponents().add(jarJarConfiguration.getIncoming().getResolutionResult().getRootComponent());
     }
 
+    public void setConfigurations(Collection<? extends Configuration> configurations) {
+        includedRootComponents.empty();
+        includedArtifacts.empty();
+        for (Configuration configuration : configurations) {
+            configuration(configuration);
+        }
+    }
+
     private static List<ResolvedJarJarArtifact> getIncludedJars(Set<ResolvedComponentResult> rootComponents, Set<ResolvedArtifactResult> artifacts) {
         Map<ContainedJarIdentifier, String> versions = new HashMap<>();
         Map<ContainedJarIdentifier, String> versionRanges = new HashMap<>();
@@ -94,10 +103,7 @@ public abstract class JarJarArtifacts {
 
             String version = getVersionFrom(variant);
 
-            String versionRange = getVersionRangeFrom(variant);
-            if (versionRange == null) {
-                versionRange = makeOpenRange(variant);
-            }
+            String versionRange = makeOpenRange(variant);
 
             if (version != null && versionRange != null) {
                 data.add(new ResolvedJarJarArtifact(result.getFile(), version, versionRange, jarIdentifier.group(), jarIdentifier.artifact()));
@@ -125,9 +131,8 @@ public abstract class JarJarArtifacts {
             ContainedJarIdentifier jarIdentifier = new ContainedJarIdentifier(artifactIdentifier.group(), artifactIdentifier.name());
             knownIdentifiers.add(jarIdentifier);
 
-            String versionRange = getVersionRangeFrom(variant);
-            if (versionRange == null && requested instanceof ModuleComponentSelector) {
-                ModuleComponentSelector requestedModule = (ModuleComponentSelector) requested;
+            String versionRange = null;
+            if (requested instanceof ModuleComponentSelector requestedModule) {
                 if (isValidVersionRange(requestedModule.getVersionConstraint().getStrictVersion())) {
                     versionRange = requestedModule.getVersionConstraint().getStrictVersion();
                 } else if (isValidVersionRange(requestedModule.getVersionConstraint().getRequiredVersion())) {
@@ -151,10 +156,6 @@ public abstract class JarJarArtifacts {
                 versionRanges.put(jarIdentifier, versionRange);
             }
         }
-    }
-
-    private static @Nullable String getVersionRangeFrom(final ResolvedVariantResult variant) {
-        return variant.getAttributes().getAttribute(JarJarExtension.JAR_JAR_RANGE_ATTRIBUTE);
     }
 
     private static @Nullable ArtifactIdentifier capabilityOrModule(final ResolvedVariantResult variant) {

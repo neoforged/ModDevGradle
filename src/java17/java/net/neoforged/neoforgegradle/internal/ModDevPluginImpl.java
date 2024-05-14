@@ -1,17 +1,20 @@
 package net.neoforged.neoforgegradle.internal;
 
 import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
-import net.neoforged.neoforgegradle.dsl.JarJar;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
-import net.neoforged.neoforgegradle.internal.jarjar.JarJarExtension;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
+import net.neoforged.neoforgegradle.tasks.JarJar;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
+import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
+import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
@@ -23,6 +26,8 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -49,6 +54,8 @@ import java.util.stream.Collectors;
 public class ModDevPluginImpl {
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
+
+    private static final String JAR_JAR_GROUP = "jarjar";
 
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
@@ -301,9 +308,49 @@ public class ModDevPluginImpl {
             extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run, RunUtils.getArgFile(project, run).get()));
         });
 
-        // TODO: Not a fan of having an extension that's not under neoforge
-        var jarJar = project.getExtensions().create(JarJar.class, "jarJar", JarJarExtension.class);
-        ((JarJarExtension) jarJar).createTaskAndConfiguration();
+        setupJarJar(project);
+    }
+
+    private static void setupJarJar(Project project) {
+        //var jarJar = project.getExtensions().create(JarJar.class, "jarJar", JarJarExtension.class);
+        //((JarJarExtension) jarJar).createTaskAndConfiguration();
+
+        SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
+        sourceSets.configureEach(sourceSet -> {
+            final Configuration configuration = project.getConfigurations().create(sourceSet.getTaskName(null, "jarJar"));
+            configuration.setTransitive(false);
+            // jarJar configurations should be resolvable, but ought not to be exposed to consumers;
+            // as it has attributes, it could conflict with normal exposed configurations
+            configuration.setCanBeResolved(true);
+            configuration.setCanBeConsumed(false);
+
+            JavaPluginExtension javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
+
+            configuration.attributes(attributes -> {
+                // Unfortunately, while we can hopefully rely on disambiguation rules to get us some of these, others run
+                // into issues. The target JVM version is the most worrying - we don't want to pull in a variant for a newer
+                // jvm version. We could copy DefaultJvmFeature, and search for the target version of the compile task,
+                // but this is difficult - we only have a feature name, not the linked source set. For this reason, we use
+                // the toolchain version, which is the most likely to be correct.
+                attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().map(JavaLanguageVersion::asInt));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
+                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
+            });
+
+            TaskProvider<JarJar> jarJarTask = project.getTasks().register(sourceSet.getTaskName(null, "jarJar"), JarJar.class, jarJar -> {
+                jarJar.setGroup(JAR_JAR_GROUP);
+                jarJar.setDescription("Create a combined JAR of project and selected dependencies");
+
+                jarJar.configuration(configuration);
+            });
+
+            project.getTasks().withType(AbstractArchiveTask.class).named(name -> name.equals(sourceSet.getJarTaskName())).configureEach(task -> {
+                task.from(jarJarTask.get().getOutputDirectory());
+                task.dependsOn(jarJarTask);
+            });
+        });
     }
 
     private static void addIntelliJRunConfiguration(Project project,
