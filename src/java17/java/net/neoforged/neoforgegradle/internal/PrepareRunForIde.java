@@ -39,7 +39,10 @@ abstract class PrepareRunForIde extends DefaultTask {
     public abstract DirectoryProperty getGameDirectory();
 
     @OutputFile
-    public abstract RegularFileProperty getArgsFile();
+    public abstract RegularFileProperty getVmArgsFile();
+
+    @OutputFile
+    public abstract RegularFileProperty getProgramArgsFile();
 
     @Classpath
     public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
@@ -99,7 +102,11 @@ abstract class PrepareRunForIde extends DefaultTask {
             throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
         }
 
-        // Resolve and write all JVM arguments, main class and main program arguments to an args-file
+        writeJvmArguments(runDir, runConfig);
+        writeProgramArguments(runConfig);
+    }
+
+    private void writeJvmArguments(File runDir, UserDevRunType runConfig) throws IOException {
         var lines = new ArrayList<String>();
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
@@ -120,15 +127,6 @@ abstract class PrepareRunForIde extends DefaultTask {
             lines.add("");
         }
 
-        // TODO Can't set env
-//        for (var env : getRunEnvironment().get().entrySet()) {
-//            var envValue = env.getValue();
-//            if (envValue.equals("{source_roots}")) {
-//                continue; // This is MOD_CLASSES, skip for now.
-//            }
-//            environment(env.getKey(), envValue);
-//        }
-
         lines.add("\"-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath().replace("\\", "\\\\") + "\"");
         for (var prop : runConfig.props().entrySet()) {
             var propValue = prop.getValue();
@@ -143,7 +141,12 @@ abstract class PrepareRunForIde extends DefaultTask {
             addSystemProp(entry.getKey(), entry.getValue(), lines);
         }
 
-        lines.add("");
+        FileUtils.writeLinesSafe(getVmArgsFile().get().getAsFile().toPath(), lines);
+    }
+
+    private void writeProgramArguments(UserDevRunType runConfig) throws IOException {
+        var lines = new ArrayList<String>();
+
         lines.add("# Main Class");
         lines.add(runConfig.main());
 
@@ -163,7 +166,7 @@ abstract class PrepareRunForIde extends DefaultTask {
         lines.add("# User Supplied Program Arguments");
         lines.addAll(getProgramArguments().get());
 
-        FileUtils.writeLinesSafe(getArgsFile().get().getAsFile().toPath(), lines);
+        FileUtils.writeLinesSafe(getProgramArgsFile().get().getAsFile().toPath(), lines);
     }
 
     private static void addSystemProp(String name, String value, List<String> lines) {

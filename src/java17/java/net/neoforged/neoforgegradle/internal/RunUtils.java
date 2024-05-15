@@ -25,6 +25,9 @@ final class RunUtils {
     private RunUtils() {
     }
 
+    public static String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.0";
+    public static String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
+
     public static Provider<String> getRequiredType(Project project, RunModel runModel) {
         return runModel.getType().orElse(project.getProviders().provider(() -> {
             throw new GradleException("The run '" + runModel.getName() + "' did not specify a type property");
@@ -139,8 +142,11 @@ final class RunUtils {
         return log4j2Xml;
     }
 
-    public static Provider<RegularFile> getArgFile(Project project, RunModel run) {
-        return project.getLayout().getBuildDirectory().file("moddev/" + run.nameOf("", "runArgs") + ".txt");
+    /**
+     * @param vm {@code true} for VM args, {@code false} for program args
+     */
+    public static File getArgFile(Project project, RunModel run, boolean vm) {
+        return project.getLayout().getBuildDirectory().file("moddev/" + run.nameOf("", vm ? "runVmArgs" : "runProgramArgs") + ".txt").get().getAsFile();
     }
 
     public static CommandLineArgumentProvider getGradleModFoldersProvider(Project project, RunModel run) {

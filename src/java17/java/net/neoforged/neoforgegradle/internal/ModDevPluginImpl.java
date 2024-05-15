@@ -178,6 +178,7 @@ public class ModDevPluginImpl {
         });
         project.getDependencies().add(localRuntime.getName(), "minecraft:neoforge-minecraft-joined:local");
         project.getDependencies().addProvider(localRuntime.getName(), minecraftDummyArtifact);
+        project.getDependencies().add(localRuntime.getName(), RunUtils.DEV_LAUNCH_GAV);
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
@@ -229,14 +230,17 @@ public class ModDevPluginImpl {
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                        .capabilities(caps -> {
-                            caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                        })
-                        // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                        .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            })));
+            spec.withDependencies(set -> {
+                set.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                            })
+                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+                }));
+                set.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
+            });
         });
 
         var idePostSyncTask = tasks.register("idePostSync");
@@ -265,10 +269,10 @@ public class ModDevPluginImpl {
             });
 
             var runDirectory = layout.getProjectDirectory().dir("run");
-            var argsFile = RunUtils.getArgFile(project, run);
             var writeArgsFileTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(runDirectory);
-                task.getArgsFile().set(argsFile);
+                task.getVmArgsFile().set(RunUtils.getArgFile(project, run, true));
+                task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, false));
                 task.getRunType().set(run.getType());
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
@@ -285,9 +289,12 @@ public class ModDevPluginImpl {
             tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
                 task.getGameDirectory().set(run.getGameDirectory());
-                // We use the arg file for runs as well,
-                // using the property from the writeArgsFileTask to record a dependency on that task.
-                task.getMainClass().set(writeArgsFileTask.flatMap(PrepareRunForIde::getArgsFile).map(f -> "@" + f.getAsFile().getAbsolutePath()));
+
+                task.getJvmArguments().add("@" + RunUtils.getArgFile(project, run, true));
+                task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+                task.getArgumentProviders().add(() -> List.of("@" + RunUtils.getArgFile(project, run, false)));
+                // Of course we need the arg files to be up-to-date ;)
+                task.dependsOn(writeArgsFileTask);
 
                 task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
 
@@ -305,7 +312,7 @@ public class ModDevPluginImpl {
                 taskTriggers.afterSync(idePostSyncTask);
             }
 
-            extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run, RunUtils.getArgFile(project, run).get()));
+            extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run));
         });
 
         setupJarJar(project);
@@ -355,8 +362,7 @@ public class ModDevPluginImpl {
 
     private static void addIntelliJRunConfiguration(Project project,
                                                     ExtraIdeaModel extraIdea,
-                                                    RunModel run,
-                                                    RegularFile argsFile) {
+                                                    RunModel run) {
         var runConfigurations = getIntelliJRunConfigurations(project);
 
         if (runConfigurations == null) {
@@ -368,7 +374,9 @@ public class ModDevPluginImpl {
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        a.setMainClass("@" + argsFile.getAsFile().getAbsolutePath().replace('\\', '/'));
+        a.setJvmArgs("@" + RunUtils.getArgFile(project, run, true).getAbsolutePath());
+        a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+        a.setProgramParameters("@" + RunUtils.getArgFile(project, run, false).getAbsolutePath());
         a.setEnvs(Map.of(
                 "MOD_CLASSES", RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getEncodedFolders()
         ));
