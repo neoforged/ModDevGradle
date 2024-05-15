@@ -374,12 +374,12 @@ public class ModDevPluginImpl {
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        a.setJvmArgs("@" + RunUtils.getArgFile(project, run, true).getAbsolutePath());
+        a.setJvmArgs("@%s %s".formatted(
+                RunUtils.getArgFile(project, run, true).getAbsolutePath(),
+                // TODO: this needs escaping
+                RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getArgument()));
         a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         a.setProgramParameters("@" + RunUtils.getArgFile(project, run, false).getAbsolutePath());
-        a.setEnvs(Map.of(
-                "MOD_CLASSES", RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getEncodedFolders()
-        ));
         runConfigurations.add(a);
     }
 
@@ -494,19 +494,20 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     abstract MapProperty<String, ModFolder> getModFolders();
 
     @Internal
-    public String getEncodedFolders() {
-        return getModFolders().get().entrySet().stream()
-                .<String>mapMulti((entry, output) -> {
-                    for (var directory : entry.getValue().getFolders()) {
-                        // Resources
-                        output.accept(entry.getKey() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
-                    }
-                })
-                .collect(Collectors.joining(File.pathSeparator));
+    public String getArgument() {
+        return "\"-Dfml.modFolders=%s\"".formatted(
+                getModFolders().get().entrySet().stream()
+                        .<String>mapMulti((entry, output) -> {
+                            for (var directory : entry.getValue().getFolders()) {
+                                // Resources
+                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
+                            }
+                        })
+                        .collect(Collectors.joining(File.pathSeparator)));
     }
 
     @Override
     public Iterable<String> asArguments() {
-        return List.of("\"-Dfml.modFolders=%s\"".formatted(getEncodedFolders()));
+        return List.of(getArgument());
     }
 }
