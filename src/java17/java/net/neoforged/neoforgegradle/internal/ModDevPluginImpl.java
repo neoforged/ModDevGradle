@@ -15,16 +15,10 @@ import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
-import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.ProjectLayout;
-import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.provider.MapProperty;
-import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.Internal;
-import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -32,7 +26,6 @@ import org.gradle.internal.component.external.model.ModuleComponentArtifactIdent
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.plugins.ide.idea.model.IdeaProject;
-import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
@@ -41,13 +34,11 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
-import javax.inject.Inject;
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -245,6 +236,7 @@ public class ModDevPluginImpl {
 
         var idePostSyncTask = tasks.register("idePostSync");
 
+        Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks = new IdentityHashMap<>();
         extension.getRuns().configureEach(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
@@ -269,7 +261,7 @@ public class ModDevPluginImpl {
             });
 
             var runDirectory = layout.getProjectDirectory().dir("run");
-            var writeArgsFileTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
+            var prepareRunTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(runDirectory);
                 task.getVmArgsFile().set(RunUtils.getArgFile(project, run, true));
                 task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, false));
@@ -284,17 +276,18 @@ public class ModDevPluginImpl {
                 }));
                 task.getProgramArguments().set(run.getProgramArguments());
             });
-            idePostSyncTask.configure(task -> task.dependsOn(writeArgsFileTask));
+            prepareRunTasks.put(run, prepareRunTask);
+            idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
                 task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
                 task.getGameDirectory().set(run.getGameDirectory());
 
-                task.getJvmArguments().add("@" + RunUtils.getArgFile(project, run, true));
+                task.jvmArgs(RunUtils.getArgFileParameter(prepareRunTask.get().getVmArgsFile().get()).replace("\\", "\\\\"));
                 task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-                task.getArgumentProviders().add(() -> List.of("@" + RunUtils.getArgFile(project, run, false)));
+                task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
                 // Of course we need the arg files to be up-to-date ;)
-                task.dependsOn(writeArgsFileTask);
+                task.dependsOn(prepareRunTask);
 
                 task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
 
@@ -312,7 +305,14 @@ public class ModDevPluginImpl {
                 taskTriggers.afterSync(idePostSyncTask);
             }
 
-            extension.getRuns().forEach(run -> addIntelliJRunConfiguration(project, extension.getIdea(), run));
+            extension.getRuns().forEach(run -> {
+                var prepareTask = prepareRunTasks.get(run).get();
+                if (!prepareTask.getEnabled()) {
+                    project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
+                    return;
+                }
+                addIntelliJRunConfiguration(project, extension.getIdea(), run, prepareTask);
+            });
         });
 
         setupJarJar(project);
@@ -331,7 +331,7 @@ public class ModDevPluginImpl {
             configuration.setCanBeResolved(true);
             configuration.setCanBeConsumed(false);
 
-            JavaPluginExtension javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
+            var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
 
             configuration.attributes(attributes -> {
                 // Unfortunately, while we can hopefully rely on disambiguation rules to get us some of these, others run
@@ -346,7 +346,7 @@ public class ModDevPluginImpl {
                 attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
             });
 
-            TaskProvider<JarJar> jarJarTask = project.getTasks().register(sourceSet.getTaskName(null, "jarJar"), JarJar.class, jarJar -> {
+            var jarJarTask = project.getTasks().register(sourceSet.getTaskName(null, "jarJar"), JarJar.class, jarJar -> {
                 jarJar.setGroup(JAR_JAR_GROUP);
                 jarJar.setDescription("Create a combined JAR of project and selected dependencies");
 
@@ -362,7 +362,8 @@ public class ModDevPluginImpl {
 
     private static void addIntelliJRunConfiguration(Project project,
                                                     ExtraIdeaModel extraIdea,
-                                                    RunModel run) {
+                                                    RunModel run,
+                                                    PrepareRunForIde prepareTask) {
         var runConfigurations = getIntelliJRunConfigurations(project);
 
         if (runConfigurations == null) {
@@ -374,12 +375,14 @@ public class ModDevPluginImpl {
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        a.setJvmArgs("@%s %s".formatted(
-                RunUtils.getArgFile(project, run, true).getAbsolutePath(),
-                // TODO: this needs escaping
-                RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getArgument()));
+
+        a.setJvmArgs(
+                RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
+                + " "
+                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getArgument())
+        );
         a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-        a.setProgramParameters("@" + RunUtils.getArgFile(project, run, false).getAbsolutePath());
+        a.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
         runConfigurations.add(a);
     }
 
@@ -476,38 +479,3 @@ public class ModDevPluginImpl {
     }
 }
 
-abstract class ModFolder {
-    @Inject
-    public ModFolder() {
-    }
-
-    @InputFiles
-    abstract ConfigurableFileCollection getFolders();
-}
-
-abstract class ModFoldersProvider implements CommandLineArgumentProvider {
-    @Inject
-    public ModFoldersProvider() {
-    }
-
-    @Nested
-    abstract MapProperty<String, ModFolder> getModFolders();
-
-    @Internal
-    public String getArgument() {
-        return "\"-Dfml.modFolders=%s\"".formatted(
-                getModFolders().get().entrySet().stream()
-                        .<String>mapMulti((entry, output) -> {
-                            for (var directory : entry.getValue().getFolders()) {
-                                // Resources
-                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath().replace("\\", "\\\\"));
-                            }
-                        })
-                        .collect(Collectors.joining(File.pathSeparator)));
-    }
-
-    @Override
-    public Iterable<String> asArguments() {
-        return List.of(getArgument());
-    }
-}

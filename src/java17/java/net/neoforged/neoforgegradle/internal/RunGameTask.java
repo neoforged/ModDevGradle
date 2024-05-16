@@ -35,7 +35,7 @@ public abstract class RunGameTask extends JavaExec {
     @TaskAction
     public void exec() {
         // Create directory if needed
-        var runDir = getGameDirectory().get().getAsFile(); // store here, can't reference project inside doFirst for the config cache
+        var runDir = getGameDirectory().get().getAsFile();
         try {
             Files.createDirectories(runDir.toPath());
         } catch (IOException e) {
@@ -45,8 +45,6 @@ public abstract class RunGameTask extends JavaExec {
         classpath(getClasspathProvider());
         setWorkingDir(runDir);
         super.exec();
-        // Enable debug logging; doesn't work for FML???
-//            runClientTask.systemProperty("forge.logging.console.level", "debug");
     }
 
 }

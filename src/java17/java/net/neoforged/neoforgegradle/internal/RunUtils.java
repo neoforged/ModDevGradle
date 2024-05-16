@@ -6,17 +6,24 @@ import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
 
+import javax.inject.Inject;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -27,6 +34,14 @@ final class RunUtils {
 
     public static String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.0";
     public static String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
+
+    public static String escapeJvmArg(String arg) {
+        var escaped = arg.replace("\\", "\\\\").replace("\"", "\\\"");
+        if (escaped.contains(" ")) {
+            return "\"" + escaped + "\"";
+        }
+        return escaped;
+    }
 
     public static Provider<String> getRequiredType(Project project, RunModel runModel) {
         return runModel.getType().orElse(project.getProviders().provider(() -> {
@@ -149,6 +164,10 @@ final class RunUtils {
         return project.getLayout().getBuildDirectory().file("moddev/" + run.nameOf("", vm ? "runVmArgs" : "runProgramArgs") + ".txt").get().getAsFile();
     }
 
+    public static String getArgFileParameter(RegularFile argFile) {
+        return "@" + argFile.getAsFile().getAbsolutePath();
+    }
+
     public static CommandLineArgumentProvider getGradleModFoldersProvider(Project project, RunModel run) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, run));
@@ -198,4 +217,40 @@ final class RunUtils {
 }
 
 record AssetProperties(String assetIndex, String assetsRoot) {
+}
+
+abstract class ModFoldersProvider implements CommandLineArgumentProvider {
+    @Inject
+    public ModFoldersProvider() {
+    }
+
+    @Nested
+    abstract MapProperty<String, ModFolder> getModFolders();
+
+    @Internal
+    public String getArgument() {
+        return "-Dfml.modFolders=%s".formatted(
+                getModFolders().get().entrySet().stream()
+                        .<String>mapMulti((entry, output) -> {
+                            for (var directory : entry.getValue().getFolders()) {
+                                // Resources
+                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                            }
+                        })
+                        .collect(Collectors.joining(File.pathSeparator)));
+    }
+
+    @Override
+    public Iterable<String> asArguments() {
+        return List.of(getArgument());
+    }
+}
+
+abstract class ModFolder {
+    @Inject
+    public ModFolder() {
+    }
+
+    @InputFiles
+    abstract ConfigurableFileCollection getFolders();
 }

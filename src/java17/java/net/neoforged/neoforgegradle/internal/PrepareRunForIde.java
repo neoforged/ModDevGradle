@@ -84,7 +84,7 @@ abstract class PrepareRunForIde extends DefaultTask {
                         .map(File::getAbsolutePath)
                         .collect(Collectors.joining(File.pathSeparator));
             }
-            result.add("\"" + arg.replace("\\", "\\\\") + "\"");
+            result.add(RunUtils.escapeJvmArg(arg));
         }
         return result;
     }
@@ -111,6 +111,16 @@ abstract class PrepareRunForIde extends DefaultTask {
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
 
+        var userJvmArgs = getJvmArguments().get();
+        if (!userJvmArgs.isEmpty()) {
+            lines.add("");
+            lines.add("# User JVM Arguments");
+            for (var userJvmArg : userJvmArgs) {
+                lines.add(RunUtils.escapeJvmArg(userJvmArg));
+            }
+            lines.add("");
+        }
+
         // Write log4j2 configuration file
         File log4j2xml;
         try {
@@ -119,15 +129,7 @@ abstract class PrepareRunForIde extends DefaultTask {
             throw new RuntimeException(e);
         }
 
-        var userJvmArgs = getJvmArguments().get();
-        if (!userJvmArgs.isEmpty()) {
-            lines.add("");
-            lines.add("# User JVM Arguments");
-            lines.addAll(userJvmArgs);
-            lines.add("");
-        }
-
-        lines.add("\"-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath().replace("\\", "\\\\") + "\"");
+        lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath()));
         for (var prop : runConfig.props().entrySet()) {
             var propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {
@@ -160,7 +162,7 @@ abstract class PrepareRunForIde extends DefaultTask {
             } else if (arg.equals("{asset_index}")) {
                 arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add("\"" + arg.replace("\\", "\\\\") + "\"");
+            lines.add(RunUtils.escapeJvmArg(arg));
         }
 
         lines.add("# User Supplied Program Arguments");
@@ -170,6 +172,6 @@ abstract class PrepareRunForIde extends DefaultTask {
     }
 
     private static void addSystemProp(String name, String value, List<String> lines) {
-        lines.add("\"-D" + name + "=" + value.replace("\\", "\\\\") + "\"");
+        lines.add(RunUtils.escapeJvmArg("-D" + name + "=" + value));
     }
 }
