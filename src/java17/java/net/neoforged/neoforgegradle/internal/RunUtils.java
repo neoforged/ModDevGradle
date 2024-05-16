@@ -1,6 +1,5 @@
 package net.neoforged.neoforgegradle.internal;
 
-import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
 import net.neoforged.neoforgegradle.dsl.InternalModelHelper;
 import net.neoforged.neoforgegradle.dsl.ModModel;
 import net.neoforged.neoforgegradle.dsl.RunModel;
@@ -15,11 +14,17 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
+import org.intellij.lang.annotations.Language;
+import org.jetbrains.annotations.Nullable;
+import org.xml.sax.InputSource;
 
 import javax.inject.Inject;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -174,27 +179,24 @@ final class RunUtils {
         return modFoldersProvider;
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, ExtraIdeaModel idea, RunModel run) {
+    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable File outputDirectory, RunModel run) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(idea.getRunWithIdea().flatMap(runWithIdea -> {
-            if (runWithIdea) {
-                return run.getMods().map(mods -> mods.stream()
-                        .collect(Collectors.toMap(ModModel::getName, mod -> {
-                            var modFolder = project.getObjects().newInstance(ModFolder.class);
-                            modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
-                            for (var sourceSet : mod.getModSourceSets().get()) {
-                                // TODO: this is probably broken in multiproject builds
-                                var outDir = idea.getOutDirectory().get().getAsFile().toPath();
-                                var sourceSetDir = outDir.resolve(getIdeaOutName(sourceSet));
-                                modFolder.getFolders().from(sourceSetDir.resolve("classes"));
-                                modFolder.getFolders().from(sourceSetDir.resolve("resources"));
-                            }
-                            return modFolder;
-                        })));
-            } else {
-                return getModFoldersForGradle(project, run);
-            }
-        }));
+        if (outputDirectory != null) {
+            modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
+                    .collect(Collectors.toMap(ModModel::getName, mod -> {
+                        var modFolder = project.getObjects().newInstance(ModFolder.class);
+                        modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
+                        for (var sourceSet : mod.getModSourceSets().get()) {
+                            // TODO: this is probably broken in multiproject builds
+                            var sourceSetDir = outputDirectory.toPath().resolve(getIdeaOutName(sourceSet));
+                            modFolder.getFolders().from(sourceSetDir.resolve("classes"));
+                            modFolder.getFolders().from(sourceSetDir.resolve("resources"));
+                        }
+                        return modFolder;
+                    }))));
+        } else {
+            modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, run));
+        }
         return modFoldersProvider;
     }
 
@@ -213,6 +215,59 @@ final class RunUtils {
                     }
                     return modFolder;
                 })));
+    }
+
+    // TODO: Loom has unit tests for this... Probably a good idea!
+    @Language("xpath")
+    public static final String IDEA_DELEGATED_BUILD_XPATH = "/project/component[@name='GradleSettings']/option[@name='linkedExternalProjectsSettings']/GradleProjectSettings/option[@name='delegatedBuild']/@value";
+    @Language("xpath")
+    public static final String IDEA_OUTPUT_XPATH = "/project/component[@name='ProjectRootManager']/output/@url";
+
+    /**
+     * Returns the configured output directory, only if "Build and run using" is set to "IDEA".
+     * In other cases, returns {@null}.
+     */
+    @Nullable
+    static File getIntellijOutputDirectory(Project project) {
+        // TODO: this doesn't work in our little testproject because the .idea folder is one level above the root...
+        var projectDir = project.getRootDir();
+        var ideaDir = new File(projectDir, ".idea");
+        if (!ideaDir.exists()) {
+            return null;
+        }
+
+        // Check if IntelliJ is configured to build with Gradle.
+        var gradleXml = new File(ideaDir, "gradle.xml");
+        var delegatedBuild = evaluateXPath(gradleXml, IDEA_DELEGATED_BUILD_XPATH);
+        if (!"false".equals(delegatedBuild)) {
+            return null;
+        }
+
+        // Find configured output path
+        var miscXml = new File(ideaDir, "misc.xml");
+        String outputDirUrl = evaluateXPath(miscXml, IDEA_OUTPUT_XPATH);
+        if (outputDirUrl == null) {
+            // Apparently IntelliJ defaults to out/ now?
+            outputDirUrl = "file://$PROJECT_DIR$/out";
+        }
+
+        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", projectDir.getAbsolutePath());
+        outputDirUrl = outputDirUrl.replaceAll("^file:", "");
+
+        // The output dir can start with something like "//C:\"; File can handle it.
+        return new File(outputDirUrl);
+    }
+
+    @Nullable
+    private static String evaluateXPath(File file, @Language("xpath") String expression) {
+        try (var fis = new FileInputStream(file)) {
+            String result = XPathFactory.newInstance().newXPath().evaluate(expression, new InputSource(fis));
+            return result.isBlank() ? null : result;
+        } catch (FileNotFoundException | XPathExpressionException ignored) {
+            return null;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to evaluate xpath " + expression + " on file " + file, e);
+        }
     }
 }
 

@@ -1,6 +1,5 @@
 package net.neoforged.neoforgegradle.internal;
 
-import net.neoforged.neoforgegradle.dsl.ExtraIdeaModel;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
@@ -34,6 +33,7 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -305,14 +305,23 @@ public class ModDevPluginImpl {
                 taskTriggers.afterSync(idePostSyncTask);
             }
 
-            extension.getRuns().forEach(run -> {
-                var prepareTask = prepareRunTasks.get(run).get();
-                if (!prepareTask.getEnabled()) {
-                    project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
-                    return;
-                }
-                addIntelliJRunConfiguration(project, extension.getIdea(), run, prepareTask);
-            });
+
+            var runConfigurations = getIntelliJRunConfigurations(project);
+
+            if (runConfigurations == null) {
+                project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
+            } else {
+                var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
+
+                extension.getRuns().forEach(run -> {
+                    var prepareTask = prepareRunTasks.get(run).get();
+                    if (!prepareTask.getEnabled()) {
+                        project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
+                        return;
+                    }
+                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                });
+            }
         });
 
         setupJarJar(project);
@@ -361,16 +370,10 @@ public class ModDevPluginImpl {
     }
 
     private static void addIntelliJRunConfiguration(Project project,
-                                                    ExtraIdeaModel extraIdea,
+                                                    RunConfigurationContainer runConfigurations,
+                                                    @Nullable File outputDirectory,
                                                     RunModel run,
                                                     PrepareRunForIde prepareTask) {
-        var runConfigurations = getIntelliJRunConfigurations(project);
-
-        if (runConfigurations == null) {
-            project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configuration {}", run);
-            return;
-        }
-
         var a = new Application(StringUtils.capitalize(run.getName()), project);
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
@@ -379,7 +382,7 @@ public class ModDevPluginImpl {
         a.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
-                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, extraIdea, run).getArgument())
+                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
         );
         a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         a.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));

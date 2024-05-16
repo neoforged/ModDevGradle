@@ -12,13 +12,11 @@ import java.util.List;
 public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
-    private final ExtraIdeaModel idea;
 
     @Inject
     public NeoForgeExtension(Project project) {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
-        idea = project.getObjects().newInstance(ExtraIdeaModel.class);
 
         getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
         getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
@@ -56,9 +54,5 @@ public abstract class NeoForgeExtension {
 
     public NamedDomainObjectSet<RunModel> getRuns() {
         return runs;
-    }
-
-    public ExtraIdeaModel getIdea() {
-        return idea;
     }
 }

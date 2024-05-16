@@ -43,6 +43,7 @@ dependencies {
     java17Implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
     java17Implementation "net.fabricmc:fabric-loom-native:0.2.1"
     java17Implementation "net.neoforged:JarJarMetadata:0.4.1"
+    java17Implementation "com.intellij:annotations:9.0.4"
     api "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
     api "net.neoforged:JarJarMetadata:0.4.1"
 
