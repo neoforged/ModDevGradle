@@ -306,7 +306,7 @@ public class ModDevPluginImpl {
             }
 
 
-            var runConfigurations = getIntelliJRunConfigurations(project);
+            var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
 
             if (runConfigurations == null) {
                 project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
@@ -418,7 +418,7 @@ public class ModDevPluginImpl {
 
     private static void createDummyFilesInLocalRepository(ProjectLayout layout) {
         var emptyJarFile = layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar").get().getAsFile().toPath();
-        if (!Files.exists(emptyJarFile)) {
+        if (!Files.exists(emptyJarFile)) { // TODO: should do this with a value source!
             try {
                 Files.createDirectories(emptyJarFile.getParent());
                 Files.createFile(emptyJarFile);
