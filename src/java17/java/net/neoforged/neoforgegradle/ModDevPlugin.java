@@ -13,7 +13,7 @@ import org.gradle.util.GradleVersion;
  * by the two classes of the same name.
  */
 public class ModDevPlugin implements Plugin<Project> {
-    private static final GradleVersion MIN_VERSION = GradleVersion.version("8.7");
+    static final GradleVersion MIN_VERSION = GradleVersion.version("8.7");
 
     @Override
     public void apply(Project project) {

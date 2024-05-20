@@ -1,6 +1,7 @@
 
 plugins {
-    id 'net.neoforged.neoforgegradle.moddev'
+    id 'net.neoforged.moddev'
+    id 'net.neoforged.moddev.junit'
 }
 
 repositories {

@@ -1,12 +1,15 @@
 package net.neoforged.neoforgegradle.internal;
 
+import com.google.gson.JsonArray;
 import net.neoforged.neoforgegradle.dsl.NeoForgeExtension;
 import net.neoforged.neoforgegradle.dsl.RunModel;
 import net.neoforged.neoforgegradle.internal.utils.ExtensionUtils;
 import net.neoforged.neoforgegradle.internal.utils.StringUtils;
 import net.neoforged.neoforgegradle.tasks.JarJar;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -18,9 +21,11 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -87,7 +92,7 @@ public class ModDevPluginImpl {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.4").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.9").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
@@ -325,6 +330,61 @@ public class ModDevPluginImpl {
         });
 
         setupJarJar(project);
+
+        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, neoForgeModDevLibrariesDependency);
+    }
+
+    private void setupTesting(Project project,
+                              Configuration userDevConfigOnly,
+                              Configuration neoForgeModDevModules,
+                              TaskProvider<DownloadAssetsTask> downloadAssets,
+                              TaskProvider<Task> idePostSyncTask,
+                              Provider<ModuleDependency> neoForgeModDevLibrariesDependency) {
+        var tasks = project.getTasks();
+        var layout = project.getLayout();
+        var configurations = project.getConfigurations();
+
+        var legacyClasspathConfiguration = configurations.create("fmljunitLibraries", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.attributes(attributes -> {
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+            });
+            spec.withDependencies(set -> {
+                set.addLater(neoForgeModDevLibrariesDependency);
+            });
+        });
+
+        var writeLcpTask = tasks.register("writeFmlJunitClasspath", WriteLegacyClasspath.class, writeLcp -> {
+            writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/fmljunitrunVmArgsLegacyClasspath.txt"));
+            writeLcp.getEntries().from(legacyClasspathConfiguration);
+            // TODO WHy? writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
+        });
+
+        var runDirectory = layout.getBuildDirectory().dir("fmljunitrun");
+        var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
+        var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
+        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareRunForIde.class, task -> {
+            task.getGameDirectory().set(runDirectory);
+            task.getVmArgsFile().set(testVmArgsFile);
+            task.getProgramArgsFile().set(fmlJunitArgsFile);
+            task.getRunType().set("client"); // unit testing simply defaults to client
+            task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+            task.getModules().from(neoForgeModDevModules);
+            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+        });
+        idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+
+        tasks.withType(Test.class).configureEach(task -> {
+            task.dependsOn(prepareRunTask);
+
+            // The FML JUnit plugin uses this system property to read a
+            // file containing the program arguments needed to launch
+            task.systemProperty("fml.junit.argsfile", RunUtils.escapeJvmArg(fmlJunitArgsFile.get().getAsFile().getAbsolutePath()));
+            task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get())));
+        });
     }
 
     private static void setupJarJar(Project project) {

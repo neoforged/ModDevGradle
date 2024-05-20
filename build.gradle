@@ -97,9 +97,13 @@ tasks.withType(GenerateModuleMetadata) {
 gradlePlugin {
     // Define the plugin
     plugins {
-        neoforgegradle {
-            id = 'net.neoforged.neoforgegradle.moddev'
+        moddev {
+            id = 'net.neoforged.moddev'
             implementationClass = 'net.neoforged.neoforgegradle.ModDevPlugin'
+        }
+        junit {
+            id = 'net.neoforged.moddev.junit'
+            implementationClass = 'net.neoforged.neoforgegradle.JUnitPlugin'
         }
     }
 }

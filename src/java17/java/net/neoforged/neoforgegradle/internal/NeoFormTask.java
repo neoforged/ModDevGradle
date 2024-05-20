@@ -17,6 +17,12 @@ abstract public class NeoFormTask extends DefaultTask {
     @InputFiles
     abstract ConfigurableFileCollection getNeoFormRuntime();
 
+    @Inject
+    protected abstract JavaToolchainService getJavaToolchainService();
+
+    @Inject
+    protected abstract ExecOperations getExecOperations();
+
     protected final void run(List<String> args) {
         var launcher = getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)));
 
@@ -28,11 +34,5 @@ abstract public class NeoFormTask extends DefaultTask {
             execSpec.args(args);
         });
     }
-
-    @Inject
-    protected abstract JavaToolchainService getJavaToolchainService();
-
-    @Inject
-    protected abstract ExecOperations getExecOperations();
 
 }
