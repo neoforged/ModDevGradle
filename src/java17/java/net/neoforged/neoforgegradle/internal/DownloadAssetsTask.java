@@ -9,7 +9,7 @@ import org.gradle.api.tasks.TaskAction;
 import javax.inject.Inject;
 import java.util.List;
 
-abstract class DownloadAssetsTask extends NeoFormTask {
+abstract class DownloadAssetsTask extends NeoFormRuntimeTask {
     @Inject
     public DownloadAssetsTask() {
     }

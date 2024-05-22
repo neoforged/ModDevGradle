@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
 
-abstract class CreateMinecraftArtifactsTask extends NeoFormTask {
+abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     @Inject
     public CreateMinecraftArtifactsTask() {
     }

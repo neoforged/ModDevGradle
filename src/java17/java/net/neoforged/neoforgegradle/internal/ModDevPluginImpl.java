@@ -92,7 +92,7 @@ public class ModDevPluginImpl {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.9").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.10").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
@@ -331,7 +331,7 @@ public class ModDevPluginImpl {
 
         setupJarJar(project);
 
-        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, neoForgeModDevLibrariesDependency);
+        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
     }
 
     private void setupTesting(Project project,
@@ -339,6 +339,7 @@ public class ModDevPluginImpl {
                               Configuration neoForgeModDevModules,
                               TaskProvider<DownloadAssetsTask> downloadAssets,
                               TaskProvider<Task> idePostSyncTask,
+                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency) {
         var tasks = project.getTasks();
         var layout = project.getLayout();
@@ -359,17 +360,16 @@ public class ModDevPluginImpl {
         var writeLcpTask = tasks.register("writeFmlJunitClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/fmljunitrunVmArgsLegacyClasspath.txt"));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
-            // TODO WHy? writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
+            writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
         var runDirectory = layout.getBuildDirectory().dir("fmljunitrun");
         var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
         var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
-        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareRunForIde.class, task -> {
+        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareArgsForTesting.class, task -> {
             task.getGameDirectory().set(runDirectory);
             task.getVmArgsFile().set(testVmArgsFile);
             task.getProgramArgsFile().set(fmlJunitArgsFile);
-            task.getRunType().set("client"); // unit testing simply defaults to client
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
