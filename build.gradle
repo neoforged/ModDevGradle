@@ -108,7 +108,6 @@ tasks.withType(GenerateModuleMetadata) {
 }
 
 gradlePlugin {
-    // Define the plugin
     plugins {
         moddev {
             id = 'net.neoforged.moddev'
