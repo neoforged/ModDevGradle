@@ -2,6 +2,7 @@ plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
     id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
+    id 'net.neoforged.jarcompatibilitychecker' version '0.1.3'
 }
 
 group = 'net.neoforged'
@@ -17,6 +18,10 @@ changelog {
     from '0.1'
     // For fine-grained changelog publication control
     disableAutomaticPublicationRegistration()
+}
+
+checkJarCompatibility {
+    isAPI = true
 }
 
 repositories {
