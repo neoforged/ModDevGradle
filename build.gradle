@@ -1,10 +1,23 @@
 plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
+    id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
 }
 
-group = "net.neoforged"
-version = "1.0-SNAPSHOT"
+group = 'net.neoforged'
+base {
+    archivesName = "moddev-gradle"
+}
+gradleutils.version {
+    branches.suffixBranch()
+}
+project.version = gradleutils.version
+
+changelog {
+    from '0.1'
+    // For fine-grained changelog publication control
+    disableAutomaticPublicationRegistration()
+}
 
 repositories {
     mavenCentral()
@@ -99,11 +112,11 @@ gradlePlugin {
     plugins {
         moddev {
             id = 'net.neoforged.moddev'
-            implementationClass = 'net.neoforged.neoforgegradle.ModDevPlugin'
+            implementationClass = 'net.neoforged.moddevgradle.ModDevPlugin'
         }
         junit {
             id = 'net.neoforged.moddev.junit'
-            implementationClass = 'net.neoforged.neoforgegradle.JUnitPlugin'
+            implementationClass = 'net.neoforged.moddevgradle.JUnitPlugin'
         }
     }
 }

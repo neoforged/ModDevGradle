@@ -2,7 +2,11 @@
 
 ## Features
 
-- Automatically creates and uses a development-friendly logging configuration for the game
+- Creates the necessary artifacts to compile Minecraft mods for [NeoForge](https://neoforged.net/)
+- Runs the game from Gradle or IntelliJ for debugging and testing
+- Automatically creates and uses a development-friendly logging configuration for the testing the mod
+- Supports the [Gradle configuration cache](https://docs.gradle.org/current/userguide/configuration_cache.html) to speed
+  up repeated runs of Gradle tasks
 
 ## Usage
 
@@ -25,7 +29,7 @@ In `build.gradle`:
 
 ```groovy
 plugins {
-    id 'net.neoforged.neoforgegradle.moddev'
+    id 'net.neoforged.moddev'
 }
 
 repositories {
@@ -34,7 +38,7 @@ repositories {
 
 neoForge {
     version = "<version>"
-    
+
     runs {
         client {
             client()
