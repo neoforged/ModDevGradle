@@ -45,11 +45,11 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         // When running NeoForm as part of a Gradle build, we store our caches under Gradles
         // home directory for user convenience (they will be picked up by Gradle cache actions in CI, etc.)
         var gradleHome = project.getGradle().getGradleUserHomeDir();
-        var cacheDir = new File(gradleHome, "caches/neoform");
+        var cacheDir = new File(gradleHome, "caches/neoformruntime");
         getHomeDirectory().set(cacheDir);
 
         // Store temporary working directories in this projects build directory such that gradle clean removes them
-        getWorkDirectory().set(project.getLayout().getBuildDirectory().dir("tmp/neoform"));
+        getWorkDirectory().set(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
     }
 
     protected final void run(List<String> args) {
