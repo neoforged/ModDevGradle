@@ -14,6 +14,7 @@ import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
@@ -83,10 +84,46 @@ public class ModDevPluginImpl {
         addTemporaryRepositories(repositories);
 
         var configurations = project.getConfigurations();
-        var neoForgeModDev = configurations.create("neoForgeModDev", files -> {
-            files.setCanBeConsumed(false);
-            files.setCanBeResolved(true);
-            //files.defaultDependencies(spec -> spec.addLater(neoForgeUserdevDependency));
+        // Configuration for all artifact that should be passed to NFRT for preventing repeated downloads
+        var neoFormRuntimeArtifactManifestNeoForgeClasses = configurations.create("neoFormRuntimeArtifactManifestNeoForgeClasses", spec -> {
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(dependencies -> {
+                // Add the dep on NeoForge itself
+                dependencies.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
+                            });
+                }));
+            });
+        });
+        // Configuration for all artifact that should be passed to NFRT for preventing repeated downloads
+        var neoFormRuntimeArtifactManifestNeoForgeSources = configurations.create("neoFormRuntimeArtifactManifestNeoForgeSources", spec -> {
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(dependencies -> {
+                // Add the dep on NeoForge itself
+                dependencies.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            . attributes(attributes -> {
+                                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
+                                attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
+                            });
+                }));
+            });
+        });
+        var neoFormRuntimeArtifactManifestNeoForm = configurations.create("neoFormRuntimeArtifactManifestNeoForm", spec -> {
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(dependencies -> {
+                dependencies.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-dependencies");
+                            });
+                }));
+            });
         });
         var neoFormRuntimeConfig = configurations.create("neoFormRuntime", files -> {
             files.setCanBeConsumed(false);
@@ -130,7 +167,25 @@ public class ModDevPluginImpl {
         var tasks = project.getTasks();
 
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
-            task.getNeoForgeModDevArtifacts().set(neoForgeModDev.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
+            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForgeClasses.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
+                return results.stream().map(result -> {
+                    var gav = guessMavenGav(result);
+                    return new ArtifactManifestEntry(
+                            gav,
+                            result.getFile()
+                    );
+                }).collect(Collectors.toSet());
+            }));
+            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForgeSources.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
+                return results.stream().map(result -> {
+                    var gav = guessMavenGav(result);
+                    return new ArtifactManifestEntry(
+                            gav,
+                            result.getFile()
+                    );
+                }).collect(Collectors.toSet());
+            }));
+            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForm.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
                 return results.stream().map(result -> {
                     var gav = guessMavenGav(result);
                     return new ArtifactManifestEntry(
