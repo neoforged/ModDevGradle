@@ -1,6 +1,5 @@
 package net.neoforged.moddevgradle.internal;
 
-import com.google.gson.JsonArray;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -10,6 +9,7 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -80,7 +80,7 @@ public class ModDevPluginImpl {
             repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
             repo.metadataSources(sources -> sources.mavenPom());
         }));
-        repositories.add(repositories.mavenLocal()); // TODO TEMP
+        addTemporaryRepositories(repositories);
 
         var configurations = project.getConfigurations();
         var neoForgeModDev = configurations.create("neoForgeModDev", files -> {
@@ -332,6 +332,34 @@ public class ModDevPluginImpl {
         setupJarJar(project);
 
         setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
+    }
+
+    private void addTemporaryRepositories(RepositoryHandler repositories) {
+
+        repositories.maven(repo -> {
+            repo.setName("Temporary Repo for minecraft-dependencies");
+            repo.setUrl("https://prmaven.neoforged.net/GradleMinecraftDependencies/pr1");
+            repo.content(content -> {
+                content.includeModule("net.neoforged", "minecraft-dependencies");
+            });
+        });
+
+        repositories.maven(repo -> {
+            repo.setName("Temporary Repo for neoform");
+            repo.setUrl("https://prmaven.neoforged.net/NeoForm/pr10");
+            repo.content(content -> {
+                content.includeModule("net.neoforged", "neoform");
+            });
+        });
+
+        repositories.maven(repo -> {
+            repo.setName("Temporary Repo for neoforge");
+            repo.setUrl("https://prmaven.neoforged.net/NeoForged/pr959");
+            repo.content(content -> {
+                content.includeModule("net.neoforged", "neoforge");
+            });
+        });
+
     }
 
     private void setupTesting(Project project,
