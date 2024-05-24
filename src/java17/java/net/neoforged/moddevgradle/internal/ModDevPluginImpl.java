@@ -214,6 +214,7 @@ public class ModDevPluginImpl {
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
+            task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
         });
 
