@@ -248,9 +248,14 @@ public class ModDevPlugin implements Plugin<Project> {
         var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
+            config.withDependencies(dependencies -> {
+                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+                // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
+                // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
+                dependencies.addLater(neoForgeModDevLibrariesDependency);
+                dependencies.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
+            });
         });
-        project.getDependencies().addProvider(localRuntime.getName(), minecraftClassesArtifact);
-        project.getDependencies().add(localRuntime.getName(), RunUtils.DEV_LAUNCH_GAV);
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
