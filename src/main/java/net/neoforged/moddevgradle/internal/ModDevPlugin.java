@@ -57,6 +57,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static final String JAR_JAR_GROUP = "jarjar";
 
+    private static final String TASK_GROUP = "mod development";
+
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
@@ -344,7 +346,7 @@ public class ModDevPlugin implements Plugin<Project> {
             idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
-                task.setGroup("neoforge moddev");
+                task.setGroup(TASK_GROUP);
 
                 // Launch with the Java version used in the project
                 var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);

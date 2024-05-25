@@ -65,6 +65,8 @@ dependencies {
     testImplementation(enforcedPlatform("org.junit:junit-bom:5.10.2"))
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-params'
+    testImplementation 'org.assertj:assertj-core:3.25.1'
+    testImplementation gradleTestKit()
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -118,4 +120,10 @@ gradlePlugin {
 
 test {
     useJUnitPlatform()
+}
+
+// The java-gradle-plugin ignores the java8 source-set we added to the main source sets classpath
+// For testkit tests to work, this needs to be present
+tasks.withType(PluginUnderTestMetadata).configureEach {
+    it.pluginClasspath.from(sourceSets.java8.output.classesDirs)
 }
