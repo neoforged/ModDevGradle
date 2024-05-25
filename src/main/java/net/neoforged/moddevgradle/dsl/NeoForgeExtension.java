@@ -1,7 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
+import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
-import org.gradle.api.NamedDomainObjectSet;
 import org.gradle.api.Project;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
@@ -51,11 +51,19 @@ public abstract class NeoForgeExtension {
 
     public abstract ListProperty<String> getAccessTransformers();
 
-    public NamedDomainObjectSet<ModModel> getMods() {
+    public NamedDomainObjectContainer<ModModel> getMods() {
         return mods;
     }
 
-    public NamedDomainObjectSet<RunModel> getRuns() {
+    public void mods(Action<NamedDomainObjectContainer<ModModel>> action) {
+        action.execute(mods);
+    }
+
+    public NamedDomainObjectContainer<RunModel> getRuns() {
         return runs;
+    }
+
+    public void runs(Action<NamedDomainObjectContainer<RunModel>> action) {
+        action.execute(runs);
     }
 }
