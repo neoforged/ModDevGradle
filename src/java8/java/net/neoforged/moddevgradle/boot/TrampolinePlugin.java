@@ -17,7 +17,7 @@ public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<
 
     private final String pluginClassName;
 
-    protected TrampolinePlugin(String pluginClassName) {
+    TrampolinePlugin(String pluginClassName) {
         this.pluginClassName = pluginClassName;
     }
 
