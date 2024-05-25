@@ -11,6 +11,9 @@ import org.gradle.api.tasks.SourceSetContainer;
 import javax.inject.Inject;
 import java.util.List;
 
+/**
+ * Model of a mod. This tells the moddev plugin which classes and resources need to be combined to produce a valid mod.
+ */
 public abstract class ModModel implements Named {
     /**
      * Created on-demand if the user wants to add content to this mod using cross-project references

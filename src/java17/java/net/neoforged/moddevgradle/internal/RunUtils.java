@@ -166,7 +166,7 @@ final class RunUtils {
      * @param vm {@code true} for VM args, {@code false} for program args
      */
     public static File getArgFile(Project project, RunModel run, boolean vm) {
-        return project.getLayout().getBuildDirectory().file("moddev/" + run.nameOf("", vm ? "runVmArgs" : "runProgramArgs") + ".txt").get().getAsFile();
+        return project.getLayout().getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", vm ? "runVmArgs" : "runProgramArgs") + ".txt").get().getAsFile();
     }
 
     public static String getArgFileParameter(RegularFile argFile) {

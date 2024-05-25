@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -305,7 +306,7 @@ public class ModDevPluginImpl {
 
             var sourceSet = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class).getByName("main");
 
-            var legacyClasspathConfiguration = configurations.create(run.nameOf("", "legacyClasspath"), spec -> {
+            var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.attributes(attributes -> {
@@ -319,14 +320,14 @@ public class ModDevPluginImpl {
                 spec.getDependencies().addAllLater(run.getAdditionalRuntimeClasspath().getDependencies());
             });
 
-            var writeLcpTask = tasks.register(run.nameOf("write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
-                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/" + run.nameOf("", "legacyClasspath") + ".txt"));
+            var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt"));
                 writeLcp.getEntries().from(legacyClasspathConfiguration);
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
             var runDirectory = layout.getProjectDirectory().dir("run");
-            var prepareRunTask = tasks.register(run.nameOf("prepare", "run"), PrepareRunForIde.class, task -> {
+            var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(runDirectory);
                 task.getVmArgsFile().set(RunUtils.getArgFile(project, run, true));
                 task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, false));
@@ -344,7 +345,7 @@ public class ModDevPluginImpl {
             prepareRunTasks.put(run, prepareRunTask);
             idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
-            tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
+            tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
                 // This records a dependency on compiling and processing the resources of the source set.
                 task.getClasspathProvider().from(sourceSet.getRuntimeClasspath());

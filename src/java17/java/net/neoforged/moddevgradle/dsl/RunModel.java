@@ -11,17 +11,18 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 
+/**
+ * Model of a run. Each run will generate a corresponding IDE run and {@code runXxx} gradle task.
+ */
 public abstract class RunModel implements Named, Dependencies {
     private final String name;
     /**
      * Sanitized name: converted to upper camel case and with invalid characters removed.
      */
-    private final String baseName;
+    final String baseName;
 
     private final Configuration configuration;
 
@@ -33,7 +34,7 @@ public abstract class RunModel implements Named, Dependencies {
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 
-        configuration = project.getConfigurations().create(nameOf("", "additionalRuntimeClasspath"), configuration -> {
+        configuration = project.getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
             configuration.setCanBeResolved(false);
             configuration.setCanBeConsumed(false);
         });
@@ -79,18 +80,6 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     public abstract DependencyCollector getAdditionalRuntimeClasspath();
-
-    // TODO: Move out of DSL class
-    @ApiStatus.Internal
-    public String getBaseName() {
-        return baseName;
-    }
-
-    // TODO: Move out of DSL class
-    @ApiStatus.Internal
-    public String nameOf(@Nullable String prefix, @Nullable String suffix) {
-        return StringUtils.uncapitalize((prefix == null ? "" : prefix) + this.baseName + (suffix == null ? "" : StringUtils.capitalize(suffix)));
-    }
 
     @Override
     public String toString() {
