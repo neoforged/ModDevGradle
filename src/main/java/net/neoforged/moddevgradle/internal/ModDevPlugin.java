@@ -6,6 +6,7 @@ import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
+import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
@@ -50,12 +51,13 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ModDevPluginImpl {
+public class ModDevPlugin implements Plugin<Project> {
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
 
     private static final String JAR_JAR_GROUP = "jarjar";
 
+    @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
