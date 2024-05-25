@@ -53,6 +53,11 @@ public abstract class RunModel implements Named, Dependencies {
         getSystemProperties().put(key, value);
     }
 
+    /**
+     * Allows overriding the main class for this run.
+     */
+    public abstract Property<String> getMainClass();
+
     public abstract ListProperty<String> getProgramArguments();
 
     public void programArgument(String arg) {

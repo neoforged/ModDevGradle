@@ -355,6 +355,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     props = new HashMap<>(props);
                     return props;
                 }));
+                task.getMainClass().set(run.getMainClass());
                 task.getProgramArguments().set(run.getProgramArguments());
             });
             prepareRunTasks.put(run, prepareRunTask);
