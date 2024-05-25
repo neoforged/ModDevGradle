@@ -149,7 +149,7 @@ final class RunUtils {
                         </Logger>
 
                         <Root level="debug">
-                            <AppenderRef ref="Console" level="debug"/>
+                            <AppenderRef ref="Console" level="${sys:forge.logging.console.level:-debug}"/>
                             <AppenderRef ref="ServerGuiConsole" level="${sys:forge.logging.console.level:-info}"/>
                             <AppenderRef ref="File" level="${sys:forge.logging.file.level:-info}"/>
                             <AppenderRef ref="DebugFile" level="${sys:forge.logging.debugFile.level:-debug}"/>
