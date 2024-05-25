@@ -362,59 +362,14 @@ public class ModDevPluginImpl {
             });
         });
 
-        // IDEA Sync has no real notion of tasks or providers or similar
-        project.afterEvaluate(ignored -> {
-            var settings = getIntelliJProjectSettings(project);
-            if (settings != null) {
-                var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
-                // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
-                taskTriggers.afterSync(idePostSyncTask);
-            }
-
-            var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
-
-            if (runConfigurations == null) {
-                project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
-            } else {
-                var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
-
-                extension.getRuns().forEach(run -> {
-                    var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
-                        return;
-                    }
-                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
-                });
-            }
-        });
 
         setupJarJar(project);
 
         setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
 
-        // Set up stuff for Eclipse
-        var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
-        if (eclipseModel != null) {
-            // Make sure our post-sync task runs on Eclipse
-            eclipseModel.synchronizationTasks(idePostSyncTask);
+        configureIntelliJModel(project, idePostSyncTask, extension, prepareRunTasks);
 
-            // When using separate artifacts for classes and sources, link them
-            if (!shouldUseCombinedSourcesAndClassesArtifact()) {
-                var fileClasspath = eclipseModel.getClasspath().getFile();
-                fileClasspath.whenMerged((org.gradle.plugins.ide.eclipse.model.Classpath classpath) -> {
-                    var classesPath = createArtifacts.get().getCompiledArtifact().get().getAsFile();
-                    var sourcesPath = createArtifacts.get().getSourcesArtifact().get().getAsFile();
-
-                    for (var entry : classpath.getEntries()) {
-                        System.out.println(entry);
-                        if (entry instanceof Library library && classesPath.equals(new File(library.getPath()))) {
-                            library.setSourcePath(classpath.fileReference(sourcesPath));
-                        }
-                    }
-                });
-            }
-        }
+        configureEclipseModel(project, idePostSyncTask, createArtifacts);
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
@@ -565,6 +520,35 @@ public class ModDevPluginImpl {
         runConfigurations.add(a);
     }
 
+    private static void configureIntelliJModel(Project project, TaskProvider<Task> idePostSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+        // IDEA Sync has no real notion of tasks or providers or similar
+        project.afterEvaluate(ignored -> {
+            var settings = getIntelliJProjectSettings(project);
+            if (settings != null) {
+                var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
+                // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
+                taskTriggers.afterSync(idePostSyncTask);
+            }
+
+            var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
+
+            if (runConfigurations == null) {
+                project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
+            } else {
+                var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
+
+                extension.getRuns().forEach(run -> {
+                    var prepareTask = prepareRunTasks.get(run).get();
+                    if (!prepareTask.getEnabled()) {
+                        project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
+                        return;
+                    }
+                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                });
+            }
+        });
+    }
+
     @Nullable
     private static IdeaProject getIntelliJProject(Project project) {
         var ideaModel = ExtensionUtils.findExtension(project, "idea", IdeaModel.class);
@@ -623,6 +607,37 @@ public class ModDevPluginImpl {
             gav += "@" + ext;
         }
         return gav;
+    }
+
+    private static void configureEclipseModel(Project project,
+                                              TaskProvider<Task> idePostSyncTask,
+                                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts) {
+        // Set up stuff for Eclipse
+        var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
+        if (eclipseModel == null) {
+            return;
+        }
+
+        // Make sure our post-sync task runs on Eclipse
+        eclipseModel.synchronizationTasks(idePostSyncTask);
+
+        // When using separate artifacts for classes and sources, link them
+        if (!shouldUseCombinedSourcesAndClassesArtifact()) {
+            var fileClasspath = eclipseModel.getClasspath().getFile();
+            fileClasspath.whenMerged((org.gradle.plugins.ide.eclipse.model.Classpath classpath) -> {
+                var classesPath = createArtifacts.get().getCompiledArtifact().get().getAsFile();
+                var sourcesPath = createArtifacts.get().getSourcesArtifact().get().getAsFile();
+
+                for (var entry : classpath.getEntries()) {
+                    System.out.println(entry);
+                    if (entry instanceof Library library && classesPath.equals(new File(library.getPath()))) {
+                        library.setSourcePath(classpath.fileReference(sourcesPath));
+                    }
+                }
+            });
+        }
+
+        // Set up runs
     }
 }
 
