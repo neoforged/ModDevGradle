@@ -47,6 +47,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     abstract ConfigurableFileCollection getAccessTransformers();
 
     @OutputFile
+    abstract RegularFileProperty getCompiledWithSourcesArtifact();
+
+    @OutputFile
     abstract RegularFileProperty getCompiledArtifact();
 
     @OutputFile
@@ -108,7 +111,8 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
                 "--dist", "joined",
                 "--write-result", "compiled:" + getCompiledArtifact().get().getAsFile().getAbsolutePath(),
                 "--write-result", "sources:" + getSourcesArtifact().get().getAsFile().getAbsolutePath(),
-                "--write-result", "clientResources:" + getResourcesArtifact().get().getAsFile().getAbsolutePath()
+                "--write-result", "clientResources:" + getResourcesArtifact().get().getAsFile().getAbsolutePath(),
+                "--write-result", "compiledWithSources:" + getCompiledWithSourcesArtifact().get().getAsFile().getAbsolutePath()
         );
 
         run(args);

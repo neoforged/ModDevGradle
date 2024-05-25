@@ -19,7 +19,7 @@ import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
-import org.gradle.api.file.ProjectLayout;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -30,6 +30,9 @@ import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.gradle.plugins.ide.eclipse.model.Library;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.jetbrains.annotations.Nullable;
@@ -41,9 +44,7 @@ import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -78,10 +79,6 @@ public class ModDevPluginImpl {
             repo.metadataSources(sources -> sources.artifact());
             // TODO: Filter known groups that they ship and dont just run everything against it
         }));
-        repositories.addLast(repositories.maven(repo -> {
-            repo.setUrl(project.getLayout().getBuildDirectory().map(dir -> dir.dir("repo").getAsFile().getAbsolutePath()));
-            repo.metadataSources(sources -> sources.mavenPom());
-        }));
         addTemporaryRepositories(repositories);
 
         var configurations = project.getConfigurations();
@@ -107,7 +104,7 @@ public class ModDevPluginImpl {
                 // Add the dep on NeoForge itself
                 dependencies.addLater(extension.getVersion().map(version -> {
                     return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            . attributes(attributes -> {
+                            .attributes(attributes -> {
                                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
                                 attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
                             });
@@ -130,7 +127,7 @@ public class ModDevPluginImpl {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.16").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.17").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
@@ -208,6 +205,7 @@ public class ModDevPluginImpl {
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getCompileClasspath().from(minecraftCompileClasspath);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
+            task.getCompiledWithSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-merged.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
             task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
             task.getDummyArtifact().set(layout.getBuildDirectory().file("dummy_artifact.jar"));
@@ -219,20 +217,20 @@ public class ModDevPluginImpl {
             task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
         });
 
-        project.getProviders().of(CreateEmptyRepoFilesValueSource.class, spec -> {
-            spec.getParameters().getRepoDirectory().set(layout.getBuildDirectory().dir("repo"));
-        }).get();
-
-        // This is an empty, but otherwise valid jar file that creates an implicit dependency on the task
-        // creating our repo, while not creating duplicates on the classpath.
-        var minecraftDummyArtifact = createArtifacts.map(task -> project.files(task.getDummyArtifact()));
+        // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
+        // Otherwise, attaching sources is a pain for IJ users.
+        Provider<ConfigurableFileCollection> minecraftClassesArtifact;
+        if (shouldUseCombinedSourcesAndClassesArtifact()) {
+            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact()));
+        } else {
+            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
+        }
 
         var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
         });
-        project.getDependencies().add(localRuntime.getName(), "minecraft:neoforge-minecraft-joined:local");
-        project.getDependencies().addProvider(localRuntime.getName(), minecraftDummyArtifact);
+        project.getDependencies().addProvider(localRuntime.getName(), minecraftClassesArtifact);
         project.getDependencies().add(localRuntime.getName(), RunUtils.DEV_LAUNCH_GAV);
 
         project.getDependencies().attributesSchema(attributesSchema -> {
@@ -242,8 +240,7 @@ public class ModDevPluginImpl {
 
         configurations.named("compileOnly").configure(configuration -> {
             configuration.withDependencies(dependencies -> {
-                dependencies.add(dependencyFactory.create("minecraft:neoforge-minecraft-joined:local"));
-                dependencies.addLater(minecraftDummyArtifact.map(dependencyFactory::create));
+                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
@@ -252,8 +249,7 @@ public class ModDevPluginImpl {
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
         configurations.named("testCompileOnly").configure(configuration -> {
             configuration.withDependencies(dependencies -> {
-                dependencies.add(dependencyFactory.create("minecraft:neoforge-minecraft-joined:local"));
-                dependencies.addLater(minecraftDummyArtifact.map(dependencyFactory::create));
+                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
@@ -346,6 +342,11 @@ public class ModDevPluginImpl {
             idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
+                task.setGroup("neoforge moddev");
+
+                // Launch with the Java version used in the project
+                var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
+                task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
                 // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
                 // This records a dependency on compiling and processing the resources of the source set.
                 task.getClasspathProvider().from(sourceSet.getRuntimeClasspath());
@@ -370,7 +371,6 @@ public class ModDevPluginImpl {
                 taskTriggers.afterSync(idePostSyncTask);
             }
 
-
             var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
 
             if (runConfigurations == null) {
@@ -392,6 +392,34 @@ public class ModDevPluginImpl {
         setupJarJar(project);
 
         setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
+
+        // Set up stuff for Eclipse
+        var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
+        if (eclipseModel != null) {
+            // Make sure our post-sync task runs on Eclipse
+            eclipseModel.synchronizationTasks(idePostSyncTask);
+
+            // When using separate artifacts for classes and sources, link them
+            if (!shouldUseCombinedSourcesAndClassesArtifact()) {
+                var fileClasspath = eclipseModel.getClasspath().getFile();
+                fileClasspath.whenMerged((org.gradle.plugins.ide.eclipse.model.Classpath classpath) -> {
+                    var classesPath = createArtifacts.get().getCompiledArtifact().get().getAsFile();
+                    var sourcesPath = createArtifacts.get().getSourcesArtifact().get().getAsFile();
+
+                    for (var entry : classpath.getEntries()) {
+                        System.out.println(entry);
+                        if (entry instanceof Library library && classesPath.equals(new File(library.getPath()))) {
+                            library.setSourcePath(classpath.fileReference(sourcesPath));
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
+        return true;
+        // return Boolean.getBoolean("idea.active");
     }
 
     private void addTemporaryRepositories(RepositoryHandler repositories) {
