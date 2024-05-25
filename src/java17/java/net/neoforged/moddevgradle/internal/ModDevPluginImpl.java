@@ -410,7 +410,7 @@ public class ModDevPluginImpl {
 
         repositories.maven(repo -> {
             repo.setName("Temporary Repo for neoforge");
-            repo.setUrl("https://prmaven.neoforged.net/NeoForged/pr959");
+            repo.setUrl("https://prmaven.neoforged.net/NeoForge/pr959");
             repo.content(content -> {
                 content.includeModule("net.neoforged", "neoforge");
             });
