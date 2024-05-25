@@ -129,7 +129,7 @@ public class ModDevPluginImpl {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.15").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.16").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
