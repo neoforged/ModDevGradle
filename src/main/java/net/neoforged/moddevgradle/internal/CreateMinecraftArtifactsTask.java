@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -45,6 +46,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
 
     @InputFiles
     abstract ConfigurableFileCollection getAccessTransformers();
+
+    @InputFiles
+    abstract ConfigurableFileCollection getParchmentData();
 
     @OutputFile
     abstract RegularFileProperty getCompiledWithSourcesArtifact();
@@ -102,6 +106,14 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
         for (var accessTransformer : accessTransformers) {
             args.add("--access-transformer");
             args.add(accessTransformer.getAbsolutePath());
+        }
+
+        var parchmentData = getParchmentData().getFiles();
+        if (parchmentData.size() == 1) {
+            args.add("--parchment-data");
+            args.add(parchmentData.iterator().next().getAbsolutePath());
+        } else if (parchmentData.size() > 1) {
+            throw new GradleException("More than one parchment data file were specified: " + parchmentData);
         }
 
         Collections.addAll(

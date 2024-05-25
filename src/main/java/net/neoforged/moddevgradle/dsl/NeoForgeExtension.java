@@ -15,11 +15,13 @@ import java.util.List;
 public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
+    private final Parchment parchment;
 
     @Inject
     public NeoForgeExtension(Project project) {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
+        parchment = project.getObjects().newInstance(Parchment.class);
 
         getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
         getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
@@ -65,5 +67,13 @@ public abstract class NeoForgeExtension {
 
     public void runs(Action<NamedDomainObjectContainer<RunModel>> action) {
         action.execute(runs);
+    }
+
+    public Parchment getParchment() {
+        return parchment;
+    }
+
+    public void parchment(Action<Parchment> action) {
+        action.execute(parchment);
     }
 }

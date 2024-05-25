@@ -21,20 +21,20 @@ In `settings.gradle`:
 
 ```groovy
 pluginManagement {
-  repositories {
-    // Add the usual NeoForged maven repository.
-    maven { url = 'https://maven.neoforged.net/releases' }
-    // Add the maven repository for the ModDevGradle plugin.
-    maven {
-      name 'Maven for PR #1' // https://github.com/neoforged/ModDevGradle/pull/1
-      url 'https://prmaven.neoforged.net/ModDevGradle/pr1'
-      content {
-        includeModule('net.neoforged.moddev', 'net.neoforged.moddev.gradle.plugin')
-        includeModule('net.neoforged.moddev.junit', 'net.neoforged.moddev.junit.gradle.plugin')
-        includeModule('net.neoforged', 'moddev-gradle')
-      }
+    repositories {
+        // Add the usual NeoForged maven repository.
+        maven { url = 'https://maven.neoforged.net/releases' }
+        // Add the maven repository for the ModDevGradle plugin.
+        maven {
+            name 'Maven for PR #1' // https://github.com/neoforged/ModDevGradle/pull/1
+            url 'https://prmaven.neoforged.net/ModDevGradle/pr1'
+            content {
+                includeModule('net.neoforged.moddev', 'net.neoforged.moddev.gradle.plugin')
+                includeModule('net.neoforged.moddev.junit', 'net.neoforged.moddev.junit.gradle.plugin')
+                includeModule('net.neoforged', 'moddev-gradle')
+            }
+        }
     }
-  }
 }
 
 plugins {
@@ -78,15 +78,18 @@ neoForge {
 See the example code in [the test project](./testproject/build.gradle).
 
 ## More Configuration
+
 ### Runs
+
 Any number of runs can be added in the `neoForge { runs { ... } }` block.
 
 Every run must have a type. Currently, the supported types are `client`, `data`, `gameTestServer`, `server`.
 The run type can be set as follows:
+
 ```groovy
 neoForge {
     runs {
-        <run name> {
+        < run name > {
             // This is the standard syntax:
             type = "gameTestServer"
             // Client, data and server runs can use a shorthand instead:
@@ -98,15 +101,44 @@ neoForge {
 }
 ```
 
-Please have a look at [RunModel.java](src/java17/java/net/neoforged/moddevgradle/dsl/RunModel.java) for the list of supported properties.
+Please have a look at [RunModel.java](src/java17/java/net/neoforged/moddevgradle/dsl/RunModel.java) for the list of
+supported properties.
 Here is an example that sets a system property to change the log level to debug:
+
 ```groovy
 neoForge {
     runs {
         configureEach {
-          systemProperty 'forge.logging.console.level', 'debug'
+            systemProperty 'forge.logging.console.level', 'debug'
         }
     }
+}
+```
+
+### Better Minecraft Parameter Names / Javadoc (Parchment)
+
+You can use community-sourced parameter-names and Javadoc for Minecraft source code
+from [ParchmentMC](https://parchmentmc.org/docs/getting-started).
+
+The easiest way is setting the Parchment version in your gradle.properties:
+
+```properties
+neoForge.parchment.minecraftVersion=1.20.6
+neoForge.parchment.mappingsVersion=2024.05.01
+```
+
+Alternatively, you can set it in your build.gradle:
+
+```groovy
+neoForge {
+  // [...]
+  
+  parchment {
+    // Get versions from https://parchmentmc.org/docs/getting-started
+    // Omit the "v"-prefix in mappingsVersion
+    minecraftVersion = "1.20.6"
+    mappingsVersion = "2024.05.01"
+  }
 }
 ```
 

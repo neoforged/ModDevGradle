@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
+import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
@@ -12,6 +13,7 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -131,7 +133,7 @@ public class ModDevPlugin implements Plugin<Project> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.17").attributes(attributes -> {
+                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.19").attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 }));
             });
@@ -199,6 +201,18 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getManifestFile().set(layout.getBuildDirectory().file("neoform_artifact_manifest.properties"));
         });
 
+        // Add a filtered parchment repository automatically if enabled
+        var parchment = extension.getParchment();
+        configureParchmentRepository(project, parchment);
+        var parchmentData = configurations.create("parchmentData", spec -> {
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setTransitive(false); // Expect a single result
+            spec.withDependencies(dependencies -> {
+                dependencies.addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
+            });
+        });
+
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
             task.getVerbose().set(extension.getVerbose());
@@ -206,6 +220,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getAccessTransformers().from(accessTransformers);
+            task.getParchmentData().from(parchmentData);
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getCompileClasspath().from(minecraftCompileClasspath);
             task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
@@ -374,6 +389,22 @@ public class ModDevPlugin implements Plugin<Project> {
         configureIntelliJModel(project, idePostSyncTask, extension, prepareRunTasks);
 
         configureEclipseModel(project, idePostSyncTask, createArtifacts);
+    }
+
+    private static void configureParchmentRepository(Project project, Parchment parchment) {
+        project.afterEvaluate(p -> {
+            if (!parchment.getEnabled().get() || !parchment.getAddRepository().get()) {
+                return;
+            }
+            MavenArtifactRepository repo = p.getRepositories().maven(m -> {
+                m.setName("Parchment Data");
+                m.setUrl(URI.create("https://maven.parchmentmc.org/"));
+                m.mavenContent(mavenContent -> mavenContent.includeGroup("org.parchmentmc.data"));
+            });
+            // Make sure it comes first due to its filtered group, that should speed up resolution
+            p.getRepositories().remove(repo);
+            p.getRepositories().addFirst(repo);
+        });
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
