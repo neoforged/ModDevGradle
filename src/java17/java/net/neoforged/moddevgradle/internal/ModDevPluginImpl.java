@@ -301,6 +301,8 @@ public class ModDevPluginImpl {
         extension.getRuns().configureEach(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
+            var sourceSet = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class).getByName("main");
+
             var legacyClasspathConfiguration = configurations.create(run.nameOf("", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
@@ -341,7 +343,9 @@ public class ModDevPluginImpl {
             idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             tasks.register(run.nameOf("run", ""), RunGameTask.class, task -> {
-                task.getClasspathProvider().from(configurations.named("runtimeClasspath"));
+                // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
+                // This records a dependency on compiling and processing the resources of the source set.
+                task.getClasspathProvider().from(sourceSet.getRuntimeClasspath());
                 task.getGameDirectory().set(run.getGameDirectory());
 
                 task.jvmArgs(RunUtils.getArgFileParameter(prepareRunTask.get().getVmArgsFile().get()).replace("\\", "\\\\"));
@@ -351,9 +355,6 @@ public class ModDevPluginImpl {
                 task.dependsOn(prepareRunTask);
 
                 task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
-
-                // TODO: how do we do this in a clean way for all source sets?
-                task.dependsOn(tasks.named("processResources"));
             });
         });
 
