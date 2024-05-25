@@ -20,8 +20,6 @@ changelog {
 }
 
 repositories {
-    mavenCentral()
-    gradlePluginPortal()
     exclusiveContent {
         forRepository {
             maven {
@@ -40,26 +38,29 @@ repositories {
             includeGroup "net.neoforged"
         }
     }
+    mavenCentral()
+    gradlePluginPortal()
 }
 
 sourceSets {
-    java17
-    test {
-        compileClasspath += sourceSets.java17.output
-        runtimeClasspath += sourceSets.java17.output
+    java8
+    main {
+        compileClasspath += java8.output
+        runtimeClasspath += java8.output
     }
 }
 
 dependencies {
-    java17CompileOnly gradleApi()
-    java17CompileOnly "com.intellij:annotations:9.0.4"
-    java17Implementation "com.google.code.gson:gson:2.10.1"
-    java17Implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
-    java17Implementation "net.fabricmc:fabric-loom-native:0.2.1"
-    java17Implementation "net.neoforged:JarJarMetadata:0.4.1"
-    java17Implementation "net.neoforged:EclipseLaunchConfigs:0.1.11"
+    compileOnly gradleApi()
+    compileOnly "com.intellij:annotations:9.0.4"
+    implementation "com.google.code.gson:gson:2.10.1"
+    implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
+    implementation "net.neoforged:JarJarMetadata:0.4.1"
+    implementation "net.neoforged:EclipseLaunchConfigs:0.1.11"
     api "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
     api "net.neoforged:JarJarMetadata:0.4.1"
+
+    java8CompileOnly gradleApi()
 
     testImplementation(enforcedPlatform("org.junit:junit-bom:5.10.2"))
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
@@ -76,16 +77,10 @@ java {
 }
 
 jar {
-    into('META-INF/versions/17') {
-        from sourceSets.java17.output
-    }
-
-    manifest.attributes(
-            'Multi-Release': 'true'
-    )
+    from sourceSets.java8.output
 }
 
-tasks.named("compileJava").configure {
+tasks.named("compileJava8Java").configure {
     javaCompiler = javaToolchains.compilerFor {
         languageVersion = JavaLanguageVersion.of(8)
     }
@@ -112,11 +107,11 @@ gradlePlugin {
     plugins {
         moddev {
             id = 'net.neoforged.moddev'
-            implementationClass = 'net.neoforged.moddevgradle.ModDevPlugin'
+            implementationClass = 'net.neoforged.moddevgradle.boot.ModDevPlugin'
         }
         junit {
             id = 'net.neoforged.moddev.junit'
-            implementationClass = 'net.neoforged.moddevgradle.JUnitPlugin'
+            implementationClass = 'net.neoforged.moddevgradle.boot.JUnitPlugin'
         }
     }
 }
