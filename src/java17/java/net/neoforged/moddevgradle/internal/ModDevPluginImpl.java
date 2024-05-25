@@ -218,7 +218,9 @@ public class ModDevPluginImpl {
             task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
         });
 
-        createDummyFilesInLocalRepository(layout);
+        project.getProviders().of(CreateEmptyRepoFilesValueSource.class, spec -> {
+            spec.getParameters().getRepoDirectory().set(layout.getBuildDirectory().dir("repo"));
+        }).get();
 
         // This is an empty, but otherwise valid jar file that creates an implicit dependency on the task
         // creating our repo, while not creating duplicates on the classpath.
@@ -559,38 +561,6 @@ public class ModDevPluginImpl {
             return ExtensionUtils.findExtension((ExtensionAware) projectSettings, "runConfigurations", RunConfigurationContainer.class);
         }
         return null;
-    }
-
-    private static void createDummyFilesInLocalRepository(ProjectLayout layout) {
-        var emptyJarFile = layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar").get().getAsFile().toPath();
-        if (!Files.exists(emptyJarFile)) { // TODO: should do this with a value source!
-            try {
-                Files.createDirectories(emptyJarFile.getParent());
-                Files.createFile(emptyJarFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        var pomFile = layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.pom").get().getAsFile().toPath();
-        if (!Files.exists(pomFile)) {
-            try {
-                Files.writeString(pomFile, """
-                        <project xmlns="http://maven.apache.org/POM/4.0.0"
-                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                                 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-                            <modelVersion>4.0.0</modelVersion>
-
-                            <groupId>minecraft</groupId>
-                            <artifactId>neoforge-minecraft-joined</artifactId>
-                            <version>local</version>
-                            <packaging>jar</packaging>
-                        </project>
-                        """);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     static String guessMavenGav(ResolvedArtifactResult result) {
