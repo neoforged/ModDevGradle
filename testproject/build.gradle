@@ -11,10 +11,6 @@ repositories {
 neoForge {
     version = project.neoforge_version
 
-    // Uncomment if you are using IntelliJ, but want to build with Gradle.
-    // Keep commented out if you want to build with IntelliJ (faster, recommended).
-    // idea.runWithIdea = false
-
     runs {
         client {
             client()

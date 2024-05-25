@@ -152,7 +152,6 @@ abstract class PrepareRunForIde extends DefaultTask {
         lines.add("# Main Class");
         lines.add(runConfig.main());
 
-        // This should probably all be done using providers; but that's for later :)
         lines.add("");
         lines.add("# NeoForge Run-Type Program Arguments");
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());

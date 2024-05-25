@@ -18,7 +18,6 @@ import java.nio.file.Files;
  * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making
  * these runs easy and nice to work with.
  */
-// TODO: look into shared abstraction with PrepareRunForIde
 @DisableCachingByDefault
 public abstract class RunGameTask extends JavaExec {
     @Classpath
