@@ -210,8 +210,7 @@ final class RunUtils {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
                     modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
                     for (var sourceSet : mod.getModSourceSets().get()) {
-                        modFolder.getFolders().from(sourceSet.getOutput().getClassesDirs());
-                        modFolder.getFolders().from(sourceSet.getOutput().getResourcesDir());
+                        modFolder.getFolders().from(sourceSet.getOutput());
                     }
                     return modFolder;
                 })));
