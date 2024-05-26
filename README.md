@@ -89,13 +89,27 @@ The run type can be set as follows:
 ```groovy
 neoForge {
     runs {
-        < run name > {
+        <run name> {
             // This is the standard syntax:
             type = "gameTestServer"
             // Client, data and server runs can use a shorthand instead:
             // client()
             // data()
             // server()
+        
+            // Add arguments passed to the main method
+            programArguments = ["--arg"]
+            programArgument("--arg")
+        
+            // Add arguments passed to the JVM
+            jvmArguments = ["-XX:+AllowEnhancedClassRedefinition"]
+            jvmArgument("-XX:+AllowEnhancedClassRedefinition")
+        
+            // Add system properties
+            systemProperties = [
+                    "a.b.c": "xyz"
+            ]
+            systemProperty("a.b.c", "xyz")
         
             // Optionally set the log-level used by the game
             logLevel = org.slf4j.event.Level.INFO

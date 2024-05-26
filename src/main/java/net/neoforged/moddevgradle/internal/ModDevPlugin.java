@@ -366,6 +366,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 }));
                 task.getMainClass().set(run.getMainClass());
                 task.getProgramArguments().set(run.getProgramArguments());
+                task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
             });
             prepareRunTasks.put(run, prepareRunTask);

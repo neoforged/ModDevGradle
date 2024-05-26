@@ -67,6 +67,12 @@ public abstract class RunModel implements Named, Dependencies {
         getProgramArguments().add(arg);
     }
 
+    public abstract ListProperty<String> getJvmArguments();
+
+    public void jvmArgument(String arg) {
+        getJvmArguments().add(arg);
+    }
+
     public abstract SetProperty<ModModel> getMods();
 
     public abstract Property<String> getType();
