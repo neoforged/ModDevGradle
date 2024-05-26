@@ -31,6 +31,7 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -44,13 +45,14 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
-import org.jetbrains.gradle.ext.TaskTriggersConfig;
 import org.slf4j.event.Level;
 
 import java.io.File;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -320,7 +322,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var idePostSyncTask = tasks.register("idePostSync");
+        var ideSyncTask = tasks.register("neoForgeIdeSync");
 
         Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks = new IdentityHashMap<>();
         extension.getRuns().configureEach(run -> {
@@ -367,7 +369,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getGameLogLevel().set(run.getLogLevel());
             });
             prepareRunTasks.put(run, prepareRunTask);
-            idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+            ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
@@ -393,11 +395,11 @@ public class ModDevPlugin implements Plugin<Project> {
 
         setupJarJar(project);
 
-        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, idePostSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
+        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
 
-        configureIntelliJModel(project, idePostSyncTask, extension, prepareRunTasks);
+        configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
-        configureEclipseModel(project, idePostSyncTask, createArtifacts);
+        configureEclipseModel(project, ideSyncTask, createArtifacts);
     }
 
     private static void configureParchmentRepository(Project project, Parchment parchment) {
@@ -453,7 +455,7 @@ public class ModDevPlugin implements Plugin<Project> {
                               Configuration userDevConfigOnly,
                               Configuration neoForgeModDevModules,
                               TaskProvider<DownloadAssetsTask> downloadAssets,
-                              TaskProvider<Task> idePostSyncTask,
+                              TaskProvider<Task> ideSyncTask,
                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency) {
         var tasks = project.getTasks();
@@ -491,7 +493,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
             task.getGameLogLevel().set(Level.INFO);
         });
-        idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+        ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
         tasks.withType(Test.class).configureEach(task -> {
             task.dependsOn(prepareRunTask);
@@ -565,14 +567,17 @@ public class ModDevPlugin implements Plugin<Project> {
         runConfigurations.add(a);
     }
 
-    private static void configureIntelliJModel(Project project, TaskProvider<Task> idePostSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
             var settings = getIntelliJProjectSettings(project);
-            if (settings != null) {
-                var taskTriggers = ((ExtensionAware) settings).getExtensions().getByType(TaskTriggersConfig.class);
-                // Careful, this will overwrite on intellij (and append on eclipse, but we aren't there yet!)
-                taskTriggers.afterSync(idePostSyncTask);
+            if (settings != null && Boolean.getBoolean("idea.sync.active")) {
+                // Also run the sync task directly as part of the sync. (Thanks Loom).
+                var startParameter = project.getGradle().getStartParameter();
+                var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
+
+                taskRequests.add(new DefaultTaskExecutionRequest(List.of(ideSyncTask.getName())));
+                startParameter.setTaskRequests(taskRequests);
             }
 
             var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
@@ -655,7 +660,7 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static void configureEclipseModel(Project project,
-                                              TaskProvider<Task> idePostSyncTask,
+                                              TaskProvider<Task> ideSyncTask,
                                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts) {
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
@@ -664,7 +669,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }
 
         // Make sure our post-sync task runs on Eclipse
-        eclipseModel.synchronizationTasks(idePostSyncTask);
+        eclipseModel.synchronizationTasks(ideSyncTask);
 
         // When using separate artifacts for classes and sources, link them
         if (!shouldUseCombinedSourcesAndClassesArtifact()) {
