@@ -12,6 +12,9 @@ neoForge {
     version = project.neoforge_version
 
     runs {
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
         client {
             client()
         }

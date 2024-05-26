@@ -6,7 +6,9 @@ import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
@@ -14,6 +16,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.slf4j.event.Level;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -51,6 +54,9 @@ abstract class PrepareArgsForTesting extends DefaultTask {
     @Classpath
     @InputFiles
     abstract ConfigurableFileCollection getModules();
+
+    @Input
+    public abstract Property<Level> getGameLogLevel();
 
     @Inject
     public PrepareArgsForTesting() {
@@ -92,12 +98,7 @@ abstract class PrepareArgsForTesting extends DefaultTask {
         lines.addAll(getInterpolatedJvmArgs(runConfig));
 
         // Write log4j2 configuration file
-        File log4j2xml;
-        try {
-            log4j2xml = RunUtils.writeLog4j2Configuration(runDir);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        File log4j2xml = RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), runDir);
 
         lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath()));
         for (var prop : runConfig.props().entrySet()) {

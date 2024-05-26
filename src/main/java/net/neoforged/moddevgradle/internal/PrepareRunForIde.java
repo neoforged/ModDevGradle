@@ -19,6 +19,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.slf4j.event.Level;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -76,6 +77,9 @@ abstract class PrepareRunForIde extends DefaultTask {
     @Input
     public abstract ListProperty<String> getProgramArguments();
 
+    @Input
+    public abstract Property<Level> getGameLogLevel();
+
     @Inject
     public PrepareRunForIde() {
     }
@@ -127,12 +131,7 @@ abstract class PrepareRunForIde extends DefaultTask {
         }
 
         // Write log4j2 configuration file
-        File log4j2xml;
-        try {
-            log4j2xml = RunUtils.writeLog4j2Configuration(runDir);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        File log4j2xml = RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), runDir);
 
         lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath()));
         for (var prop : runConfig.props().entrySet()) {

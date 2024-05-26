@@ -16,6 +16,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.event.Level;
 import org.xml.sax.InputSource;
 
 import javax.inject.Inject;
@@ -74,7 +75,7 @@ final class RunUtils {
         );
     }
 
-    public static File writeLog4j2Configuration(File runDir) throws IOException {
+    public static File writeLog4j2Configuration(Level rootLevel, File runDir) throws IOException {
         var log4j2Xml = new File(runDir, "log4j2.xml");
 
         Files.writeString(log4j2Xml.toPath(), """
@@ -94,9 +95,9 @@ final class RunUtils {
                         <MarkerFilter marker="REGISTRYDUMP" onMatch="${sys:forge.logging.marker.registrydump:-DENY}" onMismatch="NEUTRAL"/>
                         <MarkerFilter marker="SPLASH" onMatch="${sys:forge.logging.marker.splash:-DENY}" onMismatch="NEUTRAL"/>
                         <MarkerFilter marker="RESOURCE-CACHE" onMatch="${sys:forge.logging.marker.resource.cache:-DENY}" onMismatch="NEUTRAL"/>
-                        <MarkerFilter marker="FORGEMOD" onMatch="${sys:forge.logging.marker.forgemod:-ACCEPT}" onMismatch="NEUTRAL"/>
-                        <MarkerFilter marker="LOADING" onMatch="${sys:forge.logging.marker.loading:-ACCEPT}" onMismatch="NEUTRAL"/>
-                        <MarkerFilter marker="CORE" onMatch="${sys:forge.logging.marker.core:-ACCEPT}" onMismatch="NEUTRAL"/>
+                        <MarkerFilter marker="FORGEMOD" onMatch="${sys:forge.logging.marker.forgemod:-NEUTRAL}" onMismatch="NEUTRAL"/>
+                        <MarkerFilter marker="LOADING" onMatch="${sys:forge.logging.marker.loading:-NEUTRAL}" onMismatch="NEUTRAL"/>
+                        <MarkerFilter marker="CORE" onMatch="${sys:forge.logging.marker.core:-NEUTRAL}" onMismatch="NEUTRAL"/>
                     </filters>
                     <Appenders>
                         <Console name="Console">
@@ -148,16 +149,15 @@ final class RunUtils {
                             </filters>
                         </Logger>
 
-                        <Root level="debug">
-                            <AppenderRef ref="Console" level="${sys:forge.logging.console.level:-debug}"/>
+                        <Root level="$ROOTLEVEL$">
+                            <AppenderRef ref="Console" />
                             <AppenderRef ref="ServerGuiConsole" level="${sys:forge.logging.console.level:-info}"/>
                             <AppenderRef ref="File" level="${sys:forge.logging.file.level:-info}"/>
-                            <AppenderRef ref="DebugFile" level="${sys:forge.logging.debugFile.level:-debug}"/>
+                            <AppenderRef ref="DebugFile" />
                         </Root>
                     </Loggers>
                 </Configuration>
-
-                """);
+                """.replace("$ROOTLEVEL$", rootLevel.name()));
 
         return log4j2Xml;
     }

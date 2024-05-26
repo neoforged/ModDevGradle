@@ -96,6 +96,9 @@ neoForge {
             // client()
             // data()
             // server()
+        
+            // Optionally set the log-level used by the game
+            logLevel = org.slf4j.event.Level.INFO
         }
     }
 }

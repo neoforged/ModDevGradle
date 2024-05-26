@@ -11,6 +11,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.slf4j.event.Level;
 
 import javax.inject.Inject;
 
@@ -38,6 +39,8 @@ public abstract class RunModel implements Named, Dependencies {
             configuration.setCanBeResolved(false);
             configuration.setCanBeConsumed(false);
         });
+
+        getLogLevel().convention(Level.DEBUG);
     }
 
     @Override
@@ -85,6 +88,8 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     public abstract DependencyCollector getAdditionalRuntimeClasspath();
+
+    public abstract Property<Level> getLogLevel();
 
     @Override
     public String toString() {

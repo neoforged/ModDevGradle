@@ -45,6 +45,7 @@ import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.jetbrains.gradle.ext.TaskTriggersConfig;
+import org.slf4j.event.Level;
 
 import java.io.File;
 import java.net.URI;
@@ -362,6 +363,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 }));
                 task.getMainClass().set(run.getMainClass());
                 task.getProgramArguments().set(run.getProgramArguments());
+                task.getGameLogLevel().set(run.getLogLevel());
             });
             prepareRunTasks.put(run, prepareRunTask);
             idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
@@ -486,6 +488,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+            task.getGameLogLevel().set(Level.INFO);
         });
         idePostSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
