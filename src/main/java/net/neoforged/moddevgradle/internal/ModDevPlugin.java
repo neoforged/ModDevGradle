@@ -134,12 +134,11 @@ public class ModDevPlugin implements Plugin<Project> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
             files.defaultDependencies(spec -> {
-                spec.add(dependencyFactory.create("net.neoforged:neoform-runtime:0.1.24").attributes(attributes -> {
+                spec.addLater(extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version).attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
-                }));
+                })));
             });
         });
-
 
         // Create an access transformer configuration
         var accessTransformers = configurations.create("accessTransformers", files -> {
@@ -216,8 +215,11 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
-            task.getVerbose().set(extension.getVerbose());
-            task.getEnableCache().set(extension.getEnableCache());
+            var nfrtSettings = extension.getNeoFormRuntime();
+            task.getVerbose().set(nfrtSettings.getVerbose());
+            task.getEnableCache().set(nfrtSettings.getEnableCache());
+            task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
+            task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getAccessTransformers().from(accessTransformers);
@@ -228,7 +230,6 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getCompiledWithSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-merged.jar"));
             task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
             task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
-            task.getDummyArtifact().set(layout.getBuildDirectory().file("dummy_artifact.jar"));
         });
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));

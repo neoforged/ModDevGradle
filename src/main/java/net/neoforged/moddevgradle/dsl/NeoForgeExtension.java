@@ -16,15 +16,14 @@ public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
+    private final NeoFormRuntime neoFormRuntime;
 
     @Inject
     public NeoForgeExtension(Project project) {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
-
-        getEnableCache().convention(project.getProviders().gradleProperty("neoforge.cache").map(Boolean::valueOf).orElse(true));
-        getVerbose().convention(project.getProviders().gradleProperty("neoforge.verbose").map(Boolean::valueOf).orElse(false));
+        neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
 
         getAccessTransformers().convention(project.provider(() -> {
             // TODO Can we scan the source sets for the main source sets resource dir?
@@ -46,10 +45,6 @@ public abstract class NeoForgeExtension {
      * TODO: Allow overriding the NeoForm version used specifically or use only NeoForm.
      */
     public abstract Property<String> getNeoFormVersion();
-
-    public abstract Property<Boolean> getVerbose();
-
-    public abstract Property<Boolean> getEnableCache();
 
     public abstract ListProperty<String> getAccessTransformers();
 
@@ -75,5 +70,13 @@ public abstract class NeoForgeExtension {
 
     public void parchment(Action<Parchment> action) {
         action.execute(parchment);
+    }
+
+    public NeoFormRuntime getNeoFormRuntime() {
+        return neoFormRuntime;
+    }
+
+    public void neoFormRuntime(Action<NeoFormRuntime> action) {
+        action.execute(neoFormRuntime);
     }
 }

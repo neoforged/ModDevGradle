@@ -66,17 +66,16 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     abstract RegularFileProperty getResourcesArtifact();
 
     /**
-     * Dummy file used to cause a dependency of configuration -> task.
-     */
-    @OutputFile
-    @Optional
-    abstract RegularFileProperty getDummyArtifact();
-
-    /**
      * Enables use of the cache.
      */
     @Internal
     abstract Property<Boolean> getEnableCache();
+
+    @Input
+    abstract Property<Boolean> getUseEclipseCompiler();
+
+    @Input
+    abstract Property<Boolean> getAnalyzeCacheMisses();
 
     @TaskAction
     public void createArtifacts() throws IOException {
@@ -116,6 +115,14 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
             throw new GradleException("More than one parchment data file were specified: " + parchmentData);
         }
 
+        if (getUseEclipseCompiler().get()) {
+            args.add("--use-eclipse-compiler");
+        }
+
+        if (getAnalyzeCacheMisses().get()) {
+            args.add("--analyze-cache-misses");
+        }
+
         Collections.addAll(
                 args,
                 "--neoforge", artifactId + ":userdev",
@@ -128,13 +135,5 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
         );
 
         run(args);
-
-        if (getDummyArtifact().isPresent()) {
-            var dummyFile = getDummyArtifact().getAsFile().get();
-            dummyFile.delete();
-            try (var output = new FileOutputStream(dummyFile)) {
-                new JarOutputStream(output).close();
-            }
-        }
     }
 }

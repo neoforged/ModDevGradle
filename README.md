@@ -159,3 +159,31 @@ configurations.all {
     }
 }
 ```
+
+### Advanced Settings for NFRT
+
+```groovy
+neoForge {
+  neoFormRuntime {
+    // Use specific NFRT version
+    // Gradle Property: neoForge.neoFormRuntime.version
+    version = "1.2.3"
+    
+    // Control use of cache
+    // Gradle Property: neoForge.neoFormRuntime.enableCache
+    enableCache = false
+    
+    // Enable Verbose Output
+    // Gradle Property: neoForge.neoFormRuntime.verbose
+    verbose = true
+    
+    // Use Eclipse Compiler for Minecraft
+    // Gradle Property: neoForge.neoFormRuntime.useEclipseCompiler
+    useEclipseCompiler = true
+
+    // Print more information when NFRT cannot use a cached result
+    // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
+    analyzeCacheMisses = true
+  }
+}
+```

@@ -32,6 +32,10 @@ neoForge {
         }
     }
 
+    neoFormRuntime {
+        useEclipseCompiler = true
+    }
+
     parchment {
         minecraftVersion = "1.20.6"
         mappingsVersion = "2024.05.01"
