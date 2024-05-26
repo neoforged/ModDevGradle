@@ -13,6 +13,8 @@ import java.util.List;
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
  */
 public abstract class NeoForgeExtension {
+    public static final String NAME = "neoForge";
+
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;

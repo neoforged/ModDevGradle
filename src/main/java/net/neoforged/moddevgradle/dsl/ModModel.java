@@ -5,6 +5,7 @@ import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 
@@ -26,6 +27,8 @@ public abstract class ModModel implements Named {
         // TODO: We could potentially do a bit of name validation
         getModSourceSets().convention(List.of());
         getModSourceSets().finalizeValueOnRead();
+
+        getUnitTestSourceSet().finalizeValueOnRead();
     }
 
     @Inject
@@ -50,6 +53,9 @@ public abstract class ModModel implements Named {
     public void sourceSet(SourceSet sourceSet) {
         sourceSet(sourceSet, getProject());
     }
+
+    // The source set that contains unit test code for this mod Used when running JUnit
+    public abstract Property<SourceSet> getUnitTestSourceSet();
 
     public void dependency(CharSequence dependencyNotation) {
         getConfiguration().getDependencies().add(getProject().getDependencyFactory().create(dependencyNotation));

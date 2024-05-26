@@ -70,7 +70,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
         project.getPlugins().apply(IdeaExtPlugin.class);
-        var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
+        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
@@ -389,7 +389,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 // Of course we need the arg files to be up-to-date ;)
                 task.dependsOn(prepareRunTask);
 
-                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
+                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
             });
         });
 
@@ -459,6 +459,7 @@ public class ModDevPlugin implements Plugin<Project> {
                               TaskProvider<Task> ideSyncTask,
                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency) {
+        var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
         var tasks = project.getTasks();
         var layout = project.getLayout();
         var configurations = project.getConfigurations();
@@ -503,6 +504,9 @@ public class ModDevPlugin implements Plugin<Project> {
             // file containing the program arguments needed to launch
             task.systemProperty("fml.junit.argsfile", RunUtils.escapeJvmArg(fmlJunitArgsFile.get().getAsFile().getAbsolutePath()));
             task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get())));
+
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
+            task.getJvmArgumentProviders().add(modFoldersProvider);
         });
     }
 
@@ -561,7 +565,7 @@ public class ModDevPlugin implements Plugin<Project> {
         a.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
-                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
+                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
         );
         a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         a.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
