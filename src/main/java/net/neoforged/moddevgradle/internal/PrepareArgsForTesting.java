@@ -12,6 +12,7 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
@@ -39,6 +40,10 @@ abstract class PrepareArgsForTesting extends DefaultTask {
 
     @OutputFile
     public abstract RegularFileProperty getProgramArgsFile();
+
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getLog4jConfigFile();
 
     @Classpath
     public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
@@ -88,19 +93,22 @@ abstract class PrepareArgsForTesting extends DefaultTask {
             throw new GradleException("The unit testing plugin requires a 'client' run-type to be made available by NeoForge. Available run types: " + userDevConfig.runs().keySet());
         }
 
-        writeJvmArguments(runDir, runConfig);
+        writeJvmArguments(runConfig);
         writeProgramArguments(runConfig);
     }
 
-    private void writeJvmArguments(File runDir, UserDevRunType runConfig) throws IOException {
+    private void writeJvmArguments(UserDevRunType runConfig) throws IOException {
         var lines = new ArrayList<String>();
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
 
         // Write log4j2 configuration file
-        File log4j2xml = RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), runDir);
+        if (getLog4jConfigFile().isPresent()) {
+            var log4jConfigFile = getLog4jConfigFile().get().getAsFile();
+            RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), log4jConfigFile.toPath());
+            lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4jConfigFile.getAbsolutePath()));
+        }
 
-        lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath()));
         for (var prop : runConfig.props().entrySet()) {
             var propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {

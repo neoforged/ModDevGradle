@@ -351,8 +351,9 @@ public class ModDevPlugin implements Plugin<Project> {
 
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(run.getGameDirectory());
-                task.getVmArgsFile().set(RunUtils.getArgFile(project, run, true));
-                task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, false));
+                task.getVmArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.VMARGS));
+                task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.PROGRAMARGS));
+                task.getLog4jConfigFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.LOG4J_CONFIG));
                 task.getRunType().set(run.getType());
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
@@ -482,10 +483,12 @@ public class ModDevPlugin implements Plugin<Project> {
         var runDirectory = layout.getBuildDirectory().dir("fmljunitrun");
         var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
         var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
+        var fmlJunitLog4jConfig = layout.getBuildDirectory().file("moddev/fmljunitlog4j2.xml");
         var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareArgsForTesting.class, task -> {
             task.getGameDirectory().set(runDirectory);
             task.getVmArgsFile().set(testVmArgsFile);
             task.getProgramArgsFile().set(fmlJunitArgsFile);
+            task.getLog4jConfigFile().set(fmlJunitLog4jConfig);
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());

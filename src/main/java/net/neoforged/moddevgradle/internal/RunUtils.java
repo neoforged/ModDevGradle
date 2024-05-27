@@ -29,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -75,10 +76,8 @@ final class RunUtils {
         );
     }
 
-    public static File writeLog4j2Configuration(Level rootLevel, File runDir) throws IOException {
-        var log4j2Xml = new File(runDir, "log4j2.xml");
-
-        Files.writeString(log4j2Xml.toPath(), """
+    public static void writeLog4j2Configuration(Level rootLevel, Path destination) throws IOException {
+        Files.writeString(destination, """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <Configuration status="warn" shutdownHook="disable">
                     <filters>
@@ -158,15 +157,22 @@ final class RunUtils {
                     </Loggers>
                 </Configuration>
                 """.replace("$ROOTLEVEL$", rootLevel.name()));
-
-        return log4j2Xml;
     }
 
-    /**
-     * @param vm {@code true} for VM args, {@code false} for program args
-     */
-    public static File getArgFile(Project project, RunModel run, boolean vm) {
-        return project.getLayout().getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", vm ? "runVmArgs" : "runProgramArgs") + ".txt").get().getAsFile();
+    public static File getArgFile(Project project, RunModel run, RunArgFile type) {
+        return project.getLayout().getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", type.filename)).get().getAsFile();
+    }
+
+    public enum RunArgFile {
+        VMARGS("runVmArgs.txt"),
+        PROGRAMARGS("runProgramArgs.txt"),
+        LOG4J_CONFIG("log4j2.xml");
+
+        private final String filename;
+
+        RunArgFile(String filename) {
+            this.filename = filename;
+        }
     }
 
     public static String getArgFileParameter(RegularFile argFile) {

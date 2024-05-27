@@ -40,7 +40,7 @@ public abstract class RunModel implements Named, Dependencies {
             configuration.setCanBeConsumed(false);
         });
 
-        getLogLevel().convention(Level.DEBUG);
+        getLogLevel().convention(Level.INFO);
     }
 
     @Override

@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
+import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -45,6 +46,10 @@ abstract class PrepareRunForIde extends DefaultTask {
 
     @OutputFile
     public abstract RegularFileProperty getProgramArgsFile();
+
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getLog4jConfigFile();
 
     @Classpath
     public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
@@ -111,11 +116,11 @@ abstract class PrepareRunForIde extends DefaultTask {
             throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
         }
 
-        writeJvmArguments(runDir, runConfig);
+        writeJvmArguments(runConfig);
         writeProgramArguments(runConfig);
     }
 
-    private void writeJvmArguments(File runDir, UserDevRunType runConfig) throws IOException {
+    private void writeJvmArguments(UserDevRunType runConfig) throws IOException {
         var lines = new ArrayList<String>();
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
@@ -130,10 +135,12 @@ abstract class PrepareRunForIde extends DefaultTask {
             lines.add("");
         }
 
-        // Write log4j2 configuration file
-        File log4j2xml = RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), runDir);
+        if (getLog4jConfigFile().isPresent()) {
+            var log4jConfigFile = getLog4jConfigFile().get().getAsFile();
+            RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), log4jConfigFile.toPath());
+            lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4jConfigFile.getAbsolutePath()));
+        }
 
-        lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4j2xml.getAbsolutePath()));
         for (var prop : runConfig.props().entrySet()) {
             var propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {
