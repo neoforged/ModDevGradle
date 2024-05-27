@@ -8,6 +8,16 @@ repositories {
     mavenLocal()
 }
 
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation "net.neoforged:testframework:${project.neoforge_version}"
+}
+
+test {
+    useJUnitPlatform()
+}
+
 neoForge {
     version = project.neoforge_version
 
@@ -29,6 +39,7 @@ neoForge {
     mods {
         testproject {
             sourceSet sourceSets.main
+            unitTestSourceSet = sourceSets.test
         }
     }
 

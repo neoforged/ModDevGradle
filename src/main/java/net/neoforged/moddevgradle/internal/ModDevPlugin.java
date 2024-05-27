@@ -281,7 +281,22 @@ public class ModDevPlugin implements Plugin<Project> {
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
-        configurations.named("testRuntimeClasspath", files -> files.extendsFrom(localRuntime));
+
+        var testLocalRuntime = configurations.create("testLocalRuntime", config -> {
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+            config.extendsFrom(localRuntime);
+            config.withDependencies(dependencies -> {
+                dependencies.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
+                            });
+                }));
+            });
+        });
+
+        configurations.named("testRuntimeClasspath", files -> files.extendsFrom(testLocalRuntime));
 
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
@@ -447,6 +462,7 @@ public class ModDevPlugin implements Plugin<Project> {
             repo.setUrl("https://prmaven.neoforged.net/NeoForge/pr959");
             repo.content(content -> {
                 content.includeModule("net.neoforged", "neoforge");
+                content.includeModule("net.neoforged", "testframework");
             });
         });
 
