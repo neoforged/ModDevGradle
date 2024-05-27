@@ -69,7 +69,6 @@ public class ModDevPlugin implements Plugin<Project> {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
-        project.getPlugins().apply(IdeaExtPlugin.class);
         var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
@@ -350,9 +349,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
-            var runDirectory = layout.getProjectDirectory().dir("run");
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRunForIde.class, task -> {
-                task.getGameDirectory().set(runDirectory);
+                task.getGameDirectory().set(run.getGameDirectory());
                 task.getVmArgsFile().set(RunUtils.getArgFile(project, run, true));
                 task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, false));
                 task.getRunType().set(run.getType());
@@ -557,6 +555,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
+        System.out.println(a.getWorkingDirectory());
 
         a.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
@@ -569,9 +568,15 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+        var rootProject = project.getRootProject();
+
+        if (!rootProject.getPlugins().hasPlugin(IdeaExtPlugin.class)) {
+            rootProject.getPlugins().apply(IdeaExtPlugin.class);
+        }
+
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
-            var settings = getIntelliJProjectSettings(project);
+            var settings = getIntelliJProjectSettings(rootProject);
             if (settings != null && Boolean.getBoolean("idea.sync.active")) {
                 // Also run the sync task directly as part of the sync. (Thanks Loom).
                 var startParameter = project.getGradle().getStartParameter();
@@ -581,7 +586,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 startParameter.setTaskRequests(taskRequests);
             }
 
-            var runConfigurations = getIntelliJRunConfigurations(project); // TODO: Consider making this a value source
+            var runConfigurations = getIntelliJRunConfigurations(rootProject); // TODO: Consider making this a value source
 
             if (runConfigurations == null) {
                 project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
