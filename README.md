@@ -112,7 +112,10 @@ neoForge {
             systemProperty("a.b.c", "xyz")
         
             // Optionally set the log-level used by the game
-            logLevel = org.slf4j.event.Level.INFO
+            logLevel = org.slf4j.event.Level.DEBUG
+        
+            // You can change the name used for this run in your IDE
+            ideName = "Run Game Tests"
         }
     }
 }

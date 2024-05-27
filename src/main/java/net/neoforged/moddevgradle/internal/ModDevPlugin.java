@@ -554,20 +554,19 @@ public class ModDevPlugin implements Plugin<Project> {
                                                     @Nullable File outputDirectory,
                                                     RunModel run,
                                                     PrepareRunForIde prepareTask) {
-        var a = new Application(StringUtils.capitalize(run.getName()), project);
+        var appRun = new Application(run.getIdeName().get(), project);
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
-        a.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
-        a.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        System.out.println(a.getWorkingDirectory());
+        appRun.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
+        appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
 
-        a.setJvmArgs(
+        appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
                 + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
         );
-        a.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-        a.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
-        runConfigurations.add(a);
+        appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+        appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
+        runConfigurations.add(appRun);
     }
 
     private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
