@@ -39,7 +39,6 @@ neoForge {
     mods {
         testproject {
             sourceSet sourceSets.main
-            unitTestSourceSet = sourceSets.test
         }
     }
 
@@ -50,5 +49,10 @@ neoForge {
     parchment {
         minecraftVersion = "1.20.6"
         mappingsVersion = "2024.05.01"
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods.testproject
     }
 }

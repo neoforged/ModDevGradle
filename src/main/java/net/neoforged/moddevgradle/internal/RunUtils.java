@@ -2,7 +2,9 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
+import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -14,6 +16,7 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
@@ -32,6 +35,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -206,15 +210,22 @@ final class RunUtils {
     }
 
     private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        return modsProvider.map(mods -> mods.stream()
+        var extension = ExtensionUtils.findExtension(project, "neoForge", NeoForgeExtension.class);
+        var unitTestedMod = extension.getUnitTest().getTestedMod()
+                .filter(m -> includeUnitTests)
+                .map(Optional::of)
+                .orElse(Optional.empty());
+
+        return modsProvider.zip(unitTestedMod, (mods, testedMod) -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
                     modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
                     for (var sourceSet : mod.getModSourceSets().get()) {
                         modFolder.getFolders().from(sourceSet.getOutput());
                     }
-                    if (includeUnitTests && mod.getUnitTestSourceSet().isPresent()) {
-                        modFolder.getFolders().from(mod.getUnitTestSourceSet().get().getOutput());
+                    if (testedMod.isPresent() && testedMod.get() == mod) {
+                        var sourceSets = ExtensionUtils.findExtension(project, "sourceSets", SourceSetContainer.class);
+                        modFolder.getFolders().from(sourceSets.getByName("test").getOutput());
                     }
                     return modFolder;
                 })));

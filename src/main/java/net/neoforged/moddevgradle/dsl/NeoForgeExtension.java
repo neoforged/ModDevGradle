@@ -19,6 +19,7 @@ public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
     private final NeoFormRuntime neoFormRuntime;
+    private final UnitTest unitTest;
 
     @Inject
     public NeoForgeExtension(Project project) {
@@ -26,6 +27,7 @@ public abstract class NeoForgeExtension {
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
         neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
+        unitTest = project.getObjects().newInstance(UnitTest.class);
 
         getAccessTransformers().convention(project.provider(() -> {
             // TODO Can we scan the source sets for the main source sets resource dir?
@@ -80,5 +82,13 @@ public abstract class NeoForgeExtension {
 
     public void neoFormRuntime(Action<NeoFormRuntime> action) {
         action.execute(neoFormRuntime);
+    }
+
+    public UnitTest getUnitTest() {
+        return unitTest;
+    }
+
+    public void unitTest(Action<UnitTest> action) {
+        action.execute(unitTest);
     }
 }
