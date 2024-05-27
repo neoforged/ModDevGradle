@@ -48,12 +48,12 @@ In `build.gradle`:
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://github.com/neoforged/ModDevGradle/packages/2159800.
-    id 'net.neoforged.moddev' version '0.1.34-pr-1-pr-publish'
+    id 'net.neoforged.moddev' version '0.1.39-pr-1-pr-publish'
 }
 
 neoForge {
     // For now we require a special NeoForge build. You can find the latest version at https://github.com/neoforged/NeoForge/pull/959. 
-    version = "20.6.84-beta-pr-959-features-gradle-metadata"
+    version = "20.6.91-beta-pr-959-features-gradle-metadata"
 
     runs {
         client {
