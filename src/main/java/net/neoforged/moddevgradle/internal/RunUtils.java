@@ -2,17 +2,21 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
+import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +36,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -178,17 +184,16 @@ final class RunUtils {
     public static String getArgFileParameter(RegularFile argFile) {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
-
-    public static CommandLineArgumentProvider getGradleModFoldersProvider(Project project, RunModel run) {
+    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, run));
+        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
         return modFoldersProvider;
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable File outputDirectory, RunModel run) {
+    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable File outputDirectory, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         if (outputDirectory != null) {
-            modFoldersProvider.getModFolders().set(run.getMods().map(mods -> mods.stream()
+            modFoldersProvider.getModFolders().set(modsProvider.map(mods -> mods.stream()
                     .collect(Collectors.toMap(ModModel::getName, mod -> {
                         var modFolder = project.getObjects().newInstance(ModFolder.class);
                         modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
@@ -201,7 +206,7 @@ final class RunUtils {
                         return modFolder;
                     }))));
         } else {
-            modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, run));
+            modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
         }
         return modFoldersProvider;
     }
@@ -210,13 +215,23 @@ final class RunUtils {
         return sourceSet.getName().equals(SourceSet.MAIN_SOURCE_SET_NAME) ? "production" : sourceSet.getName();
     }
 
-    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, RunModel run) {
-        return run.getMods().map(mods -> mods.stream()
+    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
+        var extension = ExtensionUtils.findExtension(project, "neoForge", NeoForgeExtension.class);
+        var unitTestedMod = extension.getUnitTest().getTestedMod()
+                .filter(m -> includeUnitTests)
+                .map(Optional::of)
+                .orElse(Optional.empty());
+
+        return modsProvider.zip(unitTestedMod, (mods, testedMod) -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
                     modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
                     for (var sourceSet : mod.getModSourceSets().get()) {
                         modFolder.getFolders().from(sourceSet.getOutput());
+                    }
+                    if (testedMod.isPresent() && testedMod.get() == mod) {
+                        var sourceSets = ExtensionUtils.findExtension(project, "sourceSets", SourceSetContainer.class);
+                        modFolder.getFolders().from(sourceSets.getByName("test").getOutput());
                     }
                     return modFolder;
                 })));
@@ -289,8 +304,9 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
 
     @Internal
     public String getArgument() {
+        var stringModFolderMap = getModFolders().get();
         return "-Dfml.modFolders=%s".formatted(
-                getModFolders().get().entrySet().stream()
+                stringModFolderMap.entrySet().stream()
                         .<String>mapMulti((entry, output) -> {
                             for (var directory : entry.getValue().getFolders()) {
                                 // Resources
@@ -312,5 +328,6 @@ abstract class ModFolder {
     }
 
     @InputFiles
+    @Classpath
     abstract ConfigurableFileCollection getFolders();
 }

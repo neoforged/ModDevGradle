@@ -68,12 +68,14 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static final String TASK_GROUP = "mod development";
 
+    private Runnable configureTesting = null;
+
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
-        var extension = project.getExtensions().create("neoForge", NeoForgeExtension.class);
+        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
@@ -277,15 +279,6 @@ public class ModDevPlugin implements Plugin<Project> {
         });
         configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
 
-        // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
-        configurations.named("testCompileOnly").configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
-        });
-        configurations.named("testRuntimeClasspath", files -> files.extendsFrom(localRuntime));
-
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
             var toolchainSpec = javaExtension.getToolchain();
@@ -392,14 +385,14 @@ public class ModDevPlugin implements Plugin<Project> {
                 // Of course we need the arg files to be up-to-date ;)
                 task.dependsOn(prepareRunTask);
 
-                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run));
+                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
             });
         });
 
 
         setupJarJar(project);
 
-        setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency);
+        configureTesting = () -> setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency, minecraftClassesArtifact);
 
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
@@ -450,9 +443,18 @@ public class ModDevPlugin implements Plugin<Project> {
             repo.setUrl("https://prmaven.neoforged.net/NeoForge/pr959");
             repo.content(content -> {
                 content.includeModule("net.neoforged", "neoforge");
+                content.includeModule("net.neoforged", "testframework");
             });
         });
 
+    }
+
+    public void setupTesting() {
+        if (configureTesting == null) {
+            throw new IllegalStateException("Unit testing was already enabled once!");
+        }
+        configureTesting.run();
+        configureTesting = null;
     }
 
     private void setupTesting(Project project,
@@ -461,10 +463,42 @@ public class ModDevPlugin implements Plugin<Project> {
                               TaskProvider<DownloadAssetsTask> downloadAssets,
                               TaskProvider<Task> ideSyncTask,
                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
-                              Provider<ModuleDependency> neoForgeModDevLibrariesDependency) {
+                              Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
+                              Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
+        var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
+        var unitTest = extension.getUnitTest();
+
         var tasks = project.getTasks();
         var layout = project.getLayout();
         var configurations = project.getConfigurations();
+        var dependencyFactory = project.getDependencyFactory();
+
+        // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
+        configurations.named("testCompileOnly").configure(configuration -> {
+            configuration.withDependencies(dependencies -> {
+                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+                dependencies.addLater(neoForgeModDevLibrariesDependency);
+            });
+        });
+
+        var localRuntime = configurations.getByName("neoForgeGeneratedArtifacts");
+        var testLocalRuntime = configurations.create("neoForgeTestFixtures", config -> {
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+            config.withDependencies(dependencies -> {
+                dependencies.addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
+                            });
+                }));
+            });
+        });
+
+        configurations.named("testRuntimeClasspath", files -> {
+            files.extendsFrom(localRuntime);
+            files.extendsFrom(testLocalRuntime);
+        });
 
         var legacyClasspathConfiguration = configurations.create("fmljunitLibraries", spec -> {
             spec.setCanBeResolved(true);
@@ -484,12 +518,11 @@ public class ModDevPlugin implements Plugin<Project> {
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
-        var runDirectory = layout.getBuildDirectory().dir("fmljunitrun");
         var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
         var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
         var fmlJunitLog4jConfig = layout.getBuildDirectory().file("moddev/fmljunitlog4j2.xml");
         var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareArgsForTesting.class, task -> {
-            task.getGameDirectory().set(runDirectory);
+            task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(testVmArgsFile);
             task.getProgramArgsFile().set(fmlJunitArgsFile);
             task.getLog4jConfigFile().set(fmlJunitLog4jConfig);
@@ -508,6 +541,17 @@ public class ModDevPlugin implements Plugin<Project> {
             // file containing the program arguments needed to launch
             task.systemProperty("fml.junit.argsfile", RunUtils.escapeJvmArg(fmlJunitArgsFile.get().getAsFile().getAbsolutePath()));
             task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get())));
+
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
+            task.getJvmArgumentProviders().add(modFoldersProvider);
+        });
+
+        var test = tasks.named("test", Test.class);
+        // This is quite stupid... Test doesn't have a property for game directory, so we need to afterEvaluate it.
+        project.afterEvaluate(p -> {
+            test.configure(t -> {
+                t.setWorkingDir(unitTest.getGameDirectory());
+            });
         });
     }
 
@@ -566,7 +610,7 @@ public class ModDevPlugin implements Plugin<Project> {
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
-                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
+                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
         );
         appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
@@ -731,7 +775,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
                         // TODO: Eclipse output folders, are those relevant for Eclipse runs?
-                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
+                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
@@ -739,10 +783,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
 
         var filename = run.getIdeName().get();
-        
+
         var file = project.file(".eclipse/configurations/" + filename + ".launch");
         System.out.println("Writing eclipse run " + file);
-        
+
         file.getParentFile().mkdirs();
         try (var writer = new FileWriter(file, false)) {
             config.write(writer);

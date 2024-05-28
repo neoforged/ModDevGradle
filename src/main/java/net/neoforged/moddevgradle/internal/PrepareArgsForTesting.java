@@ -69,7 +69,8 @@ abstract class PrepareArgsForTesting extends DefaultTask {
 
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
         var result = new ArrayList<String>();
-        for (String arg : runConfig.jvmArgs()) {
+        for (var jvmArg : runConfig.jvmArgs()) {
+            String arg = jvmArg;
             if (arg.equals("{modules}")) {
                 arg = getModules().getFiles().stream()
                         .map(File::getAbsolutePath)
@@ -88,9 +89,9 @@ abstract class PrepareArgsForTesting extends DefaultTask {
         Files.createDirectories(runDir.toPath());
 
         var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
-        var runConfig = userDevConfig.runs().get("client");
+        var runConfig = userDevConfig.runs().get("junit");
         if (runConfig == null) {
-            throw new GradleException("The unit testing plugin requires a 'client' run-type to be made available by NeoForge. Available run types: " + userDevConfig.runs().keySet());
+            throw new GradleException("The unit testing plugin requires a 'junit' run-type to be made available by NeoForge. Available run types: " + userDevConfig.runs().keySet());
         }
 
         writeJvmArguments(runConfig);
@@ -126,19 +127,12 @@ abstract class PrepareArgsForTesting extends DefaultTask {
 
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
         List<String> args = runConfig.args();
-        for (int i = 0; i < args.size(); i++) {
-            var arg = args.get(i);
+        for (String arg : args) {
             switch (arg) {
-                case "--target" -> {
-                    i++; // Skip the next argument too
-
-                    lines.add("--target");
-                    lines.add("forgejunituserdev");
-                }
                 case "{assets_root}" -> arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
                 case "{asset_index}" -> arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add(RunUtils.escapeJvmArg(arg));
+            lines.add(arg);
         }
 
         FileUtils.writeLinesSafe(getProgramArgsFile().get().getAsFile().toPath(), lines);

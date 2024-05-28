@@ -162,6 +162,55 @@ neoForge {
 }
 ```
 
+### Unit testing with JUnit
+On top of gametests, this plugin supports unit testing mods with JUnit.
+
+For the minimal setup, add the following code to your build script:
+```groovy
+// Add a test dependency on the test engine JUnit
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Enable JUnit in Gradle:
+test {
+    useJUnitPlatform()
+}
+
+neoForge {
+    unitTest {
+        // Enable JUnit support in the moddev plugin
+        enable()
+        // Configure which mod is being tested.
+        // This allows NeoForge to load the test/ classes and resources as belonging to the mod.
+        testedMod = mods.<mod name> // <mod name> must match the name in the mods { } block.
+    }
+}
+```
+
+You can now use the `@Test` annotation for your unit tests inside the `test/` folder,
+and reference Minecraft classes.
+
+#### Loading a server
+With the NeoForge test framework, you can run your unit tests in the context of a Minecraft server:
+```groovy
+dependencies {
+    testImplementation "net.neoforged:testframework:<neoforge version>"
+}
+```
+
+With this dependency, you can annotate your test class as follows:
+```java
+@ExtendWith(EphemeralTestServerProvider.class)
+public class TestClass {
+    @Test
+    public void testMethod(MinecraftServer server) {
+        // Use server...
+    }
+}
+```
+
 ## Advanced Tips & Tricks
 
 ### Overriding Platform Libraries

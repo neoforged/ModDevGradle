@@ -111,10 +111,6 @@ gradlePlugin {
             id = 'net.neoforged.moddev'
             implementationClass = 'net.neoforged.moddevgradle.boot.ModDevPlugin'
         }
-        junit {
-            id = 'net.neoforged.moddev.junit'
-            implementationClass = 'net.neoforged.moddevgradle.boot.JUnitPlugin'
-        }
     }
 }
 

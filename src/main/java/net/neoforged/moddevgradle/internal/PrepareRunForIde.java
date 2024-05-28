@@ -111,6 +111,9 @@ abstract class PrepareRunForIde extends DefaultTask {
         Files.createDirectories(runDir.toPath());
 
         var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
+        if (getRunType().get().equals("junit")) {
+            throw new GradleException("The junit run type cannot be used for normal NeoForge runs. Available run types: " + userDevConfig.runs().keySet());
+        }
         var runConfig = userDevConfig.runs().get(getRunType().get());
         if (runConfig == null) {
             throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
