@@ -1,11 +1,11 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -47,7 +47,11 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.event.Level;
 
+import javax.xml.stream.XMLStreamException;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -399,7 +403,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
-        configureEclipseModel(project, ideSyncTask, createArtifacts);
+        configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
     }
 
     private static void configureParchmentRepository(Project project, Parchment parchment) {
@@ -595,14 +599,14 @@ public class ModDevPlugin implements Plugin<Project> {
             } else {
                 var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
 
-                extension.getRuns().forEach(run -> {
+                for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
                     if (!prepareTask.getEnabled()) {
                         project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
-                        return;
+                        continue;
                     }
                     addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
-                });
+                }
             }
         });
     }
@@ -669,7 +673,10 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static void configureEclipseModel(Project project,
                                               TaskProvider<Task> ideSyncTask,
-                                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts) {
+                                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
+                                              NeoForgeExtension extension,
+                                              Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
         if (eclipseModel == null) {
@@ -695,7 +702,55 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         }
 
-        // Set up runs
+        // Set up runs if running under buildship
+        // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
+        System.out.println(System.getProperties());
+        if (System.getProperty("eclipse.application") != null) {
+        	project.afterEvaluate(ignored -> {
+            for (var run : extension.getRuns()) {
+                var prepareTask = prepareRunTasks.get(run).get();
+                if (!prepareTask.getEnabled()) {
+                    project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+                    continue;
+                }
+                addEclipseLaunchConfiguration(project, null, run, prepareTask);
+            }
+        	});
+        }
     }
+
+    private static void addEclipseLaunchConfiguration(Project project,
+                                                      @Nullable File outputDirectory,
+                                                      RunModel run,
+                                                      PrepareRunForIde prepareTask) {
+        //Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
+        //And so that post sync tasks are only ran once for all subprojects.
+        EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
+
+        var config = JavaApplicationLaunchConfig.builder(model.getProject().getName())
+                .vmArgs(
+                        RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
+                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
+                )
+                .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
+                .jreContainer("JavaSE-21") // TODO
+                .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+
+        var filename = run.getIdeName().get();
+        
+        var file = project.file(".eclipse/configurations/" + filename + ".launch");
+        System.out.println("Writing eclipse run " + file);
+        
+        file.getParentFile().mkdirs();
+        try (var writer = new FileWriter(file, false)) {
+            config.write(writer);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to write launch file: " + file, e);
+        } catch (XMLStreamException e) {
+            throw new RuntimeException("Failed to write launch file: " + file, e);
+        }
+    }
+
 }
 
