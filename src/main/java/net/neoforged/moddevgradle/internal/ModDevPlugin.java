@@ -730,6 +730,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var config = JavaApplicationLaunchConfig.builder(model.getProject().getName())
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
+                        // TODO: Eclipse output folders, are those relevant for Eclipse runs?
                         RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
