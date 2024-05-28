@@ -320,7 +320,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var ideSyncTask = tasks.register("neoForgeIdeSync");
 
-        Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks = new IdentityHashMap<>();
+        Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         extension.getRuns().configureEach(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
@@ -346,7 +346,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
-            var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRunForIde.class, task -> {
+            var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
                 task.getGameDirectory().set(run.getGameDirectory());
                 task.getVmArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.VMARGS));
                 task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.PROGRAMARGS));
@@ -521,7 +521,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
         var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
         var fmlJunitLog4jConfig = layout.getBuildDirectory().file("moddev/fmljunitlog4j2.xml");
-        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareArgsForTesting.class, task -> {
+        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareTest.class, task -> {
             task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(testVmArgsFile);
             task.getProgramArgsFile().set(fmlJunitArgsFile);
@@ -601,7 +601,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                                     RunConfigurationContainer runConfigurations,
                                                     @Nullable File outputDirectory,
                                                     RunModel run,
-                                                    PrepareRunForIde prepareTask) {
+                                                    PrepareRun prepareTask) {
         var appRun = new Application(run.getIdeName().get(), project);
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         appRun.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
@@ -617,7 +617,7 @@ public class ModDevPlugin implements Plugin<Project> {
         runConfigurations.add(appRun);
     }
 
-    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
         var rootProject = project.getRootProject();
 
         if (!rootProject.getPlugins().hasPlugin(IdeaExtPlugin.class)) {
@@ -719,7 +719,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                               TaskProvider<Task> ideSyncTask,
                                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
                                               NeoForgeExtension extension,
-                                              Map<RunModel, TaskProvider<PrepareRunForIde>> prepareRunTasks) {
+                                              Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
 
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
@@ -766,7 +766,7 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       @Nullable File outputDirectory,
                                                       RunModel run,
-                                                      PrepareRunForIde prepareTask) {
+                                                      PrepareRun prepareTask) {
         //Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         //And so that post sync tasks are only ran once for all subprojects.
         EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
