@@ -40,13 +40,23 @@ public abstract class RunModel implements Named, Dependencies {
             configuration.setCanBeConsumed(false);
         });
 
-        getLogLevel().convention(Level.DEBUG);
+        getLogLevel().convention(Level.INFO);
+
+        // Build a nicer name for the IDE run configuration
+        boolean isSubProject = project.getRootProject() != project;
+        var ideName = StringUtils.capitalize(name);
+        if (isSubProject) {
+            ideName = project.getName() + " - " + ideName;
+        }
+        getIdeName().convention(ideName);
     }
 
     @Override
     public String getName() {
         return name;
     }
+
+    public abstract Property<String> getIdeName();
 
     public abstract DirectoryProperty getGameDirectory();
 
