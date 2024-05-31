@@ -23,6 +23,7 @@ import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -75,6 +76,14 @@ public class ModDevPlugin implements Plugin<Project> {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
+        var configurations = project.getConfigurations();
+        var layout = project.getLayout();
+        var tasks = project.getTasks();
+        var repositories = project.getRepositories();
+
+        // We use this directory to store intermediate files used during moddev
+        var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
+
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
@@ -84,7 +93,6 @@ public class ModDevPlugin implements Plugin<Project> {
                     });
         });
 
-        var repositories = project.getRepositories();
         repositories.addLast(repositories.maven(repo -> {
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
         }));
@@ -95,7 +103,6 @@ public class ModDevPlugin implements Plugin<Project> {
         }));
         addTemporaryRepositories(repositories);
 
-        var configurations = project.getConfigurations();
         // Configuration for all artifact that should be passed to NFRT for preventing repeated downloads
         var neoFormRuntimeArtifactManifestNeoForgeClasses = configurations.create("neoFormRuntimeArtifactManifestNeoForgeClasses", spec -> {
             spec.setCanBeConsumed(false);
@@ -173,10 +180,6 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var layout = project.getLayout();
-
-        var tasks = project.getTasks();
-
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForgeClasses.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
                 return results.stream().map(result -> {
@@ -205,7 +208,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     );
                 }).collect(Collectors.toSet());
             }));
-            task.getManifestFile().set(layout.getBuildDirectory().file("neoform_artifact_manifest.properties"));
+            task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
 
         // Add a filtered parchment repository automatically if enabled
@@ -233,16 +236,19 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getParchmentData().from(parchmentData);
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getCompileClasspath().from(minecraftCompileClasspath);
-            task.getCompiledArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local.jar"));
-            task.getCompiledWithSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-merged.jar"));
-            task.getSourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-sources.jar"));
-            task.getResourcesArtifact().set(layout.getBuildDirectory().file("repo/minecraft/neoforge-minecraft-joined/local/neoforge-minecraft-joined-local-resources-aka-client-extra.jar"));
+
+            var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
+            task.getCompiledArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local.jar")));
+            task.getCompiledWithSourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-merged.jar")));
+            task.getSourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-sources.jar")));
+            task.getResourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-resources-aka-client-extra.jar")));
         });
+
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
-            task.getAssetPropertiesFile().set(layout.getBuildDirectory().file("minecraft_assets.properties"));
+            task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
@@ -341,16 +347,16 @@ public class ModDevPlugin implements Plugin<Project> {
             });
 
             var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
-                writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt"));
+                writeLcp.getLegacyClasspathFile().convention(modDevBuildDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
                 writeLcp.getEntries().from(legacyClasspathConfiguration);
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRunForIde.class, task -> {
                 task.getGameDirectory().set(run.getGameDirectory());
-                task.getVmArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.VMARGS));
-                task.getProgramArgsFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.PROGRAMARGS));
-                task.getLog4jConfigFile().set(RunUtils.getArgFile(project, run, RunUtils.RunArgFile.LOG4J_CONFIG));
+                task.getVmArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.VMARGS));
+                task.getProgramArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.PROGRAMARGS));
+                task.getLog4jConfigFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.LOG4J_CONFIG));
                 task.getRunType().set(run.getType());
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
@@ -392,7 +398,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         setupJarJar(project);
 
-        configureTesting = () -> setupTesting(project, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency, minecraftClassesArtifact);
+        configureTesting = () -> setupTesting(project, modDevBuildDir, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency, minecraftClassesArtifact);
 
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
@@ -458,6 +464,7 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private void setupTesting(Project project,
+                              Provider<Directory> modDevDir,
                               Configuration userDevConfigOnly,
                               Configuration neoForgeModDevModules,
                               TaskProvider<DownloadAssetsTask> downloadAssets,
@@ -513,14 +520,14 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var writeLcpTask = tasks.register("writeFmlJunitClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.getLegacyClasspathFile().convention(layout.getBuildDirectory().file("moddev/fmljunitrunVmArgsLegacyClasspath.txt"));
+            writeLcp.getLegacyClasspathFile().convention(modDevDir.map(dir -> dir.file("fmljunitrunVmArgsLegacyClasspath.txt")));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
-        var testVmArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunVmArgs.txt");
-        var fmlJunitArgsFile = layout.getBuildDirectory().file("moddev/fmljunitrunProgramArgs.txt");
-        var fmlJunitLog4jConfig = layout.getBuildDirectory().file("moddev/fmljunitlog4j2.xml");
+        var testVmArgsFile = modDevDir.map(dir -> dir.file("fmljunitrunVmArgs.txt"));
+        var fmlJunitArgsFile = modDevDir.map(dir -> dir.file("fmljunitrunProgramArgs.txt"));
+        var fmlJunitLog4jConfig = modDevDir.map(dir -> dir.file("fmljunitlog4j2.xml"));
         var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareArgsForTesting.class, task -> {
             task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(testVmArgsFile);

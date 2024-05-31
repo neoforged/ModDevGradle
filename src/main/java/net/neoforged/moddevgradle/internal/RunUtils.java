@@ -8,6 +8,7 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
@@ -165,8 +166,8 @@ final class RunUtils {
                 """.replace("$ROOTLEVEL$", rootLevel.name()));
     }
 
-    public static File getArgFile(Project project, RunModel run, RunArgFile type) {
-        return project.getLayout().getBuildDirectory().file("moddev/" + InternalModelHelper.nameOfRun(run, "", type.filename)).get().getAsFile();
+    public static File getArgFile(Provider<Directory> modDevFolder, RunModel run, RunArgFile type) {
+        return modDevFolder.get().file(InternalModelHelper.nameOfRun(run, "", type.filename)).getAsFile();
     }
 
     public enum RunArgFile {

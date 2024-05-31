@@ -14,13 +14,9 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.jar.JarOutputStream;
-import java.util.stream.Collectors;
 
 abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     @Inject
@@ -95,12 +91,6 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
             args.add("--disable-cache");
         }
 
-        var compileClasspath = getCompileClasspath().getFiles();
-        if (!compileClasspath.isEmpty()) {
-            args.add("--compile-classpath");
-            args.add(compileClasspath.stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator)));
-        }
-
         var accessTransformers = getAccessTransformers().getFiles();
         for (var accessTransformer : accessTransformers) {
             args.add("--access-transformer");
@@ -123,10 +113,15 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
             args.add("--analyze-cache-misses");
         }
 
+        if (getArtifactManifestFile().isPresent()) {
+            args.add("--artifact-manifest");
+            args.add(getArtifactManifestFile().get().getAsFile().getAbsolutePath());
+            args.add("--warn-on-artifact-manifest-miss");
+        }
+
         Collections.addAll(
                 args,
                 "--neoforge", artifactId + ":userdev",
-                "--artifact-manifest", getArtifactManifestFile().get().getAsFile().getAbsolutePath(),
                 "--dist", "joined",
                 "--write-result", "compiled:" + getCompiledArtifact().get().getAsFile().getAbsolutePath(),
                 "--write-result", "sources:" + getSourcesArtifact().get().getAsFile().getAbsolutePath(),
