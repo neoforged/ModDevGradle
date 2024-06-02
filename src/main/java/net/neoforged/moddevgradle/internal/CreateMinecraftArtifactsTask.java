@@ -4,7 +4,6 @@ import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
@@ -12,15 +11,19 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
+@DisableCachingByDefault(because = "Implements its own caching")
 abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     @Inject
     public CreateMinecraftArtifactsTask() {
+        // When cache is disabled, the task is NEVER up-to-date to aid with debugging problems
+        getOutputs().upToDateWhen(task -> ((CreateMinecraftArtifactsTask) task).getEnableCache().get());
     }
 
     @InputFile
@@ -35,10 +38,6 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
 
     @Input
     abstract Property<String> getNeoForgeArtifact();
-
-    @Classpath
-    @InputFiles
-    abstract ConfigurableFileCollection getCompileClasspath();
 
     @InputFiles
     abstract ConfigurableFileCollection getAccessTransformers();

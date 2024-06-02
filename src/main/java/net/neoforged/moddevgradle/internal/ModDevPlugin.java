@@ -11,6 +11,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
@@ -103,47 +104,11 @@ public class ModDevPlugin implements Plugin<Project> {
         }));
         addTemporaryRepositories(repositories);
 
-        // Configuration for all artifact that should be passed to NFRT for preventing repeated downloads
-        var neoFormRuntimeArtifactManifestNeoForgeClasses = configurations.create("neoFormRuntimeArtifactManifestNeoForgeClasses", spec -> {
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> {
-                // Add the dep on NeoForge itself
-                dependencies.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
-                            });
-                }));
-            });
+        var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
+            configureArtifactManifestTask(task, extension);
+            task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
-        // Configuration for all artifact that should be passed to NFRT for preventing repeated downloads
-        var neoFormRuntimeArtifactManifestNeoForgeSources = configurations.create("neoFormRuntimeArtifactManifestNeoForgeSources", spec -> {
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> {
-                // Add the dep on NeoForge itself
-                dependencies.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .attributes(attributes -> {
-                                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
-                                attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
-                            });
-                }));
-            });
-        });
-        var neoFormRuntimeArtifactManifestNeoForm = configurations.create("neoFormRuntimeArtifactManifestNeoForm", spec -> {
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> {
-                dependencies.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-dependencies");
-                            });
-                }));
-            });
-        });
+
         var neoFormRuntimeConfig = configurations.create("neoFormRuntime", files -> {
             files.setCanBeConsumed(false);
             files.setCanBeResolved(true);
@@ -165,50 +130,6 @@ public class ModDevPlugin implements Plugin<Project> {
                                 .map(dependencyFactory::create)
                 );
             });
-        });
-
-        // This configuration will include the classpath needed to decompile and recompile Minecraft,
-        // and has to include the libraries added by NeoForm and NeoForge.
-        var minecraftCompileClasspath = configurations.create("minecraftCompileClasspath", spec -> {
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.setVisible(false);
-            spec.withDependencies(set -> set.addLater(neoForgeModDevLibrariesDependency));
-            spec.attributes(attributes -> {
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-            });
-        });
-
-        var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
-            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForgeClasses.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                return results.stream().map(result -> {
-                    var gav = guessMavenGav(result);
-                    return new ArtifactManifestEntry(
-                            gav,
-                            result.getFile()
-                    );
-                }).collect(Collectors.toSet());
-            }));
-            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForgeSources.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                return results.stream().map(result -> {
-                    var gav = guessMavenGav(result);
-                    return new ArtifactManifestEntry(
-                            gav,
-                            result.getFile()
-                    );
-                }).collect(Collectors.toSet());
-            }));
-            task.getNeoForgeModDevArtifacts().addAll(neoFormRuntimeArtifactManifestNeoForm.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                return results.stream().map(result -> {
-                    var gav = guessMavenGav(result);
-                    return new ArtifactManifestEntry(
-                            gav,
-                            result.getFile()
-                    );
-                }).collect(Collectors.toSet());
-            }));
-            task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
 
         // Add a filtered parchment repository automatically if enabled
@@ -235,7 +156,6 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getAccessTransformers().from(accessTransformers);
             task.getParchmentData().from(parchmentData);
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
-            task.getCompileClasspath().from(minecraftCompileClasspath);
 
             var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             task.getCompiledArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local.jar")));
@@ -403,6 +323,87 @@ public class ModDevPlugin implements Plugin<Project> {
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
         configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
+    }
+
+    /**
+     * Collects all dependencies needed by the NeoFormRuntime and adds them to the task for creating
+     * an artifact manifest for NFRT.
+     */
+    private void configureArtifactManifestTask(CreateArtifactManifestTask task, NeoForgeExtension extension) {
+        var project = task.getProject();
+        var configurations = project.getConfigurations();
+        var dependencyFactory = project.getDependencyFactory();
+
+        var configurationPrefix = "neoFormRuntimeDependencies";
+
+        Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
+
+        // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
+        // What constitutes incompatible cannot be overridden on a per-configuration basis.
+        var neoForgeClasses = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
+            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
+                    }))));
+        });
+
+        var neoForgeSources = configurations.create(configurationPrefix + "NeoForgeSources", spec -> {
+            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency));
+            spec.attributes(attributes -> {
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
+                attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
+            });
+        });
+
+        // Compile-time dependencies used by NeoForm, NeoForge and Minecraft.
+        // Also includes any classes referenced by compiled Minecraft code (used by decompilers, renamers, etc.)
+        var compileClasspath = configurations.create(configurationPrefix + "CompileClasspath", spec -> {
+            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-dependencies");
+                    }))));
+            spec.attributes(attributes -> {
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+            });
+        });
+
+        // Runtime-time dependencies used by NeoForm, NeoForge and Minecraft.
+        var runtimeClasspath = configurations.create(configurationPrefix + "RuntimeClasspath", spec -> {
+            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-dependencies");
+                    }))));
+            spec.attributes(attributes -> {
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+            });
+        });
+
+        for (var configuration : List.of(neoForgeClasses, neoForgeSources, compileClasspath, runtimeClasspath)) {
+            // Convert to a serializable representation for the task.
+            task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
+                return results.stream().map(result -> {
+                    var gav = guessMavenGav(result);
+                    return new ArtifactManifestEntry(
+                            gav,
+                            result.getFile()
+                    );
+                }).collect(Collectors.toSet());
+            }));
+        }
     }
 
     private static void configureParchmentRepository(Project project, Parchment parchment) {
@@ -757,16 +758,16 @@ public class ModDevPlugin implements Plugin<Project> {
         // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
         System.out.println(System.getProperties());
         if (System.getProperty("eclipse.application") != null) {
-        	project.afterEvaluate(ignored -> {
-            for (var run : extension.getRuns()) {
-                var prepareTask = prepareRunTasks.get(run).get();
-                if (!prepareTask.getEnabled()) {
-                    project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
-                    continue;
+            project.afterEvaluate(ignored -> {
+                for (var run : extension.getRuns()) {
+                    var prepareTask = prepareRunTasks.get(run).get();
+                    if (!prepareTask.getEnabled()) {
+                        project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+                        continue;
+                    }
+                    addEclipseLaunchConfiguration(project, null, run, prepareTask);
                 }
-                addEclipseLaunchConfiguration(project, null, run, prepareTask);
-            }
-        	});
+            });
         }
     }
 

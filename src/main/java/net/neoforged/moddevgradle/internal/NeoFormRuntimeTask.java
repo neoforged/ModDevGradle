@@ -3,10 +3,12 @@ package net.neoforged.moddevgradle.internal;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.process.ExecOperations;
 
@@ -20,6 +22,12 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
     @Classpath
     @InputFiles
     abstract ConfigurableFileCollection getNeoFormRuntime();
+
+    /**
+     * Launcher for the java version used by NFRT itself.
+     */
+    @Internal
+    abstract Property<JavaLauncher> getNeoFormRuntimeLauncher();
 
     @Inject
     protected abstract JavaToolchainService getJavaToolchainService();
@@ -50,11 +58,12 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
 
         // Store temporary working directories in this projects build directory such that gradle clean removes them
         getWorkDirectory().set(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
+
+        // Default to J21 for NFRT
+        getNeoFormRuntimeLauncher().convention(getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21))));
     }
 
     protected final void run(List<String> args) {
-        var launcher = getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)));
-
         // Use Gradle-specific directories when running NFRT
         var realArgs = new ArrayList<>(args);
         realArgs.add(0, "--home-dir");
@@ -65,7 +74,7 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         getExecOperations().javaexec(execSpec -> {
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
-            execSpec.executable(launcher.get().getExecutablePath().getAsFile());
+            execSpec.executable(getNeoFormRuntimeLauncher().get().getExecutablePath().getAsFile());
             execSpec.classpath(getNeoFormRuntime());
             execSpec.args(realArgs);
         });
