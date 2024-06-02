@@ -4,7 +4,6 @@ import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
-import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 
@@ -18,7 +17,7 @@ public abstract class UnitTest {
     public UnitTest(Project project) {
         this.project = project;
 
-        getGameDirectory().convention(project.getLayout().getBuildDirectory().dir("fmljunitrun"));
+        getGameDirectory().convention(project.getLayout().getBuildDirectory().dir("minecraft-junit"));
     }
 
     /**
@@ -29,7 +28,7 @@ public abstract class UnitTest {
     }
 
     /**
-     * The mod that is currently being tested, so that the unit test classes and resources can be added to it.
+     * The mod that will be loaded in JUnit tests.
      */
     public abstract Property<ModModel> getTestedMod();
 

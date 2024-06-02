@@ -44,6 +44,7 @@ import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
+import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
@@ -60,6 +61,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ModDevPlugin implements Plugin<Project> {
@@ -95,35 +97,44 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         repositories.addLast(repositories.maven(repo -> {
+            repo.setName("NeoForged Releases");
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
         }));
         repositories.addLast(repositories.maven(repo -> {
+            repo.setName("Mojang Minecraft Libraries");
             repo.setUrl(URI.create("https://libraries.minecraft.net/"));
-            repo.metadataSources(sources -> sources.artifact());
+            repo.metadataSources(sources -> sources.mavenPom());
             // TODO: Filter known groups that they ship and dont just run everything against it
         }));
         addTemporaryRepositories(repositories);
+
+        project.getDependencies().attributesSchema(attributesSchema -> {
+            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
+            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
+        });
 
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             configureArtifactManifestTask(task, extension);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
 
-        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", files -> {
-            files.setCanBeConsumed(false);
-            files.setCanBeResolved(true);
-            files.defaultDependencies(spec -> {
-                spec.addLater(extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version).attributes(attributes -> {
+        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
+            spec.setDescription("The NeoFormRuntime CLI tool");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.defaultDependencies(dependencies -> {
+                dependencies.addLater(extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version).attributes(attributes -> {
                     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
                 })));
             });
         });
 
         // Create an access transformer configuration
-        var accessTransformers = configurations.create("accessTransformers", files -> {
-            files.setCanBeConsumed(false);
-            files.setCanBeResolved(true);
-            files.defaultDependencies(dependencies -> {
+        var accessTransformers = configurations.create("accessTransformers", spec -> {
+            spec.setDescription("AccessTransformers to widen visibility of Minecraft classes/fields/methods");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.defaultDependencies(dependencies -> {
                 dependencies.addLater(
                         extension.getAccessTransformers()
                                 .map(project::files)
@@ -136,6 +147,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var parchment = extension.getParchment();
         configureParchmentRepository(project, parchment);
         var parchmentData = configurations.create("parchmentData", spec -> {
+            spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false); // Expect a single result
@@ -181,6 +193,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }
 
         var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
+            config.setDescription("Minecraft artifacts that were generated locally by NFRT");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
             config.withDependencies(dependencies -> {
@@ -190,11 +203,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
                 dependencies.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
             });
-        });
-
-        project.getDependencies().attributesSchema(attributesSchema -> {
-            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
-            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
         });
 
         configurations.named("compileOnly").configure(configuration -> {
@@ -318,7 +326,17 @@ public class ModDevPlugin implements Plugin<Project> {
 
         setupJarJar(project);
 
-        configureTesting = () -> setupTesting(project, modDevBuildDir, userDevConfigOnly, neoForgeModDevModules, downloadAssets, ideSyncTask, createArtifacts, neoForgeModDevLibrariesDependency, minecraftClassesArtifact);
+        configureTesting = () -> setupTesting(
+                project,
+                modDevBuildDir,
+                userDevConfigOnly,
+                neoForgeModDevModules,
+                downloadAssets,
+                ideSyncTask,
+                createArtifacts,
+                neoForgeModDevLibrariesDependency,
+                minecraftClassesArtifact
+        );
 
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
@@ -477,7 +495,6 @@ public class ModDevPlugin implements Plugin<Project> {
         var unitTest = extension.getUnitTest();
 
         var tasks = project.getTasks();
-        var layout = project.getLayout();
         var configurations = project.getConfigurations();
         var dependencyFactory = project.getDependencyFactory();
 
@@ -547,19 +564,33 @@ public class ModDevPlugin implements Plugin<Project> {
 
             // The FML JUnit plugin uses this system property to read a
             // file containing the program arguments needed to launch
-            task.systemProperty("fml.junit.argsfile", RunUtils.escapeJvmArg(fmlJunitArgsFile.get().getAsFile().getAbsolutePath()));
+            task.systemProperty("fml.junit.argsfile", fmlJunitArgsFile.get().getAsFile().getAbsolutePath());
             task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get())));
 
             var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 
-        var test = tasks.named("test", Test.class);
-        // This is quite stupid... Test doesn't have a property for game directory, so we need to afterEvaluate it.
+        // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
         project.afterEvaluate(p -> {
-            test.configure(t -> {
-                t.setWorkingDir(unitTest.getGameDirectory());
+            tasks.withType(Test.class).configureEach(task -> {
+                task.setWorkingDir(unitTest.getGameDirectory());
             });
+
+            // Configure IntelliJ default JUnit parameters, which is used when the user configures IJ to run tests natively
+            var intelliJRunConfigurations = getIntelliJRunConfigurations(p);
+            if (intelliJRunConfigurations != null) {
+                var outputDirectory = RunUtils.getIntellijOutputDirectory(p);
+                intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
+                    jUnitDefaults.setVmParameters(
+                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + fmlJunitArgsFile.get().getAsFile().getAbsolutePath())
+                            + " "
+                            + RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get()))
+                            + " "
+                            + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(p, outputDirectory, unitTest.getTestedMod().map(Set::of), true).getArgument())
+                    );
+                });
+            }
         });
     }
 
