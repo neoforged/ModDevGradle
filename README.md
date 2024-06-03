@@ -111,6 +111,12 @@ neoForge {
             ]
             systemProperty("a.b.c", "xyz")
         
+            // Set or add environment variables
+            environment = [
+                    "FOO_BAR": "123"
+            ]
+            environment("FOO_BAR", "123")
+        
             // Optionally set the log-level used by the game
             logLevel = org.slf4j.event.Level.DEBUG
         

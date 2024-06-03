@@ -60,6 +60,12 @@ public abstract class RunModel implements Named, Dependencies {
 
     public abstract DirectoryProperty getGameDirectory();
 
+    public abstract MapProperty<String, String> getEnvironment();
+
+    public void environment(String key, String value) {
+        getEnvironment().put(key, value);
+    }
+
     public abstract MapProperty<String, String> getSystemProperties();
 
     public void systemProperty(String key, String value) {

@@ -2,7 +2,9 @@ package net.neoforged.moddevgradle.internal;
 
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.JavaExec;
@@ -13,6 +15,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 
 /**
  * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making
@@ -23,6 +26,9 @@ public abstract class RunGameTask extends JavaExec {
     @Classpath
     @InputFiles
     public abstract ConfigurableFileCollection getClasspathProvider();
+
+    @Input
+    public abstract MapProperty<String, String> getEnvironmentProperty();
 
     @Internal
     public abstract DirectoryProperty getGameDirectory();
@@ -40,6 +46,8 @@ public abstract class RunGameTask extends JavaExec {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to create run directory", e);
         }
+
+        getEnvironment().putAll(getEnvironmentProperty().get());
 
         classpath(getClasspathProvider());
         setWorkingDir(runDir);

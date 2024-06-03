@@ -313,6 +313,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getClasspathProvider().from(sourceSet.getRuntimeClasspath());
                 task.getGameDirectory().set(run.getGameDirectory());
 
+                task.getEnvironmentProperty().set(run.getEnvironment());
                 task.jvmArgs(RunUtils.getArgFileParameter(prepareRunTask.get().getVmArgsFile().get()).replace("\\", "\\\\"));
                 task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
                 task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
@@ -645,6 +646,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         appRun.setModuleRef(new ModuleRef(project, sourceSets.getByName("main")));
         appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
+        appRun.setEnvs(run.getEnvironment().get());
 
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
@@ -817,6 +819,7 @@ public class ModDevPlugin implements Plugin<Project> {
                         RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .envVar(run.getEnvironment().get())
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .jreContainer("JavaSE-21") // TODO
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);

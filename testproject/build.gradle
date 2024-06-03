@@ -32,6 +32,7 @@ neoForge {
         }
         server {
             server()
+            environment("BLAH_BLUBB", "123");
         }
     }
 
