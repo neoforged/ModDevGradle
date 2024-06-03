@@ -211,7 +211,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
-        configurations.named("runtimeClasspath", files -> files.extendsFrom(localRuntime));
+        var runtimeClasspath = configurations.named("runtimeClasspath");
+        runtimeClasspath.configure(files -> files.extendsFrom(localRuntime));
 
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
@@ -236,9 +237,11 @@ public class ModDevPlugin implements Plugin<Project> {
                         });
             })));
         });
+
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
+            spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
             spec.withDependencies(set -> {
                 set.addLater(extension.getVersion().map(version -> {
                     return dependencyFactory.create("net.neoforged:neoforge:" + version)
@@ -263,6 +266,7 @@ public class ModDevPlugin implements Plugin<Project> {
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
+                spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
                 spec.attributes(attributes -> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") ? "client" : "server"));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
