@@ -2,8 +2,6 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
-import org.gradle.api.GradleException;
-import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -20,6 +18,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
@@ -32,12 +31,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Performs preparation for running the game through the IDE:
- * <p>
- * Writes the JVM arguments for running the game to an args-file compatible with the JVM spec.
- * This is used only for IDEs.
+ * Performs preparation for running the game or running a test.
+ *
+ * <p><ul>
+ *     <li>Writes the JVM and program arguments for running the game to args-files.</li>
+ *     <li>Creates the run folder.</li>
+ * </ul>
  */
-abstract class PrepareRunForIde extends DefaultTask {
+abstract class PrepareRunOrTest extends DefaultTask {
     @Internal
     public abstract DirectoryProperty getGameDirectory();
 
@@ -53,9 +54,6 @@ abstract class PrepareRunForIde extends DefaultTask {
 
     @Classpath
     public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
-
-    @Input
-    public abstract Property<String> getRunType();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -75,10 +73,6 @@ abstract class PrepareRunForIde extends DefaultTask {
     @Input
     public abstract ListProperty<String> getJvmArguments();
 
-    @Optional
-    @Input
-    public abstract Property<String> getMainClass();
-
     @Input
     public abstract ListProperty<String> getProgramArguments();
 
@@ -86,8 +80,13 @@ abstract class PrepareRunForIde extends DefaultTask {
     public abstract Property<Level> getGameLogLevel();
 
     @Inject
-    public PrepareRunForIde() {
+    public PrepareRunOrTest() {
     }
+
+    protected abstract UserDevRunType resolveRunType(UserDevConfig userDevConfig);
+
+    @Nullable
+    protected abstract String resolveMainClass(UserDevRunType runConfig);
 
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
         var result = new ArrayList<String>();
@@ -111,13 +110,7 @@ abstract class PrepareRunForIde extends DefaultTask {
         Files.createDirectories(runDir.toPath());
 
         var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
-        if (getRunType().get().equals("junit")) {
-            throw new GradleException("The junit run type cannot be used for normal NeoForge runs. Available run types: " + userDevConfig.runs().keySet());
-        }
-        var runConfig = userDevConfig.runs().get(getRunType().get());
-        if (runConfig == null) {
-            throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
-        }
+        var runConfig = resolveRunType(userDevConfig);
 
         writeJvmArguments(runConfig);
         writeProgramArguments(runConfig);
@@ -163,20 +156,24 @@ abstract class PrepareRunForIde extends DefaultTask {
     private void writeProgramArguments(UserDevRunType runConfig) throws IOException {
         var lines = new ArrayList<String>();
 
-        lines.add("# Main Class");
-        lines.add(getMainClass().getOrElse(runConfig.main()));
+        var mainClass = resolveMainClass(runConfig);
+        if (mainClass != null) {
+            lines.add("# Main Class");
+            lines.add(mainClass);
+            lines.add("");
+        }
 
-        lines.add("");
         lines.add("# NeoForge Run-Type Program Arguments");
         var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
-        for (var arg : runConfig.args()) {
-            if (arg.equals("{assets_root}")) {
-                arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
-            } else if (arg.equals("{asset_index}")) {
-                arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
+        List<String> args = runConfig.args();
+        for (String arg : args) {
+            switch (arg) {
+                case "{assets_root}" -> arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
+                case "{asset_index}" -> arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add(RunUtils.escapeJvmArg(arg));
+            lines.add(arg);
         }
+        lines.add("");
 
         lines.add("# User Supplied Program Arguments");
         lines.addAll(getProgramArguments().get());
