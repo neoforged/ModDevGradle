@@ -564,7 +564,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
         ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
-        tasks.withType(Test.class).configureEach(task -> {
+        var testTask = tasks.named("test", Test.class, task -> {
             task.dependsOn(prepareRunTask);
 
             // The FML JUnit plugin uses this system property to read a
@@ -578,7 +578,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
         project.afterEvaluate(p -> {
-            tasks.withType(Test.class).configureEach(task -> {
+            testTask.configure(task -> {
                 task.setWorkingDir(unitTest.getGameDirectory());
             });
 

@@ -29,6 +29,8 @@ public abstract class UnitTest {
 
     /**
      * The mod that will be loaded in JUnit tests.
+     * The compiled classes from {@code src/test/java} and the resources from {@code src/test/resources}
+     * will be added to that mod at runtime.
      */
     public abstract Property<ModModel> getTestedMod();
 
