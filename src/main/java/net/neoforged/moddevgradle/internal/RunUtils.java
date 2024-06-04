@@ -42,7 +42,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-final class RunUtils {
+@UsedInNeoDev
+public final class RunUtils {
     private RunUtils() {
     }
 

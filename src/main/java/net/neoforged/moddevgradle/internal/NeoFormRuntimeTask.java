@@ -22,17 +22,18 @@ import java.util.List;
 /**
  * Base task implementation for running NFRT.
  */
+@UsedInNeoDev
 abstract public class NeoFormRuntimeTask extends DefaultTask {
 
     @Classpath
     @InputFiles
-    abstract ConfigurableFileCollection getNeoFormRuntime();
+    public abstract ConfigurableFileCollection getNeoFormRuntime();
 
     /**
      * Launcher for the java version used by NFRT itself.
      */
     @Internal
-    abstract Property<JavaLauncher> getNeoFormRuntimeLauncher();
+    protected abstract Property<JavaLauncher> getNeoFormRuntimeLauncher();
 
     @Inject
     protected abstract JavaToolchainService getJavaToolchainService();

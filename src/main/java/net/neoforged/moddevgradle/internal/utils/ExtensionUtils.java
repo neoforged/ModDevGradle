@@ -1,11 +1,13 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import net.neoforged.moddevgradle.internal.UsedInNeoDev;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 @ApiStatus.Internal
+@UsedInNeoDev
 public final class ExtensionUtils {
     private ExtensionUtils() {
     }

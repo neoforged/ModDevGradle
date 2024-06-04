@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
  *     <li>Creates the run folder.</li>
  * </ul>
  */
-abstract class PrepareRunOrTest extends DefaultTask {
+public abstract class PrepareRunOrTest extends DefaultTask {
     @Internal
     public abstract DirectoryProperty getGameDirectory();
 
@@ -61,11 +61,11 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
-    abstract RegularFileProperty getLegacyClasspathFile();
+    public abstract RegularFileProperty getLegacyClasspathFile();
 
     @Classpath
     @InputFiles
-    abstract ConfigurableFileCollection getModules();
+    public abstract ConfigurableFileCollection getModules();
 
     @Input
     public abstract MapProperty<String, String> getSystemProperties();
@@ -128,7 +128,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
         var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
         var commonArgs = List.<String>of();
 
-        return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
+        return new UserDevConfig("", "", "", "", "", "", List.of(), List.of(), Map.of(
                 "client", new UserDevRunType(
                         true, "net.minecraft.client.main.Main", clientArgs, List.of(),true, false, false, false, Map.of(), Map.of()
                 ),

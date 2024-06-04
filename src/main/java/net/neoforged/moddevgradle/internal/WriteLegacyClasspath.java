@@ -12,16 +12,17 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.TreeSet;
 
-abstract class WriteLegacyClasspath extends DefaultTask {
+@UsedInNeoDev
+public abstract class WriteLegacyClasspath extends DefaultTask {
     @Inject
     public WriteLegacyClasspath() {
     }
 
     @InputFiles
-    abstract ConfigurableFileCollection getEntries();
+    public abstract ConfigurableFileCollection getEntries();
 
     @OutputFile
-    abstract RegularFileProperty getLegacyClasspathFile();
+    public abstract RegularFileProperty getLegacyClasspathFile();
 
     @TaskAction
     public void writeLegacyClasspath() throws IOException {

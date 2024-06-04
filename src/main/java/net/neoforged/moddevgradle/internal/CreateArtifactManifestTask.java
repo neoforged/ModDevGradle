@@ -12,12 +12,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-abstract class CreateArtifactManifestTask extends DefaultTask {
+@UsedInNeoDev
+public abstract class CreateArtifactManifestTask extends DefaultTask {
     @Input
-    abstract SetProperty<ArtifactManifestEntry> getNeoForgeModDevArtifacts();
+    public abstract SetProperty<ArtifactManifestEntry> getNeoForgeModDevArtifacts();
 
     @OutputFile
-    abstract RegularFileProperty getManifestFile();
+    public abstract RegularFileProperty getManifestFile();
 
     @Inject
     public CreateArtifactManifestTask() {

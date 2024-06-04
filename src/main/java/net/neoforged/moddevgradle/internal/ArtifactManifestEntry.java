@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 
@@ -7,13 +8,18 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Objects;
 
-final class ArtifactManifestEntry implements Serializable {
+@UsedInNeoDev
+public final class ArtifactManifestEntry implements Serializable {
     @Input
     private final String artifactId;
     @InputFile
     private final File file;
 
-    ArtifactManifestEntry(String artifactId, File file) {
+    public ArtifactManifestEntry(ResolvedArtifactResult artifactResult) {
+        this(ModDevPlugin.guessMavenGav(artifactResult), artifactResult.getFile());
+    }
+
+    public ArtifactManifestEntry(String artifactId, File file) {
         this.artifactId = artifactId;
         this.file = file;
     }

@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import net.neoforged.moddevgradle.internal.UsedInNeoDev;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.io.FilterOutputStream;
@@ -29,6 +30,7 @@ public final class FileUtils {
         }
     }
 
+    @UsedInNeoDev
     public static void writeLinesSafe(Path destination, List<String> lines) throws IOException {
         writeStringSafe(destination, String.join("\n", lines));
     }

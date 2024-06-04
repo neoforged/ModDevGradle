@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.dsl;
 
+import net.neoforged.moddevgradle.internal.UsedInNeoDev;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
@@ -12,6 +13,7 @@ import java.util.List;
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
  */
+@UsedInNeoDev // TODO: debatable whether we want this or not. Maybe move some of it to a superclass? :P
 public abstract class NeoForgeExtension {
     public static final String NAME = "neoForge";
 

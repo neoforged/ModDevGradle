@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 
-abstract class PrepareRun extends PrepareRunOrTest {
+public abstract class PrepareRun extends PrepareRunOrTest {
     @Input
     public abstract Property<String> getRunType();
 

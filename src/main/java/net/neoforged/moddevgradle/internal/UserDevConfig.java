@@ -9,8 +9,19 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
-public record UserDevConfig(String mcp, String sources, String universal, List<String> libraries, List<String> modules,
-                            Map<String, UserDevRunType> runs) implements Serializable {
+@UsedInNeoDev
+public record UserDevConfig(
+        String mcp,
+        String ats,
+        String binpatches,
+        // TODO binpatcher
+        String patches,
+        String sources,
+        String universal,
+        List<String> libraries,
+        // TODO inject
+        List<String> modules,
+        Map<String, UserDevRunType> runs) implements Serializable {
     public static UserDevConfig from(File userDevFile) {
         try (var reader = Files.newBufferedReader(userDevFile.toPath())) {
             return new Gson().fromJson(reader, UserDevConfig.class);
