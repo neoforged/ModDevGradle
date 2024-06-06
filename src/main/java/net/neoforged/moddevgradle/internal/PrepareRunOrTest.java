@@ -171,7 +171,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 case "{assets_root}" -> arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
                 case "{asset_index}" -> arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add(arg);
+            lines.add(RunUtils.escapeJvmArg(arg));
         }
         lines.add("");
 
