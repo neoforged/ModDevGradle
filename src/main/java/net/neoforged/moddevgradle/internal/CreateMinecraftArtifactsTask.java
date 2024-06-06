@@ -118,14 +118,15 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
             args.add("--warn-on-artifact-manifest-miss");
         }
 
+        // NOTE: When we use NeoForm standalone, the result-ids also change
         Collections.addAll(
                 args,
                 "--neoforge", artifactId + ":userdev",
                 "--dist", "joined",
-                "--write-result", "compiled:" + getCompiledArtifact().get().getAsFile().getAbsolutePath(),
-                "--write-result", "sources:" + getSourcesArtifact().get().getAsFile().getAbsolutePath(),
+                "--write-result", "compiledWithNeoForge:" + getCompiledArtifact().get().getAsFile().getAbsolutePath(),
+                "--write-result", "sourcesWithNeoForge:" + getSourcesArtifact().get().getAsFile().getAbsolutePath(),
                 "--write-result", "clientResources:" + getResourcesArtifact().get().getAsFile().getAbsolutePath(),
-                "--write-result", "compiledWithSources:" + getCompiledWithSourcesArtifact().get().getAsFile().getAbsolutePath()
+                "--write-result", "sourcesAndCompiledWithNeoForge:" + getCompiledWithSourcesArtifact().get().getAsFile().getAbsolutePath()
         );
 
         run(args);

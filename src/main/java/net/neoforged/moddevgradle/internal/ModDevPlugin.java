@@ -405,10 +405,13 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
-                    .capabilities(caps -> {
-                        caps.requireCapability("net.neoforged:neoforge-dependencies");
-                    }))));
+            spec.withDependencies(depSpec -> {
+                depSpec.addLater(neoForgeDependency); // Universal Jar
+                depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-dependencies");
+                        })));
+            });
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
@@ -453,8 +456,9 @@ public class ModDevPlugin implements Plugin<Project> {
     private void addTemporaryRepositories(RepositoryHandler repositories) {
 
         repositories.maven(repo -> {
-            repo.setName("Temporary Repo for minecraft-dependencies");
-            repo.setUrl("https://prmaven.neoforged.net/GradleMinecraftDependencies/pr1");
+            repo.setName("Mojang Meta");
+            repo.setUrl("https://maven.neoforged.net/mojang-meta/");
+            repo.metadataSources(sources -> sources.gradleMetadata());
             repo.content(content -> {
                 content.includeModule("net.neoforged", "minecraft-dependencies");
             });
