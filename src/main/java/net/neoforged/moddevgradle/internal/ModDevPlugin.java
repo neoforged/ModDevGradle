@@ -135,7 +135,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {
-                dependencies.addLater(
+                 dependencies.addLater(
                         extension.getAccessTransformers()
                                 .map(project::files)
                                 .map(dependencyFactory::create)

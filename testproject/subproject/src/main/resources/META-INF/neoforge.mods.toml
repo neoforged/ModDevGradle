@@ -1,0 +1,9 @@
+modLoader="javafml"
+loaderVersion="*"
+license="CC0"
+
+[[mods]]
+modId="subproject"
+version="0.0.0"
+displayName="Sub Project"
+description='''A sub project.'''

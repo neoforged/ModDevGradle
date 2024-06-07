@@ -1,0 +1,32 @@
+
+plugins {
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    accessTransformers = ["src/main/resources/META-INF/accesstransformer.cfg"]
+
+    runs {
+        client {
+            client()
+        }
+        data {
+            data()
+        }
+        server {
+            server()
+        }
+    }
+
+    mods {
+        subproject {
+            sourceSet sourceSets.main
+        }
+    }
+
+    neoFormRuntime {
+        verbose = true
+    }
+}
