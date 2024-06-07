@@ -8,6 +8,7 @@ import javax.inject.Inject;
 abstract class PrepareTest extends PrepareRunOrTest {
     @Inject
     public PrepareTest() {
+        super(ProgramArgsFormat.FML_JUNIT);
     }
 
     @Override

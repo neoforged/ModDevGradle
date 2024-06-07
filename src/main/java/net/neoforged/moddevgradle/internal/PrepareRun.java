@@ -18,6 +18,7 @@ abstract class PrepareRun extends PrepareRunOrTest {
 
     @Inject
     public PrepareRun() {
+        super(ProgramArgsFormat.JVM_ARGFILE);
     }
 
     @Override

@@ -72,6 +72,12 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static final String TASK_GROUP = "mod development";
 
+    /**
+     * Name of the configuration in which we place our generated artifacts for use in the runtime classpath,
+     * without having them leak to dependents.
+     */
+    private static final String CONFIGURATION_GENERATED_ARTIFACTS = "neoForgeGeneratedArtifacts";
+
     private Runnable configureTesting = null;
 
     @Override
@@ -192,7 +198,7 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
+        var localRuntime = configurations.create(CONFIGURATION_GENERATED_ARTIFACTS, config -> {
             config.setDescription("Minecraft artifacts that were generated locally by NFRT");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -515,8 +521,8 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var localRuntime = configurations.getByName("neoForgeGeneratedArtifacts");
         var testLocalRuntime = configurations.create("neoForgeTestFixtures", config -> {
+            config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
             config.withDependencies(dependencies -> {
@@ -530,11 +536,11 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         configurations.named("testRuntimeClasspath", files -> {
-            files.extendsFrom(localRuntime);
+            files.extendsFrom(configurations.getByName(CONFIGURATION_GENERATED_ARTIFACTS));
             files.extendsFrom(testLocalRuntime);
         });
 
-        var legacyClasspathConfiguration = configurations.create("fmljunitLibraries", spec -> {
+        var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.attributes(attributes -> {
@@ -546,55 +552,61 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var writeLcpTask = tasks.register("writeFmlJunitClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.getLegacyClasspathFile().convention(modDevDir.map(dir -> dir.file("fmljunitrunVmArgsLegacyClasspath.txt")));
+        // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
+        var runArgsDir = modDevDir.map(dir -> dir.dir("junit"));
+
+        var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
+            writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
-        var testVmArgsFile = modDevDir.map(dir -> dir.file("fmljunitrunVmArgs.txt"));
-        var fmlJunitArgsFile = modDevDir.map(dir -> dir.file("fmljunitrunProgramArgs.txt"));
-        var fmlJunitLog4jConfig = modDevDir.map(dir -> dir.file("fmljunitlog4j2.xml"));
-        var prepareRunTask = tasks.register("prepareFmlJunitFiles", PrepareTest.class, task -> {
+        var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
+        var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
+        var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
+        var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
             task.getGameDirectory().set(unitTest.getGameDirectory());
-            task.getVmArgsFile().set(testVmArgsFile);
-            task.getProgramArgsFile().set(fmlJunitArgsFile);
-            task.getLog4jConfigFile().set(fmlJunitLog4jConfig);
+            task.getVmArgsFile().set(vmArgsFile);
+            task.getProgramArgsFile().set(programArgsFile);
+            task.getLog4jConfigFile().set(log4j2ConfigFile);
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
             task.getGameLogLevel().set(Level.INFO);
         });
-        ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+
+        // Ensure the test files are written on sync so that users who use IDE-only tests can run them
+        ideSyncTask.configure(task -> task.dependsOn(prepareTask));
 
         var testTask = tasks.named("test", Test.class, task -> {
-            task.dependsOn(prepareRunTask);
+            task.dependsOn(prepareTask);
 
             // The FML JUnit plugin uses this system property to read a
             // file containing the program arguments needed to launch
-            task.systemProperty("fml.junit.argsfile", fmlJunitArgsFile.get().getAsFile().getAbsolutePath());
-            task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get())));
+            task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
+            task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(vmArgsFile.get())));
 
             var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 
-        // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
         project.afterEvaluate(p -> {
-            testTask.configure(task -> {
-                task.setWorkingDir(unitTest.getGameDirectory());
-            });
+            // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
+            testTask.configure(task -> task.setWorkingDir(unitTest.getGameDirectory()));
 
-            // Configure IntelliJ default JUnit parameters, which is used when the user configures IJ to run tests natively
+            // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
             var intelliJRunConfigurations = getIntelliJRunConfigurations(p);
             if (intelliJRunConfigurations != null) {
                 var outputDirectory = RunUtils.getIntellijOutputDirectory(p);
                 intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
+                    jUnitDefaults.setWorkingDirectory(unitTest.getGameDirectory().get().getAsFile().getAbsolutePath());
                     jUnitDefaults.setVmParameters(
-                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + fmlJunitArgsFile.get().getAsFile().getAbsolutePath())
+                            // The FML JUnit plugin uses this system property to read a
+                            // file containing the program arguments needed to launch
+                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + programArgsFile.get().getAsFile().getAbsolutePath())
                             + " "
-                            + RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(testVmArgsFile.get()))
+                            + RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(vmArgsFile.get()))
                             + " "
                             + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(p, outputDirectory, unitTest.getTestedMod().map(Set::of), true).getArgument())
                     );
@@ -604,9 +616,6 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static void setupJarJar(Project project) {
-        //var jarJar = project.getExtensions().create(JarJar.class, "jarJar", JarJarExtension.class);
-        //((JarJarExtension) jarJar).createTaskAndConfiguration();
-
         SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         sourceSets.configureEach(sourceSet -> {
             final Configuration configuration = project.getConfigurations().create(sourceSet.getTaskName(null, "jarJar"));
