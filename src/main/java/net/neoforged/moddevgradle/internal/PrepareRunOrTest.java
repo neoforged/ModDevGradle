@@ -21,7 +21,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
-import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -79,8 +78,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Input
     public abstract Property<Level> getGameLogLevel();
 
-    @Inject
-    public PrepareRunOrTest() {
+    private final ProgramArgsFormat programArgsFormat;
+
+    protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
+        this.programArgsFormat = programArgsFormat;
     }
 
     protected abstract UserDevRunType resolveRunType(UserDevConfig userDevConfig);
@@ -171,17 +172,47 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 case "{assets_root}" -> arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
                 case "{asset_index}" -> arg = Objects.requireNonNull(assetProperties.assetIndex(), "asset_index");
             }
-            lines.add(RunUtils.escapeJvmArg(arg));
+
+            // FML JUnit simply expects one line per argument
+            if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
+                lines.add(arg);
+            } else {
+                lines.add(RunUtils.escapeJvmArg(arg));
+            }
         }
         lines.add("");
 
         lines.add("# User Supplied Program Arguments");
         lines.addAll(getProgramArguments().get());
 
+        // For FML JUnit, we need to drop comments + empty lines
+        if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
+            lines.removeIf(line -> {
+                line = line.strip();
+                return line.isEmpty() || line.startsWith("#");
+            });
+        }
+
         FileUtils.writeLinesSafe(getProgramArgsFile().get().getAsFile().toPath(), lines);
     }
 
     private static void addSystemProp(String name, String value, List<String> lines) {
         lines.add(RunUtils.escapeJvmArg("-D" + name + "=" + value));
+    }
+
+    /**
+     * Declares the format of the program arguments file being written.
+     */
+    protected enum ProgramArgsFormat {
+        /**
+         * Format as used by JVM @-files
+         */
+        JVM_ARGFILE,
+        /**
+         * Format as used by FML JUnit, which expects
+         * a file to be passed in the system property "fml.junit.argsfile", containing one program argument per line
+         * without consideration for escaping.
+         */
+        FML_JUNIT
     }
 }
