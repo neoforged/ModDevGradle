@@ -183,7 +183,14 @@ abstract class PrepareRunOrTest extends DefaultTask {
         lines.add("");
 
         lines.add("# User Supplied Program Arguments");
-        lines.addAll(getProgramArguments().get());
+        for (var arg : getProgramArguments().get()) {
+            // FML JUnit simply expects one line per argument
+            if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
+                lines.add(arg);
+            } else {
+                lines.add(RunUtils.escapeJvmArg(arg));
+            }
+        }
 
         // For FML JUnit, we need to drop comments + empty lines
         if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
