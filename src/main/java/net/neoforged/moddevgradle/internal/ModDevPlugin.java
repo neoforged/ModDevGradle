@@ -72,6 +72,12 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static final String TASK_GROUP = "mod development";
 
+    /**
+     * Name of the configuration in which we place our generated artifacts for use in the runtime classpath,
+     * without having them leak to dependents.
+     */
+    private static final String CONFIGURATION_GENERATED_ARTIFACTS = "neoForgeGeneratedArtifacts";
+
     private Runnable configureTesting = null;
 
     @Override
@@ -192,7 +198,7 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var localRuntime = configurations.create("neoForgeGeneratedArtifacts", config -> {
+        var localRuntime = configurations.create(CONFIGURATION_GENERATED_ARTIFACTS, config -> {
             config.setDescription("Minecraft artifacts that were generated locally by NFRT");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -515,8 +521,8 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var localRuntime = configurations.getByName("neoForgeGeneratedArtifacts");
         var testLocalRuntime = configurations.create("neoForgeTestFixtures", config -> {
+            config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
             config.withDependencies(dependencies -> {
@@ -530,11 +536,11 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         configurations.named("testRuntimeClasspath", files -> {
-            files.extendsFrom(localRuntime);
+            files.extendsFrom(configurations.getByName(CONFIGURATION_GENERATED_ARTIFACTS));
             files.extendsFrom(testLocalRuntime);
         });
 
-        var legacyClasspathConfiguration = configurations.create("fmljunitLibraries", spec -> {
+        var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.attributes(attributes -> {
@@ -546,15 +552,18 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var writeLcpTask = tasks.register("writeFmlJunitClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.getLegacyClasspathFile().convention(modDevDir.map(dir -> dir.file("junitrunVmArgsLegacyClasspath.txt")));
+        // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
+        var runArgsDir = modDevDir.map(dir -> dir.dir("junit"));
+
+        var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
+            writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
         });
 
-        var vmArgsFile = modDevDir.map(dir -> dir.file("junit/vmArgs.txt"));
-        var programArgsFile = modDevDir.map(dir -> dir.file("junit/programArg.txt"));
-        var log4j2ConfigFile = modDevDir.map(dir -> dir.file("junit/log4j2.xml"));
+        var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
+        var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
+        var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
         var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
             task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(vmArgsFile);
@@ -591,6 +600,7 @@ public class ModDevPlugin implements Plugin<Project> {
             if (intelliJRunConfigurations != null) {
                 var outputDirectory = RunUtils.getIntellijOutputDirectory(p);
                 intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
+                    jUnitDefaults.setWorkingDirectory(unitTest.getGameDirectory().get().getAsFile().getAbsolutePath());
                     jUnitDefaults.setVmParameters(
                             // The FML JUnit plugin uses this system property to read a
                             // file containing the program arguments needed to launch
