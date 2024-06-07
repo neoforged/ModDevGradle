@@ -11,6 +11,8 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation "net.neoforged:testframework:${project.neoforge_version}"
+
+    implementation project(":subproject")
 }
 
 test {
@@ -32,13 +34,13 @@ neoForge {
         }
         server {
             server()
-            environment("BLAH_BLUBB", "123");
         }
     }
 
     mods {
         testproject {
             sourceSet sourceSets.main
+            dependency project(":subproject")
         }
     }
 

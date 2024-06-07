@@ -6,25 +6,7 @@ plugins {
 neoForge {
     version = project.neoforge_version
 
-    accessTransformers = ["src/main/resources/META-INF/accesstransformer.cfg"]
-
-    runs {
-        client {
-            client()
-        }
-        data {
-            data()
-        }
-        server {
-            server()
-        }
-    }
-
-    mods {
-        subproject {
-            sourceSet sourceSets.main
-        }
-    }
+    accessTransformers = ["../src/main/resources/META-INF/accesstransformer.cfg"]
 
     neoFormRuntime {
         verbose = true
