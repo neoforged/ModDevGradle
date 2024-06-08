@@ -280,7 +280,7 @@ public class ModDevPlugin implements Plugin<Project> {
             var sourceSet = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class).getByName("main");
 
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
-                spec.setDescription("Contains all dependencies of the " + run.getName() + " that should not be considered boot classpath modules.");
+                spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
