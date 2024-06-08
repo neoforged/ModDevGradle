@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
@@ -17,6 +18,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Base task implementation for running NFRT.
+ */
 abstract public class NeoFormRuntimeTask extends DefaultTask {
 
     @Classpath
@@ -72,6 +76,9 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         realArgs.add(3, getWorkDirectory().get().getAsFile().getAbsolutePath());
 
         getExecOperations().javaexec(execSpec -> {
+            // Pass through network properties
+            execSpec.systemProperties(NetworkSettingPassthrough.getNetworkSystemProperties());
+
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
             execSpec.executable(getNeoFormRuntimeLauncher().get().getExecutablePath().getAsFile());
