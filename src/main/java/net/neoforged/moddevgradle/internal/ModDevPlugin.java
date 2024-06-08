@@ -123,7 +123,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts.");
+            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
             configureArtifactManifestTask(task, extension);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
