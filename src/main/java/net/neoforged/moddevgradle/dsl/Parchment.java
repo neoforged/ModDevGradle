@@ -39,9 +39,6 @@ public abstract class Parchment {
         getMappingsVersion().convention(
                 project.getProviders().gradleProperty("neoForge.parchment.mappingsVersion")
         );
-        getAddRepository().convention(
-                PropertyUtils.getBooleanProperty(project, "neoForge.parchment.addRepository").orElse(true)
-        );
         getEnabled().convention(getParchmentArtifact()
                 .map(s -> !s.isEmpty()).orElse(PropertyUtils.getBooleanProperty(project, "neoForge.parchment.enabled").orElse(false)));
     }
@@ -68,13 +65,6 @@ public abstract class Parchment {
     @Input
     @Optional
     public abstract Property<String> getMappingsVersion();
-
-    /**
-     * If enabled (the default), the parchment repository will automatically be added to the project,
-     * if {@link #getEnabled()} is true.
-     */
-    @Internal
-    public abstract Property<Boolean> getAddRepository();
 
     /**
      * Enables or disables the system. It is enabled by default if a {@link #getParchmentArtifact()} is specified.

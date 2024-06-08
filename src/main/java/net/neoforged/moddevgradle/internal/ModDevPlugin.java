@@ -27,6 +27,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -71,6 +72,7 @@ public class ModDevPlugin implements Plugin<Project> {
     private static final String JAR_JAR_GROUP = "jarjar";
 
     private static final String TASK_GROUP = "mod development";
+    private static final String INTERNAL_TASK_GROUP = "mod development/internal";
 
     /**
      * Name of the configuration in which we place our generated artifacts for use in the runtime classpath,
@@ -120,6 +122,8 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts");
             configureArtifactManifestTask(task, extension);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
@@ -151,7 +155,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
-        configureParchmentRepository(project, parchment);
         var parchmentData = configurations.create("parchmentData", spec -> {
             spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
             spec.setCanBeResolved(true);
@@ -164,6 +167,9 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT");
+
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
             task.getEnableCache().set(nfrtSettings.getEnableCache());
@@ -183,6 +189,8 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+            task.setGroup(TASK_GROUP);
+            task.setDescription("Downloads the Minecraft assets provided by the asset index");
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
@@ -211,13 +219,13 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        configurations.named("compileOnly").configure(configuration -> {
+        configurations.named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
             configuration.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
-        var runtimeClasspath = configurations.named("runtimeClasspath");
+        var runtimeClasspath = configurations.named(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME);
         runtimeClasspath.configure(files -> files.extendsFrom(localRuntime));
 
         // Try to give people at least a fighting chance to run on the correct java version
@@ -270,6 +278,7 @@ public class ModDevPlugin implements Plugin<Project> {
             var sourceSet = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class).getByName("main");
 
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
+                spec.setDescription("Contains all dependencies of the " + run.getName() + " that should not be considered boot classpath modules");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
@@ -285,12 +294,17 @@ public class ModDevPlugin implements Plugin<Project> {
             });
 
             var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.setGroup(INTERNAL_TASK_GROUP);
+                writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules");
                 writeLcp.getLegacyClasspathFile().convention(modDevBuildDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
                 writeLcp.getEntries().from(legacyClasspathConfiguration);
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
             });
 
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
+                task.setGroup(INTERNAL_TASK_GROUP);
+                task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run");
+
                 task.getGameDirectory().set(run.getGameDirectory());
                 task.getVmArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.VMARGS));
                 task.getProgramArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.PROGRAMARGS));
@@ -314,6 +328,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
+                task.setDescription("Runs the " + run.getName() + " Minecraft run configuration");
 
                 // Launch with the Java version used in the project
                 var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
@@ -438,22 +453,6 @@ public class ModDevPlugin implements Plugin<Project> {
         }
     }
 
-    private static void configureParchmentRepository(Project project, Parchment parchment) {
-        project.afterEvaluate(p -> {
-            if (!parchment.getEnabled().get() || !parchment.getAddRepository().get()) {
-                return;
-            }
-            MavenArtifactRepository repo = p.getRepositories().maven(m -> {
-                m.setName("Parchment Data");
-                m.setUrl(URI.create("https://maven.parchmentmc.org/"));
-                m.mavenContent(mavenContent -> mavenContent.includeGroup("org.parchmentmc.data"));
-            });
-            // Make sure it comes first due to its filtered group, that should speed up resolution
-            p.getRepositories().remove(repo);
-            p.getRepositories().addFirst(repo);
-        });
-    }
-
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
         return true;
         // return Boolean.getBoolean("idea.active");
@@ -514,7 +513,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var dependencyFactory = project.getDependencyFactory();
 
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
-        configurations.named("testCompileOnly").configure(configuration -> {
+        configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
             configuration.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
@@ -535,7 +534,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        configurations.named("testRuntimeClasspath", files -> {
+        configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
             files.extendsFrom(configurations.getByName(CONFIGURATION_GENERATED_ARTIFACTS));
             files.extendsFrom(testLocalRuntime);
         });
@@ -556,6 +555,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var runArgsDir = modDevDir.map(dir -> dir.dir("junit"));
 
         var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
+            writeLcp.setGroup(INTERNAL_TASK_GROUP);
+            writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
@@ -565,6 +566,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
         var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
         var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Prepares all files needed to run the JUnit test task");
             task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(vmArgsFile);
             task.getProgramArgsFile().set(programArgsFile);
@@ -579,7 +582,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // Ensure the test files are written on sync so that users who use IDE-only tests can run them
         ideSyncTask.configure(task -> task.dependsOn(prepareTask));
 
-        var testTask = tasks.named("test", Test.class, task -> {
+        var testTask = tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class, task -> {
             task.dependsOn(prepareTask);
 
             // The FML JUnit plugin uses this system property to read a
@@ -647,6 +650,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 jarJar.configuration(configuration);
             });
 
+            // The task might not exist, and #named(String) requires the task to exist
             project.getTasks().withType(AbstractArchiveTask.class).named(name -> name.equals(sourceSet.getJarTaskName())).configureEach(task -> {
                 task.from(jarJarTask.get().getOutputDirectory());
                 task.dependsOn(jarJarTask);
