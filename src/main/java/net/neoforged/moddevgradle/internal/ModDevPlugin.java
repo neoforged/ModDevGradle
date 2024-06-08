@@ -241,6 +241,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
         var userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
+            spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
@@ -253,6 +254,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
+            spec.setDescription("Resolves libraries placed in the boot classpath as modules");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
