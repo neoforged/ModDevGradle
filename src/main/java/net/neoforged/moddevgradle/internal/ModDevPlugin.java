@@ -254,7 +254,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeModuleOnly", spec -> {
-            spec.setDescription("Resolves libraries placed in the boot classpath as modules");
+            spec.setDescription("Libraries that should be placed on the JVMs boot module path.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
