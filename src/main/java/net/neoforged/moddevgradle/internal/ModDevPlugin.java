@@ -190,7 +190,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.setGroup(TASK_GROUP);
-            task.setDescription("Downloads the Minecraft assets provided by the asset index.");
+            task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
