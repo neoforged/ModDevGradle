@@ -123,7 +123,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts");
+            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts.");
             configureArtifactManifestTask(task, extension);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
@@ -168,7 +168,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT");
+            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
@@ -190,7 +190,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
             task.setGroup(TASK_GROUP);
-            task.setDescription("Downloads the Minecraft assets provided by the asset index");
+            task.setDescription("Downloads the Minecraft assets provided by the asset index.");
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
@@ -280,7 +280,7 @@ public class ModDevPlugin implements Plugin<Project> {
             var sourceSet = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class).getByName("main");
 
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
-                spec.setDescription("Contains all dependencies of the " + run.getName() + " that should not be considered boot classpath modules");
+                spec.setDescription("Contains all dependencies of the " + run.getName() + " that should not be considered boot classpath modules.");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
@@ -297,7 +297,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
                 writeLcp.setGroup(INTERNAL_TASK_GROUP);
-                writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules");
+                writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
                 writeLcp.getLegacyClasspathFile().convention(modDevBuildDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
                 writeLcp.getEntries().from(legacyClasspathConfiguration);
                 writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
@@ -305,7 +305,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
                 task.setGroup(INTERNAL_TASK_GROUP);
-                task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run");
+                task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run.");
 
                 task.getGameDirectory().set(run.getGameDirectory());
                 task.getVmArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.VMARGS));
@@ -330,7 +330,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
-                task.setDescription("Runs the " + run.getName() + " Minecraft run configuration");
+                task.setDescription("Runs the " + run.getName() + " Minecraft run configuration.");
 
                 // Launch with the Java version used in the project
                 var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
@@ -542,6 +542,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
+            spec.setDescription("Contains the legacy classpath of the test run");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.attributes(attributes -> {
@@ -558,7 +559,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.setGroup(INTERNAL_TASK_GROUP);
-            writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules");
+            writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
             writeLcp.getEntries().from(legacyClasspathConfiguration);
             writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
@@ -569,7 +570,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
         var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Prepares all files needed to run the JUnit test task");
+            task.setDescription("Prepares all files needed to run the JUnit test task.");
             task.getGameDirectory().set(unitTest.getGameDirectory());
             task.getVmArgsFile().set(vmArgsFile);
             task.getProgramArgsFile().set(programArgsFile);
@@ -647,7 +648,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             var jarJarTask = project.getTasks().register(sourceSet.getTaskName(null, "jarJar"), JarJar.class, jarJar -> {
                 jarJar.setGroup(JAR_JAR_GROUP);
-                jarJar.setDescription("Create a combined JAR of project and selected dependencies");
+                jarJar.setDescription("Create a combined JAR of project and selected dependencies.");
 
                 jarJar.configuration(configuration);
             });
