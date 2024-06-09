@@ -133,10 +133,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
                         true, "net.minecraft.client.main.Main", clientArgs, List.of(),true, false, false, false, Map.of(), Map.of()
                 ),
                 "server", new UserDevRunType(
-                true, "net.minecraft.server.Main", commonArgs, List.of(),true, false, false, false, Map.of(), Map.of()
+                true, "net.minecraft.server.Main", commonArgs, List.of(),false, true, false, false, Map.of(), Map.of()
                 ),
                 "data", new UserDevRunType(
-                        true, "net.minecraft.data.Main", commonArgs, List.of(),true, false, false, false, Map.of(), Map.of()
+                        true, "net.minecraft.data.Main", commonArgs, List.of(),false, false, true, false, Map.of(), Map.of()
                 )
         ));
     }
