@@ -9,6 +9,6 @@ neoForge {
     accessTransformers = ["../src/main/resources/META-INF/accesstransformer.cfg"]
 
     neoFormRuntime {
-        verbose = true
+        // verbose = true
     }
 }

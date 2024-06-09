@@ -14,7 +14,6 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -98,12 +97,20 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
+
+        // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
+        // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
         var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
-        });
+        }).orElse(extension.getNeoFormVersion().map(version -> {
+            return dependencyFactory.create("net.neoforged:neoform:" + version)
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform-dependencies");
+                    });
+        }));
 
         repositories.addLast(repositories.maven(repo -> {
             repo.setName("NeoForged Releases");
@@ -265,6 +272,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(runtimeClasspath.get());
+            // NOTE: When running in vanilla mode, this configuration is simply empty
             spec.withDependencies(set -> {
                 set.addLater(extension.getVersion().map(version -> {
                     return dependencyFactory.create("net.neoforged:neoforge:" + version)
@@ -390,10 +398,11 @@ public class ModDevPlugin implements Plugin<Project> {
         var configurationPrefix = "neoFormRuntimeDependencies";
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
+        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
-        var neoForgeClasses = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
+        var neoForgeClassesAndData = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -401,8 +410,15 @@ public class ModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
                     }))));
+
+            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
+            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform");
+                    }))));
         });
 
+        // This configuration is empty when running in Vanilla-mode.
         var neoForgeSources = configurations.create(configurationPrefix + "NeoForgeSources", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
             spec.setCanBeConsumed(false);
@@ -423,6 +439,11 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
+                    }))));
+            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
+            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform-dependencies");
                     }))));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
@@ -448,7 +469,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        for (var configuration : List.of(neoForgeClasses, neoForgeSources, compileClasspath, runtimeClasspath)) {
+        for (var configuration : List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath)) {
             // Convert to a serializable representation for the task.
             task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
                 return results.stream().map(result -> {
