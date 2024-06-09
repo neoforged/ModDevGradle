@@ -97,6 +97,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
+        var hasNeoForge = extension.getVersion().map(ignored -> true).orElse(false);
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
@@ -226,6 +227,14 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setCanBeConsumed(false);
             config.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+                // In Vanilla-Mode, we have to add the Vanilla resources too since the legacy
+                // classpath (where they normally are) is ignored
+                dependencies.addLater(project.getProviders().zip(
+                        createArtifacts.map(task -> project.files(task.getResourcesArtifact())),
+                        hasNeoForge,
+                        (resources, hasNeoForgeValue) -> !hasNeoForgeValue ? dependencyFactory.create(resources) : null
+                ));
+
                 // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
                 // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
@@ -551,7 +560,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var testLocalRuntime = configurations.create("neoForgeTestFixtures", config -> {
+        var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
             config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -567,7 +576,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
             files.extendsFrom(configurations.getByName(CONFIGURATION_GENERATED_ARTIFACTS));
-            files.extendsFrom(testLocalRuntime);
+            files.extendsFrom(testFixtures);
         });
 
         var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {

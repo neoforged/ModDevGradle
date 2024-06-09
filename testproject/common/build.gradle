@@ -1,8 +1,16 @@
-
 plugins {
     id 'net.neoforged.moddev'
 }
 
 neoForge {
     neoFormVersion = "1.20.6-20240524.210247"
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
 }
