@@ -125,7 +125,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
     }
 
     private UserDevConfig getSimulatedUserDevConfigForVanilla() {
-        var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "1", "--version", "1.21-pre4");
+        var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
         var commonArgs = List.<String>of();
 
         return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
