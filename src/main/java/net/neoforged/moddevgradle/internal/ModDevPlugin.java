@@ -63,6 +63,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ModDevPlugin implements Plugin<Project> {
@@ -165,11 +166,8 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
-
+        // Configure common properties of NeoFormRuntimeEngineTask
+        Consumer<NeoFormRuntimeEngineTask> configureEngineTask = task -> {
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
             task.getEnableCache().set(nfrtSettings.getEnableCache());
@@ -177,24 +175,33 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
+            task.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip"));
+            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
+        };
+
+        // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
+        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
+
             task.getAccessTransformers().from(accessTransformers);
             task.getParchmentData().from(parchmentData);
-            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
 
             var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             task.getCompiledArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local.jar")));
             task.getCompiledWithSourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-merged.jar")));
             task.getSourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-sources.jar")));
             task.getResourcesArtifact().set(minecraftArtifactsDir.map(dir -> dir.file("neoforge-minecraft-joined-local-resources-aka-client-extra.jar")));
+
+            configureEngineTask.accept(task);
         });
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+            // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
-            task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
-            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
-            task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
+            configureEngineTask.accept(task);
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users

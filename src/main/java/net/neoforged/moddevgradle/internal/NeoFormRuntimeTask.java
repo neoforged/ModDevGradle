@@ -68,7 +68,7 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         getNeoFormRuntimeLauncher().convention(getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21))));
     }
 
-    protected final void run(List<String> args) {
+    protected void run(List<String> args) {
         // Use Gradle-specific directories when running NFRT
         var realArgs = new ArrayList<>(args);
         realArgs.add(0, "--home-dir");
