@@ -79,9 +79,8 @@ See the example code in [the test project](./testproject/build.gradle).
 
 ## Vanilla-Mode
 
-When you are building a multi-loader project and need a shared source set,
-you'll also need that source set to have access to Minecraft classes that
-do not include any loader-specific extensions.
+In multi-loader projects, you'll often need a subproject for your cross-loader code. This project will also need
+access to Minecraft classes, but without any loader-specific extensions.
 
 This plugin solves that by offering a "Vanilla-mode" which you enable by
 specifying a [NeoForm version](https://projects.neoforged.net/neoforged/neoform) instead of a NeoForge version.
