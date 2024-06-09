@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -81,6 +82,12 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
 
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
+
+            // When running through IJ or Eclipse, always enable emojis
+            if (IdeDetection.isIntelliJ() || IdeDetection.isEclipse()) {
+                execSpec.args("--emojis");
+            }
+
             execSpec.executable(getNeoFormRuntimeLauncher().get().getExecutablePath().getAsFile());
             execSpec.classpath(getNeoFormRuntime());
             execSpec.args(realArgs);

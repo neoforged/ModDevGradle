@@ -47,7 +47,7 @@ neoForge {
     neoFormRuntime {
         useEclipseCompiler = true
         // enableCache = false
-        verbose = true
+        // verbose = true
     }
 
     parchment {

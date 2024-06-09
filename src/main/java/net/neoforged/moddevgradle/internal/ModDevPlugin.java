@@ -3,9 +3,9 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
-import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -456,8 +456,9 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
-        return true;
-        // return Boolean.getBoolean("idea.active");
+        // Only IntelliJ needs the combined artifact
+        // For Eclipse, we can attach the sources via the Eclipse project model.
+        return IdeDetection.isIntelliJ();
     }
 
     private void addTemporaryRepositories(RepositoryHandler repositories) {
@@ -692,7 +693,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
             var settings = getIntelliJProjectSettings(rootProject);
-            if (settings != null && Boolean.getBoolean("idea.sync.active")) {
+            if (settings != null && IdeDetection.isIntelliJSync()) {
                 // Also run the sync task directly as part of the sync. (Thanks Loom).
                 var startParameter = project.getGradle().getStartParameter();
                 var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
@@ -803,7 +804,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 var sourcesPath = createArtifacts.get().getSourcesArtifact().get().getAsFile();
 
                 for (var entry : classpath.getEntries()) {
-                    System.out.println(entry);
                     if (entry instanceof Library library && classesPath.equals(new File(library.getPath()))) {
                         library.setSourcePath(classpath.fileReference(sourcesPath));
                     }
@@ -813,8 +813,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Set up runs if running under buildship
         // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
-        System.out.println(System.getProperties());
-        if (System.getProperty("eclipse.application") != null) {
+        if (IdeDetection.isEclipse()) {
             project.afterEvaluate(ignored -> {
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
@@ -851,7 +850,6 @@ public class ModDevPlugin implements Plugin<Project> {
         var filename = run.getIdeName().get();
 
         var file = project.file(".eclipse/configurations/" + filename + ".launch");
-        System.out.println("Writing eclipse run " + file);
 
         file.getParentFile().mkdirs();
         try (var writer = new FileWriter(file, false)) {
