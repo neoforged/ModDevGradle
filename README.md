@@ -8,7 +8,7 @@
 - Supports the [Gradle configuration cache](https://docs.gradle.org/current/userguide/configuration_cache.html) to speed
   up repeated runs of Gradle tasks
 
-## Basic Usage
+## Basic Usage for NeoForge Mods
 
 In `gradle.properties`:
 
@@ -77,6 +77,43 @@ neoForge {
 
 See the example code in [the test project](./testproject/build.gradle).
 
+## Vanilla-Mode
+
+When you are building a multi-loader project and need a shared source set,
+you'll also need that source set to have access to Minecraft classes that
+do not include any loader-specific extensions.
+
+This plugin solves that by offering a "Vanilla-mode" which you enable by
+specifying a [NeoForm version](https://projects.neoforged.net/neoforged/neoform) instead of a NeoForge version.
+NeoForm contains the necessary configuration to produce Minecraft jar-files that you can compile against
+that contain no other modifications.
+
+In Vanilla-mode, only the `client`, `server` and `data` run types are supported.
+Since the plugin includes no mod loader code in this mode, only basic resource- and data packs will be usable in-game.
+
+In `build.gradle`:
+
+Apply the plugin as usual and use a configuration block like this:
+
+```groovy
+neoForge {
+    // Look for versions on https://projects.neoforged.net/neoforged/neoform
+    neoFormVersion = "1.20.6-20240524.210247"
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+        data {
+            data()
+        }
+    }
+}
+```
+
 ## More Configuration
 
 ### Runs
@@ -89,37 +126,37 @@ The run type can be set as follows:
 ```groovy
 neoForge {
     runs {
-        <run name> {
+        < run name > {
             // This is the standard syntax:
             type = "gameTestServer"
             // Client, data and server runs can use a shorthand instead:
             // client()
             // data()
             // server()
-        
+
             // Add arguments passed to the main method
             programArguments = ["--arg"]
             programArgument("--arg")
-        
+
             // Add arguments passed to the JVM
             jvmArguments = ["-XX:+AllowEnhancedClassRedefinition"]
             jvmArgument("-XX:+AllowEnhancedClassRedefinition")
-        
+
             // Add system properties
             systemProperties = [
                     "a.b.c": "xyz"
             ]
             systemProperty("a.b.c", "xyz")
-        
+
             // Set or add environment variables
             environment = [
                     "FOO_BAR": "123"
             ]
             environment("FOO_BAR", "123")
-        
+
             // Optionally set the log-level used by the game
             logLevel = org.slf4j.event.Level.DEBUG
-        
+
             // You can change the name used for this run in your IDE
             ideName = "Run Game Tests"
         }
@@ -157,21 +194,23 @@ Alternatively, you can set it in your build.gradle:
 
 ```groovy
 neoForge {
-  // [...]
-  
-  parchment {
-    // Get versions from https://parchmentmc.org/docs/getting-started
-    // Omit the "v"-prefix in mappingsVersion
-    minecraftVersion = "1.20.6"
-    mappingsVersion = "2024.05.01"
-  }
+    // [...]
+
+    parchment {
+        // Get versions from https://parchmentmc.org/docs/getting-started
+        // Omit the "v"-prefix in mappingsVersion
+        minecraftVersion = "1.20.6"
+        mappingsVersion = "2024.05.01"
+    }
 }
 ```
 
 ### Unit testing with JUnit
+
 On top of gametests, this plugin supports unit testing mods with JUnit.
 
 For the minimal setup, add the following code to your build script:
+
 ```groovy
 // Add a test dependency on the test engine JUnit
 dependencies {
@@ -190,7 +229,7 @@ neoForge {
         enable()
         // Configure which mod is being tested.
         // This allows NeoForge to load the test/ classes and resources as belonging to the mod.
-        testedMod = mods.<mod name> // <mod name> must match the name in the mods { } block.
+        testedMod = mods.<mod name > // <mod name> must match the name in the mods { } block.
     }
 }
 ```
@@ -199,7 +238,9 @@ You can now use the `@Test` annotation for your unit tests inside the `test/` fo
 and reference Minecraft classes.
 
 #### Loading a server
+
 With the NeoForge test framework, you can run your unit tests in the context of a Minecraft server:
+
 ```groovy
 dependencies {
     testImplementation "net.neoforged:testframework:<neoforge version>"
@@ -207,7 +248,9 @@ dependencies {
 ```
 
 With this dependency, you can annotate your test class as follows:
+
 ```java
+
 @ExtendWith(EphemeralTestServerProvider.class)
 public class TestClass {
     @Test
@@ -236,26 +279,26 @@ configurations.all {
 
 ```groovy
 neoForge {
-  neoFormRuntime {
-    // Use specific NFRT version
-    // Gradle Property: neoForge.neoFormRuntime.version
-    version = "1.2.3"
-    
-    // Control use of cache
-    // Gradle Property: neoForge.neoFormRuntime.enableCache
-    enableCache = false
-    
-    // Enable Verbose Output
-    // Gradle Property: neoForge.neoFormRuntime.verbose
-    verbose = true
-    
-    // Use Eclipse Compiler for Minecraft
-    // Gradle Property: neoForge.neoFormRuntime.useEclipseCompiler
-    useEclipseCompiler = true
+    neoFormRuntime {
+        // Use specific NFRT version
+        // Gradle Property: neoForge.neoFormRuntime.version
+        version = "1.2.3"
 
-    // Print more information when NFRT cannot use a cached result
-    // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
-    analyzeCacheMisses = true
-  }
+        // Control use of cache
+        // Gradle Property: neoForge.neoFormRuntime.enableCache
+        enableCache = false
+
+        // Enable Verbose Output
+        // Gradle Property: neoForge.neoFormRuntime.verbose
+        verbose = true
+
+        // Use Eclipse Compiler for Minecraft
+        // Gradle Property: neoForge.neoFormRuntime.useEclipseCompiler
+        useEclipseCompiler = true
+
+        // Print more information when NFRT cannot use a cached result
+        // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
+        analyzeCacheMisses = true
+    }
 }
 ```
