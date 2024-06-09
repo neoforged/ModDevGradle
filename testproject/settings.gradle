@@ -18,5 +18,6 @@ plugins {
 
 includeBuild '..'
 include 'subproject'
+include 'common'
 
 enableFeaturePreview "STABLE_CONFIGURATION_CACHE"

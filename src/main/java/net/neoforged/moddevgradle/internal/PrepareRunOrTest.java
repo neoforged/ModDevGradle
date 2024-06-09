@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -110,11 +111,34 @@ abstract class PrepareRunOrTest extends DefaultTask {
         var runDir = getGameDirectory().get().getAsFile();
         Files.createDirectories(runDir.toPath());
 
-        var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
-        var runConfig = resolveRunType(userDevConfig);
+        // If no NeoForge userdev config is set, we only support Vanilla run types
+        UserDevRunType runConfig;
+        if (getNeoForgeModDevConfig().isEmpty()) {
+            runConfig = resolveRunType(getSimulatedUserDevConfigForVanilla());
+        } else {
+            var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
+            runConfig = resolveRunType(userDevConfig);
+        }
 
         writeJvmArguments(runConfig);
         writeProgramArguments(runConfig);
+    }
+
+    private UserDevConfig getSimulatedUserDevConfigForVanilla() {
+        var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
+        var commonArgs = List.<String>of();
+
+        return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
+                "client", new UserDevRunType(
+                        true, "net.minecraft.client.main.Main", clientArgs, List.of(),true, false, false, false, Map.of(), Map.of()
+                ),
+                "server", new UserDevRunType(
+                true, "net.minecraft.server.Main", commonArgs, List.of(),false, true, false, false, Map.of(), Map.of()
+                ),
+                "data", new UserDevRunType(
+                        true, "net.minecraft.data.Main", commonArgs, List.of(),false, false, true, false, Map.of(), Map.of()
+                )
+        ));
     }
 
     private void writeJvmArguments(UserDevRunType runConfig) throws IOException {
