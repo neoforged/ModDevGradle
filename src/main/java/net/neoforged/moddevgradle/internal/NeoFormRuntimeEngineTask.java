@@ -1,10 +1,12 @@
 package net.neoforged.moddevgradle.internal;
 
 import org.gradle.api.GradleException;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 
@@ -35,12 +37,28 @@ abstract public class NeoFormRuntimeEngineTask extends NeoFormRuntimeTask {
     abstract Property<String> getNeoForgeArtifact();
 
     /**
+     * Points to a local NeoForge Userdev artifact.
+     * Either this or {@link #getNeoFormArtifact()} must be specified.
+     */
+    @InputFiles
+    @Optional
+    abstract ConfigurableFileCollection getLocalNeoForgeArtifact();
+
+    /**
      * Points to the NeoForm Config artifact.
      * Either this or {@link #getNeoForgeArtifact()} must be specified.
      */
     @Input
     @Optional
     abstract Property<String> getNeoFormArtifact();
+
+    /**
+     * Points to a local NeoForm Config artifact.
+     * Either this or {@link #getNeoForgeArtifact()} must be specified.
+     */
+    @InputFiles
+    @Optional
+    abstract ConfigurableFileCollection getLocalNeoFormArtifact();
 
     /**
      * Enable verbose output for the NFRT engine.
@@ -91,13 +109,22 @@ abstract public class NeoFormRuntimeEngineTask extends NeoFormRuntimeTask {
         }
 
         // Note that it is possible to specify both
-        if (getNeoForgeArtifact().isPresent()) {
+        boolean neoForgeOrNeoFormSpecified = false;
+        if (!getLocalNeoForgeArtifact().isEmpty()) {
+            Collections.addAll(args, "--neoforge", getLocalNeoForgeArtifact().getSingleFile().getAbsolutePath());
+            neoForgeOrNeoFormSpecified = true;
+        } else if (getNeoForgeArtifact().isPresent()) {
             Collections.addAll(args, "--neoforge", getNeoForgeArtifact().get() + ":userdev");
+            neoForgeOrNeoFormSpecified = true;
         }
-        if (getNeoFormArtifact().isPresent()) {
+        if (!getLocalNeoFormArtifact().isEmpty()) {
+            Collections.addAll(args, "--neoform", getLocalNeoFormArtifact().getSingleFile().getAbsolutePath());
+            neoForgeOrNeoFormSpecified = true;
+        } else if (getNeoFormArtifact().isPresent()) {
             Collections.addAll(args, "--neoform", getNeoFormArtifact().get());
+            neoForgeOrNeoFormSpecified = true;
         }
-        if (!getNeoFormArtifact().isPresent() && !getNeoForgeArtifact().isPresent()) {
+        if (!neoForgeOrNeoFormSpecified) {
             throw new GradleException("You need to specify at least 'version' or 'neoFormVersion' in the 'neoForge' block of your build script.");
         }
 

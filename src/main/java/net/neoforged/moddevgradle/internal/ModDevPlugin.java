@@ -13,6 +13,7 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
@@ -61,6 +62,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -79,6 +81,12 @@ public class ModDevPlugin implements Plugin<Project> {
      * without having them leak to dependents.
      */
     private static final String CONFIGURATION_GENERATED_ARTIFACTS = "neoForgeGeneratedArtifacts";
+
+    /**
+     * The capability exposed by NeoForge that contains the moddev jar-file.
+     * Previously known as "userdev" jar file.
+     */
+    private static final String CAPABILITY_MODDEV_BUNDLE = "net.neoforged:neoforge-moddev-bundle";
 
     private Runnable configureTesting = null;
 
@@ -112,6 +120,8 @@ public class ModDevPlugin implements Plugin<Project> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
         }));
+        var neoForgeModDevDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
+        var neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
 
         repositories.addLast(repositories.maven(repo -> {
             repo.setName("NeoForged Releases");
@@ -133,8 +143,25 @@ public class ModDevPlugin implements Plugin<Project> {
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
-            configureArtifactManifestTask(task, extension);
+            configureArtifactManifestTask(task, neoForgeModDevDependency, neoFormDependency);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
+        });
+
+        var neoForgeModDevDataConfig = configurations.create("neoForgeModDevData", spec -> {
+            spec.setDescription("The moddev data archive of the requested NeoForge version.");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.setTransitive(false);
+            spec.withDependencies(dependencies -> dependencies.addLater(neoForgeModDevDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> caps.requireCapability(CAPABILITY_MODDEV_BUNDLE)))));
+        });
+
+        var neoFormDataConfig = configurations.create("neoFormData", spec -> {
+            spec.setDescription("The NeoForm data if it was overriden or the plugin is in Vanilla mode.");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.setTransitive(false);
+            spec.withDependencies(dependencies -> dependencies.addLater(neoFormDependency));
         });
 
         var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
@@ -182,8 +209,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
             task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
-            task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
-            task.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip"));
+            task.getLocalNeoForgeArtifact().from(neoForgeModDevDataConfig);
+            task.getLocalNeoFormArtifact().from(neoFormDataConfig);
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
 
@@ -399,15 +426,13 @@ public class ModDevPlugin implements Plugin<Project> {
      * Collects all dependencies needed by the NeoFormRuntime and adds them to the task for creating
      * an artifact manifest for NFRT.
      */
-    private void configureArtifactManifestTask(CreateArtifactManifestTask task, NeoForgeExtension extension) {
+    private void configureArtifactManifestTask(CreateArtifactManifestTask task,
+                                               Provider<ExternalModuleDependency> neoForgeDependency,
+                                               Provider<ExternalModuleDependency> neoFormDependency) {
         var project = task.getProject();
         var configurations = project.getConfigurations();
-        var dependencyFactory = project.getDependencyFactory();
 
         var configurationPrefix = "neoFormRuntimeDependencies";
-
-        Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
-        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -416,10 +441,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
-                    .capabilities(caps -> {
-                        caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
-                    }))));
-
+                    .capabilities(caps -> caps.requireCapability(CAPABILITY_MODDEV_BUNDLE)))));
             // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
             spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
@@ -482,12 +504,17 @@ public class ModDevPlugin implements Plugin<Project> {
             // Convert to a serializable representation for the task.
             task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
                 return results.stream().map(result -> {
-                    var gav = guessMavenGav(result);
+                            var gav = guessMavenGav(project, result);
+                            if (gav == null) {
+                                return null;
+                            }
                     return new ArtifactManifestEntry(
                             gav,
                             result.getFile()
                     );
-                }).collect(Collectors.toSet());
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
             }));
         }
     }
@@ -785,14 +812,27 @@ public class ModDevPlugin implements Plugin<Project> {
         return null;
     }
 
-    static String guessMavenGav(ResolvedArtifactResult result) {
+    static String guessMavenGav(Project project, ResolvedArtifactResult result) {
         String artifactId;
         String ext = "";
         String classifier = null;
+
+        String group, module, version;
         if (result.getId() instanceof ModuleComponentArtifactIdentifier moduleId) {
-            var artifact = moduleId.getComponentIdentifier().getModule();
-            var version = moduleId.getComponentIdentifier().getVersion();
-            var expectedBasename = artifact + "-" + version;
+            group = moduleId.getComponentIdentifier().getGroup();
+            module = moduleId.getComponentIdentifier().getModule();
+            version = moduleId.getComponentIdentifier().getVersion();
+        } else if (result.getId().getComponentIdentifier() instanceof ProjectComponentIdentifier projectId
+                   && result.getVariant().getCapabilities().size() == 1) {
+            // Not great. but ahem.
+            group = result.getVariant().getCapabilities().get(0).getGroup();
+            module = projectId.getProjectName();
+            version = result.getVariant().getCapabilities().get(0).getVersion();
+        } else {
+            return null;
+        }
+
+        var expectedBasename = module + "-" + version;
             var filename = result.getFile().getName();
             var startOfExt = filename.lastIndexOf('.');
             if (startOfExt != -1) {
@@ -803,11 +843,8 @@ public class ModDevPlugin implements Plugin<Project> {
             if (filename.startsWith(expectedBasename + "-")) {
                 classifier = filename.substring((expectedBasename + "-").length());
             }
-            artifactId = moduleId.getComponentIdentifier().getGroup() + ":" + artifact + ":" + version;
-        } else {
-            ext = "jar";
-            artifactId = result.getId().getComponentIdentifier().toString();
-        }
+        artifactId = group + ":" + module + ":" + version;
+
         String gav = artifactId;
         if (classifier != null) {
             gav += ":" + classifier;
