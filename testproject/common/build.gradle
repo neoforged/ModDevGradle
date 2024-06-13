@@ -3,7 +3,7 @@ plugins {
 }
 
 neoForge {
-    neoFormVersion = "1.20.6-20240524.210247"
+    neoFormVersion = "1.21-20240613.152323"
 
     runs {
         client {
