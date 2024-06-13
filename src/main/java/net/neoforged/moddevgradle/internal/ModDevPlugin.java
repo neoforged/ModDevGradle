@@ -13,7 +13,6 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
@@ -123,7 +122,14 @@ public class ModDevPlugin implements Plugin<Project> {
             repo.metadataSources(sources -> sources.mavenPom());
             // TODO: Filter known groups that they ship and dont just run everything against it
         }));
-        addTemporaryRepositories(repositories);
+        repositories.maven(repo -> {
+            repo.setName("Mojang Meta");
+            repo.setUrl("https://maven.neoforged.net/mojang-meta/");
+            repo.metadataSources(sources -> sources.gradleMetadata());
+            repo.content(content -> {
+                content.includeModule("net.neoforged", "minecraft-dependencies");
+            });
+        });
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
@@ -496,36 +502,6 @@ public class ModDevPlugin implements Plugin<Project> {
         // Only IntelliJ needs the combined artifact
         // For Eclipse, we can attach the sources via the Eclipse project model.
         return IdeDetection.isIntelliJ();
-    }
-
-    private void addTemporaryRepositories(RepositoryHandler repositories) {
-
-        repositories.maven(repo -> {
-            repo.setName("Mojang Meta");
-            repo.setUrl("https://maven.neoforged.net/mojang-meta/");
-            repo.metadataSources(sources -> sources.gradleMetadata());
-            repo.content(content -> {
-                content.includeModule("net.neoforged", "minecraft-dependencies");
-            });
-        });
-
-        repositories.maven(repo -> {
-            repo.setName("Temporary Repo for neoform");
-            repo.setUrl("https://prmaven.neoforged.net/NeoForm/pr10");
-            repo.content(content -> {
-                content.includeModule("net.neoforged", "neoform");
-            });
-        });
-
-        repositories.maven(repo -> {
-            repo.setName("Temporary Repo for neoforge");
-            repo.setUrl("https://prmaven.neoforged.net/NeoForge/pr959");
-            repo.content(content -> {
-                content.includeModule("net.neoforged", "neoforge");
-                content.includeModule("net.neoforged", "testframework");
-            });
-        });
-
     }
 
     public void setupTesting() {
