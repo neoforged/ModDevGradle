@@ -188,7 +188,7 @@ neoForge {
   mods {
     mymod {
       sourceSet sourceSets.main
-      // Do not forget to add additional soruce-sets here!
+      // Do not forget to add additional source-sets here!
       sourceSet sourceSets.anotherSourceSet
     }
   }
