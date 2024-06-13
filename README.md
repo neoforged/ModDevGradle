@@ -148,6 +148,10 @@ neoForge {
 
             // You can change the name used for this run in your IDE
             ideName = "Run Game Tests"
+        
+            // Changes the source set whose runtime classpath is used for this run. This defaults to "main"
+            // Eclipse does not support having multiple runtime classpaths per project (except for unit tests).
+            sourceSet = sourceSets.main
         }
     }
 }
@@ -164,6 +168,34 @@ neoForge {
             systemProperty 'forge.logging.console.level', 'debug'
         }
     }
+}
+```
+
+### Isolated Source Sets
+
+If you work with source sets that do not extend from `main`, and would like the modding dependencies to be available
+in those source sets, you can use the following api:
+
+```
+sourceSets {
+  anotherSourceSet // example
+}
+
+neoForge {
+  // ...
+  addModdingDependenciesTo(sourceSets.anotherSourceSet)
+  
+  mods {
+    mymod {
+      sourceSet sourceSets.main
+      // Do not forget to add additional soruce-sets here!
+      sourceSet sourceSets.anotherSourceSet
+    }
+  }
+}
+
+dependencies {
+  implementation sourceSets.anotherSourceSet.output
 }
 ```
 

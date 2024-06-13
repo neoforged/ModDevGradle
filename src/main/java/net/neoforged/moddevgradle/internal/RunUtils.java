@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -246,14 +247,12 @@ final class RunUtils {
 
     /**
      * Returns the configured output directory, only if "Build and run using" is set to "IDEA".
-     * In other cases, returns {@null}.
+     * In other cases, returns {@code null}.
      */
     @Nullable
     static File getIntellijOutputDirectory(Project project) {
-        // TODO: this doesn't work in our little testproject because the .idea folder is one level above the root...
-        var projectDir = project.getRootDir();
-        var ideaDir = new File(projectDir, ".idea");
-        if (!ideaDir.exists()) {
+        var ideaDir = IdeDetection.getIntellijProjectDir(project);
+        if (ideaDir == null) {
             return null;
         }
 
@@ -272,7 +271,7 @@ final class RunUtils {
             outputDirUrl = "file://$PROJECT_DIR$/out";
         }
 
-        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", projectDir.getAbsolutePath());
+        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", ideaDir.getParentFile().getAbsolutePath());
         outputDirUrl = outputDirUrl.replaceAll("^file:", "");
 
         // The output dir can start with something like "//C:\"; File can handle it.
