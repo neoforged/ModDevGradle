@@ -132,6 +132,18 @@ test {
     useJUnitPlatform()
 }
 
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+
+    repositories {
+        maven gradleutils.publishingMaven
+    }
+}
+
 // The java-gradle-plugin ignores the java8 source-set we added to the main source sets classpath
 // For testkit tests to work, this needs to be present
 tasks.withType(PluginUnderTestMetadata).configureEach {
