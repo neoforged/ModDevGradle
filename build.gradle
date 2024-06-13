@@ -140,7 +140,21 @@ publishing {
     }
 
     repositories {
-        maven gradleutils.publishingMaven
+        maven {
+            name = 'NeoForge'
+            if (System.getenv('MAVEN_USER') && System.getenv('MAVEN_PASSWORD')) {
+                it.url = "https://maven.neoforged.net/releases/"
+                it.authentication {
+                    it.create('basic', BasicAuthentication)
+                }
+                it.credentials { credentials ->
+                    credentials.username = System.getenv('MAVEN_USER')
+                    credentials.password = System.getenv('MAVEN_PASSWORD')
+                }
+            } else {
+                it.url = 'file://' + file("repo").getAbsolutePath()
+            }
+        }
     }
 }
 
