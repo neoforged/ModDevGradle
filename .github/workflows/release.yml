@@ -13,12 +13,11 @@ permissions:
 
 jobs:
   release:
-    if: false
     uses: neoforged/actions/.github/workflows/gradle-publish.yml@main
     with:
       java: 17
       pre_gradle_tasks: test
-      gradle_tasks: publish 
+      gradle_tasks: 'publish publishPlugins'
     secrets:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
       MAVEN_USER: ${{ secrets.MAVEN_USER }}
@@ -26,4 +25,5 @@ jobs:
       GPG_SUBKEY: ${{ secrets.GPG_SUBKEY }}
       GPG_SUBKEY_ID: ${{ secrets.GPG_SUBKEY_ID }}
       GPG_SUBKEY_PASSWORD: ${{ secrets.GPG_SUBKEY_PASSWORD }}
-      
+      GPP_KEY: ${{ secrets.GPP_KEY }}
+      GPP_SECRET: ${{ secrets.GPP_SECRET }}

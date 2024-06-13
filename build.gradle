@@ -2,6 +2,7 @@ plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
     id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
+    id 'com.gradle.plugin-publish' version '1.1.0'
 }
 
 group = 'net.neoforged'
@@ -17,6 +18,13 @@ changelog {
     from '0.1'
     // For fine-grained changelog publication control
     disableAutomaticPublicationRegistration()
+}
+
+if (System.getenv('GPP_KEY')) {
+    project.ext {
+        set('gradle.publish.key', System.getenv('GPP_KEY'))
+        set('gradle.publish.secret', System.getenv('GPP_SECRET'))
+    }
 }
 
 repositories {
@@ -106,10 +114,16 @@ tasks.withType(GenerateModuleMetadata) {
 }
 
 gradlePlugin {
+    website = 'https://github.com/neoforged/ModDevGradle'
+    vcsUrl  = 'https://github.com/neoforged/ModDevGradle.git'
+
     plugins {
         moddev {
             id = 'net.neoforged.moddev'
             implementationClass = 'net.neoforged.moddevgradle.boot.ModDevPlugin'
+            displayName = "NeoForge Mod Development Plugin"
+            description = "This plugin helps you create Minecraft mods using the NeoForge platform"
+            tags = ["minecraft", "neoforge", "java", "mod"]
         }
     }
 }
