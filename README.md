@@ -13,7 +13,7 @@
 In `gradle.properties`:
 
 ```properties
-# Enable Gradle configuration cache:
+# Enable Gradle configuration cache if you'd like:
 org.gradle.configuration-cache=true
 ```
 
@@ -24,16 +24,6 @@ pluginManagement {
     repositories {
         // Add the usual NeoForged maven repository.
         maven { url = 'https://maven.neoforged.net/releases' }
-        // Add the maven repository for the ModDevGradle plugin.
-        maven {
-            name 'Maven for PR #1' // https://github.com/neoforged/ModDevGradle/pull/1
-            url 'https://prmaven.neoforged.net/ModDevGradle/pr1'
-            content {
-                includeModule('net.neoforged.moddev', 'net.neoforged.moddev.gradle.plugin')
-                includeModule('net.neoforged.moddev.junit', 'net.neoforged.moddev.junit.gradle.plugin')
-                includeModule('net.neoforged', 'moddev-gradle')
-            }
-        }
     }
 }
 
@@ -48,12 +38,12 @@ In `build.gradle`:
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://github.com/neoforged/ModDevGradle/packages/2159800.
-    id 'net.neoforged.moddev' version '0.1.59-pr-1-pr-publish'
+    id 'net.neoforged.moddev' version '0.1.74'
 }
 
 neoForge {
-    // For now we require a special NeoForge build. You can find the latest version at https://github.com/neoforged/NeoForge/pull/959. 
-    version = "20.6.91-beta-pr-959-features-gradle-metadata"
+    // We currently only support NeoForge versions later than 21.0.x
+    version = "21.0.0-beta"
 
     runs {
         client {
@@ -97,7 +87,7 @@ Apply the plugin as usual and use a configuration block like this:
 ```groovy
 neoForge {
     // Look for versions on https://projects.neoforged.net/neoforged/neoform
-    neoFormVersion = "1.20.6-20240524.210247"
+    neoFormVersion = "1.21.-20240613.152323"
 
     runs {
         client {
