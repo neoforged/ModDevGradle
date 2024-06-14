@@ -1,7 +1,6 @@
 package net.neoforged.moddevgradle.internal.utils;
 
 import org.gradle.api.Project;
-import org.gradle.api.initialization.IncludedBuild;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -41,13 +40,7 @@ public final class IdeDetection {
      */
     @Nullable
     public static File getIntellijProjectDir(Project project) {
-        // Always try the root directory first, since it has the highest chance
-        var intellijProjectDir = getIntellijProjectDir(project.getRootDir());
-        if (intellijProjectDir != null) {
-            return intellijProjectDir;
-        }
-
-        // Navigate to the root of the composite build tree
+        // Always try the root of a composite build first, since it has the highest chance
         var root = project.getGradle().getParent();
         if (root != null) {
             while (root.getParent() != null) {
@@ -57,7 +50,8 @@ public final class IdeDetection {
             return getIntellijProjectDir(root.getRootProject().getProjectDir());
         }
 
-        return null;
+        // As a fallback or in case of not using composite builds, try the root project folder
+        return getIntellijProjectDir(project.getRootDir());
     }
 
     private static File getIntellijProjectDir(File gradleProjectDir) {
