@@ -183,7 +183,7 @@ sourceSets {
 
 neoForge {
   // ...
-  addModdingDependenciesTo(sourceSets.anotherSourceSet)
+  addModdingDependenciesTo sourceSets.anotherSourceSet
   
   mods {
     mymod {
