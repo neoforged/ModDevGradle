@@ -36,7 +36,7 @@ public abstract class JarJar extends DefaultTask {
     @Inject
     public JarJar(FileSystemOperations fileSystemOperations) {
         this.fileSystemOperations = fileSystemOperations;
-        this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("generated/jarjar/" + getName()));
+        this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("generated/" + getName()));
     }
 
     @TaskAction

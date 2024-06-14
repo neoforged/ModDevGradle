@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
@@ -52,7 +53,7 @@ public abstract class NeoForgeExtension {
      */
     public void addModdingDependenciesTo(SourceSet sourceSet) {
         var configurations = project.getConfigurations();
-        var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+        var sourceSets = ExtensionUtils.getSourceSets(project);
         if (!sourceSets.contains(sourceSet)) {
             throw new GradleException("Cannot add to the source set in another project.");
         }
