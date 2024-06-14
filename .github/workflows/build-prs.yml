@@ -28,6 +28,9 @@ jobs:
     steps:
       - name: Checkout project sources
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1000
+          fetch-tags: true
 
       - uses: actions/setup-java@v4
         with:
