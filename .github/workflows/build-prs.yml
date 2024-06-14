@@ -41,13 +41,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run build
-        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true --no-parallel build
+        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true build
         working-directory: ./testproject
 
       - name: Ensure clean, build and test work in the same run
-        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true --no-parallel clean build check
+        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true clean build check
         working-directory: ./testproject
 
       - name: Ensure runData runs
-        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true --no-parallel runData
+        run: ./gradlew -PneoForge.neoFormRuntime.verbose=true -PneoForge.neoFormRuntime.analyzeCacheMisses=true runData
         working-directory: ./testproject
