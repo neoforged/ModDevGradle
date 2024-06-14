@@ -271,7 +271,7 @@ final class RunUtils {
             outputDirUrl = "file://$PROJECT_DIR$/out";
         }
 
-        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", ideaDir.getParentFile().getAbsolutePath());
+        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", project.getProjectDir().getAbsolutePath());
         outputDirUrl = outputDirUrl.replaceAll("^file:", "");
 
         // The output dir can start with something like "//C:\"; File can handle it.
