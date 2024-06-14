@@ -7,7 +7,7 @@ import org.gradle.api.provider.Property;
 import javax.inject.Inject;
 
 public abstract class NeoFormRuntime {
-    private static final String DEFAULT_NFRT_VERSION = "0.1.48";
+    private static final String DEFAULT_NFRT_VERSION = "0.1.52";
 
     @Inject
     public NeoFormRuntime(Project project) {
