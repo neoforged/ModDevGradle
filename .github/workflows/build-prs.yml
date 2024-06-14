@@ -46,13 +46,19 @@ jobs:
           cache-read-only: true
 
       - name: Run build
-        run: ./gradlew build
+        run: ./gradlew --no-parallel build
         working-directory: ./testproject
+        env:
+          ORG_GRADLE_PROJECT_neoForge.neoFormRuntime.verbose: true
 
       - name: Ensure clean, build and test work in the same run
-        run: ./gradlew clean build check
+        run: ./gradlew --no-parallel clean build check
         working-directory: ./testproject
+        env:
+          ORG_GRADLE_PROJECT_neoForge.neoFormRuntime.verbose: true
 
       - name: Ensure runData runs
-        run: ./gradlew runData
+        run: ./gradlew --no-parallel runData
         working-directory: ./testproject
+        env:
+          ORG_GRADLE_PROJECT_neoForge.neoFormRuntime.verbose: true
