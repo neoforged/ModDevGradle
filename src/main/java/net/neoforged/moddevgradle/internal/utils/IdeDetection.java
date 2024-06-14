@@ -55,19 +55,8 @@ public final class IdeDetection {
     }
 
     private static File getIntellijProjectDir(File gradleProjectDir) {
-        // Search the .idea folder belonging to this Gradle project
-        // In includeBuild scenarios, it might be above the project. It's also possible
-        // that it is completely separate.
         var ideaDir = new File(gradleProjectDir, ".idea");
-        while (!ideaDir.exists()) {
-            gradleProjectDir = gradleProjectDir.getParentFile();
-            if (gradleProjectDir == null) {
-                return null;
-            }
-            ideaDir = new File(gradleProjectDir, ".idea");
-        }
-
-        return ideaDir;
+        return ideaDir.exists() ? ideaDir : null;
     }
 
 }
