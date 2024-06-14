@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.dsl;
 
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
@@ -11,6 +12,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
+import org.gradle.api.tasks.SourceSet;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
@@ -49,6 +51,8 @@ public abstract class RunModel implements Named, Dependencies {
             ideName = project.getName() + " - " + ideName;
         }
         getIdeName().convention(ideName);
+
+        getSourceSet().convention(ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
     }
 
     @Override
@@ -112,6 +116,14 @@ public abstract class RunModel implements Named, Dependencies {
     public abstract DependencyCollector getAdditionalRuntimeClasspath();
 
     public abstract Property<Level> getLogLevel();
+
+    /**
+     * Sets the source set to be used as the main classpath of this run.
+     * Defaults to the {@code main} source set.
+     * Eclipse does not support having multiple different classpaths per project beyond a separate unit-testing
+     * classpath.
+     */
+    public abstract Property<SourceSet> getSourceSet();
 
     @Override
     public String toString() {

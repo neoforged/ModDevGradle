@@ -1,7 +1,9 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import org.gradle.api.Project;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.ExtensionContainer;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,5 +42,9 @@ public final class ExtensionUtils {
             throw new IllegalStateException("Extension " + name + " on " + container + " is not of type " + expectedType.getName() + " but of " + extension.getClass());
         }
         return expectedType.cast(extension);
+    }
+
+    public static SourceSetContainer getSourceSets(Project project) {
+        return getExtension(project, "sourceSets", SourceSetContainer.class);
     }
 }

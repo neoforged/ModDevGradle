@@ -7,12 +7,17 @@ repositories {
     mavenLocal()
 }
 
+sourceSets {
+    api
+}
+
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation "net.neoforged:testframework:${project.neoforge_version}"
 
     implementation project(":subproject")
+    implementation sourceSets.api.output
 }
 
 test {
@@ -21,6 +26,7 @@ test {
 
 neoForge {
     version = project.neoforge_version
+    addModdingDependenciesTo(sourceSets.api)
 
     runs {
         configureEach {
@@ -35,11 +41,16 @@ neoForge {
         server {
             server()
         }
+        apitest {
+            client()
+            sourceSet = sourceSets.api
+        }
     }
 
     mods {
         testproject {
             sourceSet sourceSets.main
+            sourceSet sourceSets.api
             dependency project(":subproject")
         }
     }

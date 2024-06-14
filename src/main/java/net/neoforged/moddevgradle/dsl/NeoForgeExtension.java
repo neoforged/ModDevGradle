@@ -1,10 +1,14 @@
 package net.neoforged.moddevgradle.dsl;
 
+import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Action;
+import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -15,6 +19,7 @@ import java.util.List;
 public abstract class NeoForgeExtension {
     public static final String NAME = "neoForge";
 
+    private final Project project;
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
@@ -23,6 +28,7 @@ public abstract class NeoForgeExtension {
 
     @Inject
     public NeoForgeExtension(Project project) {
+        this.project = project;
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
@@ -38,6 +44,23 @@ public abstract class NeoForgeExtension {
             }
             return List.of(defaultPath);
         }));
+    }
+
+    /**
+     * Adds the necessary dependencies to develop a Minecraft mod to the given source set.
+     * The plugin automatically adds these dependencies to the main source set.
+     */
+    public void addModdingDependenciesTo(SourceSet sourceSet) {
+        var configurations = project.getConfigurations();
+        var sourceSets = project.getExtensions().getByType(SourceSetContainer.class);
+        if (!sourceSets.contains(sourceSet)) {
+            throw new GradleException("Cannot add to the source set in another project.");
+        }
+
+        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName())
+                .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
+        configurations.getByName(sourceSet.getCompileClasspathConfigurationName())
+                .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_COMPILE_DEPENDENCIES));
     }
 
     /**
