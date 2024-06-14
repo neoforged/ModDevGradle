@@ -47,14 +47,14 @@ public final class IdeDetection {
             return intellijProjectDir;
         }
 
-        // Try every included build
-        for (var includedBuild : project.getGradle().getIncludedBuilds()) {
-            if (!includedBuild.getProjectDir().equals(project.getRootDir())) {
-                intellijProjectDir = getIntellijProjectDir(includedBuild.getProjectDir());
-                if (intellijProjectDir != null) {
-                    return intellijProjectDir;
-                }
+        // Navigate to the root of the composite build tree
+        var root = project.getGradle().getParent();
+        if (root != null) {
+            while (root.getParent() != null) {
+                root = root.getParent();
             }
+
+            return getIntellijProjectDir(root.getRootProject().getProjectDir());
         }
 
         return null;
