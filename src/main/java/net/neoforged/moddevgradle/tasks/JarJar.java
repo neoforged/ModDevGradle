@@ -36,7 +36,7 @@ public abstract class JarJar extends DefaultTask {
     @Inject
     public JarJar(FileSystemOperations fileSystemOperations) {
         this.fileSystemOperations = fileSystemOperations;
-        this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("jarJar/"+getName()));
+        this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("generated/jarjar/" + getName()));
     }
 
     @TaskAction
@@ -46,7 +46,7 @@ public abstract class JarJar extends DefaultTask {
             spec.delete(getOutputDirectory());
         });
         fileSystemOperations.copy(spec -> {
-            spec.into(getOutputDirectory());
+            spec.into(getOutputDirectory().dir("/META-INF/jarjar"));
             spec.from(
                     includedJars.stream().map(ResolvedJarJarArtifact::getFile).collect(Collectors.toList())
             );
