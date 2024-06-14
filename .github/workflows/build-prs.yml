@@ -22,3 +22,26 @@ jobs:
       java: 17
       gradle_tasks: test
       jar_compatibility: false
+
+  test-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          build-scan-publish: true
+          build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
+          build-scan-terms-of-use-agree: "yes"
+          cache-read-only: true
+
+      - name: Run build
+        run: ./gradlew clean build check
+        working-directory: ./testproject
