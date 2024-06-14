@@ -1,0 +1,8 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "CC0"
+[[mods]]
+modId = "jijtest"
+version = "0.0.0"
+displayName = "JIJ Test"
+description = '''JIJ Test'''

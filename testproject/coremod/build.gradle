@@ -1,0 +1,19 @@
+plugins {
+    id 'java'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    maven {
+        url = "https://maven.neoforged.net/releases"
+    }
+}
+
+dependencies {
+    compileOnly 'net.neoforged.fancymodloader:loader:4.0.4'
+}
