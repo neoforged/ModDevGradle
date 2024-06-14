@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import org.gradle.api.GradleException;
@@ -24,6 +25,7 @@ import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
@@ -57,6 +59,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -69,6 +72,12 @@ import java.util.stream.Collectors;
 public class ModDevPlugin implements Plugin<Project> {
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
+
+    /**
+     * This must be relative to the project directory since we can only set this to the same project-relative
+     * directory across all subprojects due to IntelliJ limitations.
+     */
+    private static final String JUNIT_GAME_DIR = "build/minecraft-junit";
 
     private static final String JAR_JAR_GROUP = "jarjar";
 
@@ -544,6 +553,7 @@ public class ModDevPlugin implements Plugin<Project> {
                               Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
         var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
         var unitTest = extension.getUnitTest();
+        var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var tasks = project.getTasks();
         var configurations = project.getConfigurations();
@@ -626,7 +636,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Prepares all files needed to run the JUnit test task.");
-            task.getGameDirectory().set(unitTest.getGameDirectory());
+            task.getGameDirectory().set(gameDirectory);
             task.getVmArgsFile().set(vmArgsFile);
             task.getProgramArgsFile().set(programArgsFile);
             task.getLog4jConfigFile().set(log4j2ConfigFile);
@@ -654,26 +664,46 @@ public class ModDevPlugin implements Plugin<Project> {
 
         project.afterEvaluate(p -> {
             // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
-            testTask.configure(task -> task.setWorkingDir(unitTest.getGameDirectory()));
+            testTask.configure(task -> task.setWorkingDir(gameDirectory));
+
+            // Write out a separate file that has IDE specific VM args, which include the definition of the output directories.
+            // For JUnit we have to write this to a separate file due to the Run parameters being shared among all projects.
+            var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
+            var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
+            var ideSpecificVmArgs = RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, unitTest.getTestedMod().map(Set::of), true).getArgument());
+            try {
+                var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
+                Files.createDirectories(vmArgsFilePath.getParent());
+                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs);
+            } catch (IOException e) {
+                throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
+            }
 
             // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
+            // IMPORTANT: This affects *all projects*, not just this one. We have to use $MODULE_WORKING_DIR$ to make it work.
             var intelliJRunConfigurations = getIntelliJRunConfigurations(p);
             if (intelliJRunConfigurations != null) {
-                var outputDirectory = RunUtils.getIntellijOutputDirectory(p);
                 intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
-                    jUnitDefaults.setWorkingDirectory(unitTest.getGameDirectory().get().getAsFile().getAbsolutePath());
+                    // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
+                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + JUNIT_GAME_DIR);
                     jUnitDefaults.setVmParameters(
-                            // The FML JUnit plugin uses this system property to read a
-                            // file containing the program arguments needed to launch
-                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + programArgsFile.get().getAsFile().getAbsolutePath())
+                            // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
+                            // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments
+                            // See https://youtrack.jetbrains.com/issue/IJPL-14230/Add-macro-support-for-VM-options-field-e.g.-expand-ModuleFileDir-properly
+                            // As a workaround, we just use paths relative to the working directory.
+                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + buildRelativePath(programArgsFile, gameDirectory))
                             + " "
-                            + RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(vmArgsFile.get()))
+                            + RunUtils.escapeJvmArg("@" + buildRelativePath(vmArgsFile, gameDirectory))
                             + " "
-                            + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(p, outputDirectory, unitTest.getTestedMod().map(Set::of), true).getArgument())
+                            + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
                     );
                 });
             }
         });
+    }
+
+    private static String buildRelativePath(Provider<RegularFile> file, File workingDirectory) {
+        return workingDirectory.toPath().relativize(file.get().getAsFile().toPath()).toString().replace("\\", "/");
     }
 
     private static void setupJarJar(Project project) {
