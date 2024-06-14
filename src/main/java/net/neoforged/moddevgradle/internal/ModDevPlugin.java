@@ -302,7 +302,10 @@ public class ModDevPlugin implements Plugin<Project> {
             })));
         });
 
-        var ideSyncTask = tasks.register("neoForgeIdeSync");
+        var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
+            task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
+            task.dependsOn(createArtifacts);
+        });
 
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         extension.getRuns().configureEach(run -> {
