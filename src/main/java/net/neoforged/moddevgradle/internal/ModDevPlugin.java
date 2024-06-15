@@ -130,12 +130,17 @@ public class ModDevPlugin implements Plugin<Project> {
                     });
         }));
 
-        repositories.add(0, repositories.maven(repo -> {
+        var mojangMaven = repositories.maven(repo -> {
             repo.setName("Mojang Minecraft Libraries");
             repo.setUrl(URI.create("https://libraries.minecraft.net/"));
             repo.metadataSources(sources -> sources.mavenPom());
             repo.content(MojangRepositoryFilter::filter);
-        }));
+        });
+        // Make sure that Mojang's repository is first
+        if (repositories.getAsMap().size() > 1) {
+            repositories.remove(mojangMaven);
+            repositories.add(0, mojangMaven);
+        }
 
         repositories.maven(repo -> {
             repo.setName("Mojang Meta");
