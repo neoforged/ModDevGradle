@@ -10,9 +10,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.SkipWhenEmpty;
@@ -38,7 +36,7 @@ public abstract class JarJar extends DefaultTask {
     @InputFiles
     @SkipWhenEmpty
     @ApiStatus.Internal
-    protected abstract ConfigurableFileCollection getConfigurationInputs();
+    protected abstract ConfigurableFileCollection getInputFiles();
 
     @Inject
     protected abstract ObjectFactory getObjects();
@@ -85,7 +83,7 @@ public abstract class JarJar extends DefaultTask {
     }
 
     public void configuration(Configuration jarJarConfiguration) {
-        getConfigurationInputs().from(jarJarConfiguration);
+        getInputFiles().from(jarJarConfiguration);
         getJarJarArtifacts().configuration(jarJarConfiguration);
         dependsOn(jarJarConfiguration);
     }
@@ -93,7 +91,7 @@ public abstract class JarJar extends DefaultTask {
     public void setConfigurations(Collection<? extends Configuration> configurations) {
         var newConfig = getObjects().fileCollection();
         newConfig.from(configurations.toArray());
-        getConfigurationInputs().setFrom(newConfig);
+        getInputFiles().setFrom(newConfig);
         getJarJarArtifacts().setConfigurations(configurations);
         configurations.forEach(this::dependsOn);
     }
