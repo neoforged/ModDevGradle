@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                "FMLModType": "LIBRARY"
+        ])
+    }
+}
+
+repositories {
+    maven {
+        url = "https://libraries.minecraft.net"
+        metadataSources{
+            mavenPom()
+        }
+    }
+    maven {
+        url = "https://maven.neoforged.net/releases"
+    }
+}
+
+dependencies {
+    compileOnly 'net.neoforged.fancymodloader:loader:4.0.4'
+}

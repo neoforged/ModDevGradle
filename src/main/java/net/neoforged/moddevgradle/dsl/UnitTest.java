@@ -2,7 +2,6 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Project;
-import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
 
 import javax.inject.Inject;
@@ -16,8 +15,6 @@ public abstract class UnitTest {
     @Inject
     public UnitTest(Project project) {
         this.project = project;
-
-        getGameDirectory().convention(project.getLayout().getBuildDirectory().dir("minecraft-junit"));
     }
 
     /**
@@ -33,9 +30,4 @@ public abstract class UnitTest {
      * will be added to that mod at runtime.
      */
     public abstract Property<ModModel> getTestedMod();
-
-    /**
-     * The working directory for the unit test.
-     */
-    public abstract DirectoryProperty getGameDirectory();
 }

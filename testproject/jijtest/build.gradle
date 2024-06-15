@@ -1,0 +1,37 @@
+plugins {
+    id 'net.neoforged.moddev'
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    jarJar project(":coremod")
+}
+
+test {
+    useJUnitPlatform()
+}
+
+neoForge {
+    version = project.neoforge_version
+
+    runs {
+        data {
+            data()
+        }
+    }
+
+    mods {
+        jijtest {
+            sourceSet sourceSets.main
+        }
+        coremod {
+            dependency project(":coremod")
+        }
+    }
+
+    unitTest {
+        enable()
+        testedMod = mods.jijtest
+    }
+}

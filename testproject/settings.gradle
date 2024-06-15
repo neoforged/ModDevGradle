@@ -19,5 +19,7 @@ plugins {
 includeBuild '..'
 include 'subproject'
 include 'common'
+include 'jijtest'
+include 'coremod'
 
 enableFeaturePreview "STABLE_CONFIGURATION_CACHE"

@@ -54,6 +54,7 @@ public final class IdeDetection {
         return getIntellijProjectDir(project.getRootDir());
     }
 
+    @Nullable
     private static File getIntellijProjectDir(File gradleProjectDir) {
         var ideaDir = new File(gradleProjectDir, ".idea");
         return ideaDir.exists() ? ideaDir : null;
