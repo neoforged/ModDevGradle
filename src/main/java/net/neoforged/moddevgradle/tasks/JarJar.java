@@ -34,6 +34,7 @@ public abstract class JarJar extends DefaultTask {
     @ApiStatus.Internal
     protected abstract JarJarArtifacts getJarJarArtifacts();
 
+    // Used for NO-SOURCE tracking to prevent the task from running if no configurations are defined
     @InputFiles
     @SkipWhenEmpty
     @ApiStatus.Internal
