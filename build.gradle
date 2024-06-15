@@ -3,6 +3,7 @@ plugins {
     id 'maven-publish'
     id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
     id 'com.gradle.plugin-publish' version '1.1.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'net.neoforged'
@@ -58,15 +59,31 @@ sourceSets {
     }
 }
 
+configurations {
+    // Configuration for all dependencies that we want shaded.
+    shaded
+    // Place shaded dependencies into `compileOnly` so that they do not leak into our publications' dependencies.
+    compileOnly.extendsFrom shaded
+    shadowRuntimeElements {
+        // `shadowRuntimeElements` is what gets published.
+        // We want it to contain the non-shaded runtime dependencies.
+        it.extendsFrom implementation, runtimeOnly
+    }
+    // Change the Category attribute so that includeBuilds don't select the default `runtimeElements` configuration.
+    runtimeElements {
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "not-wanted-publication"))
+        }
+    }
+}
+
 dependencies {
     compileOnly gradleApi()
     compileOnly "com.intellij:annotations:9.0.4"
-    implementation "com.google.code.gson:gson:2.10.1"
+    shaded "com.google.code.gson:gson:2.10.1"
     implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
-    implementation "net.neoforged:JarJarMetadata:0.4.1"
     implementation "net.neoforged:EclipseLaunchConfigs:0.1.11"
-    api "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
-    api "net.neoforged:JarJarMetadata:0.4.1"
+    implementation "net.neoforged:JarJarMetadata:0.4.1"
 
     java8CompileOnly gradleApi()
 
@@ -89,6 +106,18 @@ java {
 jar {
     from sourceSets.java8.output
 }
+
+shadowJar {
+    archiveClassifier = "" // Required for the Plugin Publish Plugin to publish this jar
+
+    from sourceSets.java8.output
+
+    configurations = [project.configurations.shaded]
+    enableRelocation true
+    relocationPrefix = "net.neoforged.moddev.shadow"
+}
+
+assemble.dependsOn shadowJar
 
 tasks.named("compileJava8Java").configure {
     javaCompiler = javaToolchains.compilerFor {
