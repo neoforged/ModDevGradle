@@ -1,5 +1,7 @@
 # Gradle Plugin for Developing Minecraft Mods on NeoForge
 
+Check the NeoForged Project Listing for [latest releases](https://projects.neoforged.net/neoforged/ModDevGradle).
+
 ## Features
 
 - Creates the necessary artifacts to compile Minecraft mods for [NeoForge](https://neoforged.net/)
