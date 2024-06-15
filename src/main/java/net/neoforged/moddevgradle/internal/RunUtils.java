@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -199,8 +200,15 @@ final class RunUtils {
                     .collect(Collectors.toMap(ModModel::getName, mod -> {
                         var modFolder = project.getObjects().newInstance(ModFolder.class);
                         modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
-                        for (var sourceSet : mod.getModSourceSets().get()) {
-                            // TODO: this is probably broken in multiproject builds
+                        var sourceSets = new ArrayList<>(mod.getModSourceSets().get());
+                        // Brings IJ in line with how we do it in Gradle
+                        if (includeUnitTests) {
+                            var testSourceSet = ExtensionUtils.getSourceSets(project).findByName("test");
+                            if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
+                                sourceSets.add(testSourceSet);
+                            }
+                        }
+                        for (var sourceSet : sourceSets) {
                             var sourceSetDir = outputDirectory.toPath().resolve(getIdeaOutName(sourceSet));
                             modFolder.getFolders().from(sourceSetDir.resolve("classes"));
                             modFolder.getFolders().from(sourceSetDir.resolve("resources"));
