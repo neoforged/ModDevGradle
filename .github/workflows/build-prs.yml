@@ -50,13 +50,13 @@ jobs:
           build-scan-terms-of-use-agree: "yes"
 
       - name: Run build
-        run: ./gradlew "-Porg.gradle.workers.max=2" build
+        run: ./gradlew --max-workers=2 build
         working-directory: ./testproject
 
       - name: Ensure clean, build and test work in the same run
-        run: ./gradlew "-Porg.gradle.workers.max=2" clean build check
+        run: ./gradlew --max-workers=2 clean build check
         working-directory: ./testproject
 
       - name: Ensure runData runs
-        run: ./gradlew "-Porg.gradle.workers.max=2" runData
+        run: ./gradlew --max-workers=2 runData
         working-directory: ./testproject
