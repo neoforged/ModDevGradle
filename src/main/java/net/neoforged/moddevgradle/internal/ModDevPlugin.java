@@ -102,12 +102,18 @@ public class ModDevPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+        // Do not apply the repositories automatically if they have been applied at the settings-level.
+        // It's still possible to apply them manually, though.
+        if (!project.getGradle().getPlugins().hasPlugin(RepositoryPlugin.class)) {
+            project.getPlugins().apply(RepositoryPlugin.class);
+        } else {
+            project.getLogger().info("Not enabling NeoForged repositories since they were applied at the settings level");
+        }
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
         var configurations = project.getConfigurations();
         var layout = project.getLayout();
         var tasks = project.getTasks();
-        var repositories = project.getRepositories();
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
@@ -129,31 +135,6 @@ public class ModDevPlugin implements Plugin<Project> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
         }));
-
-        var mojangMaven = repositories.maven(repo -> {
-            repo.setName("Mojang Minecraft Libraries");
-            repo.setUrl(URI.create("https://libraries.minecraft.net/"));
-            repo.metadataSources(sources -> sources.mavenPom());
-            repo.content(MojangRepositoryFilter::filter);
-        });
-        // Make sure that Mojang's repository is first
-        if (repositories.getAsMap().size() > 1) {
-            repositories.remove(mojangMaven);
-            repositories.add(0, mojangMaven);
-        }
-
-        repositories.maven(repo -> {
-            repo.setName("Mojang Meta");
-            repo.setUrl("https://maven.neoforged.net/mojang-meta/");
-            repo.metadataSources(sources -> sources.gradleMetadata());
-            repo.content(content -> {
-                content.includeModule("net.neoforged", "minecraft-dependencies");
-            });
-        });
-        repositories.maven(repo -> {
-            repo.setName("NeoForged Releases");
-            repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
-        });
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
