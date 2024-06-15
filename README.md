@@ -285,11 +285,9 @@ public class TestClass {
 
 ### Centralizing Repositories Declaration
 
-This plugin supports
-Gradles [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration)
-in settings.gradle
-by offering a separate plugin to apply the repositories to develop mods. It can be used in the following
-way in `settings.gradle`:
+This plugin supports Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration) in settings.gradle
+by offering a separate plugin to apply the repositories to develop mods.
+It can be used in the following way in `settings.gradle`:
 
 ```groovy
 plugins {
@@ -303,11 +301,10 @@ dependencyResolutionManagement {
 }
 ```
 
-Please note
-that defining any repository in build.gradle will completely disable the centrally managed repositories for that
-project.
-You can also use the repositories plugin in a project to add the repositories there, even if dependency management has
-been overridden.
+Please note that defining any repository in build.gradle will completely disable
+the centrally managed repositories for that project.
+You can also use the repositories plugin in a project to add the repositories there,
+even if dependency management has been overridden.
 
 ## Advanced Tips & Tricks
 
