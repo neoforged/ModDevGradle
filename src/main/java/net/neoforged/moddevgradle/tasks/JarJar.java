@@ -6,10 +6,16 @@ import net.neoforged.moddevgradle.internal.jarjar.JarJarArtifacts;
 import net.neoforged.moddevgradle.internal.jarjar.ResolvedJarJarArtifact;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileSystemOperations;
+import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputDirectory;
+import org.gradle.api.tasks.SkipWhenEmpty;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -28,6 +34,14 @@ public abstract class JarJar extends DefaultTask {
     @ApiStatus.Internal
     protected abstract JarJarArtifacts getJarJarArtifacts();
 
+    @InputFiles
+    @SkipWhenEmpty
+    @ApiStatus.Internal
+    protected abstract ConfigurableFileCollection getConfigurationInputs();
+
+    @Inject
+    protected abstract ObjectFactory getObjects();
+
     @OutputDirectory
     public abstract DirectoryProperty getOutputDirectory();
 
@@ -42,44 +56,43 @@ public abstract class JarJar extends DefaultTask {
     @TaskAction
     protected void run() {
         List<ResolvedJarJarArtifact> includedJars = getJarJarArtifacts().getResolvedArtifacts().get();
-        fileSystemOperations.delete(spec -> {
-            spec.delete(getOutputDirectory());
-        });
-        fileSystemOperations.copy(spec -> {
-            spec.into(getOutputDirectory().dir("META-INF/jarjar"));
-            spec.from(
-                    includedJars.stream().map(ResolvedJarJarArtifact::getFile).collect(Collectors.toList())
-            );
-            if (!writeMetadata(includedJars).jars().isEmpty()) {
-                // Only copy metadata if not empty.
-                spec.from(getJarJarMetadataPath().toFile());
-            }
-        });
+        fileSystemOperations.delete(spec -> spec.delete(getOutputDirectory()));
+
+        // Only copy metadata if not empty, always delete
+        if (!includedJars.isEmpty()) {
+            fileSystemOperations.copy(spec -> {
+                spec.into(getOutputDirectory().dir("META-INF/jarjar"));
+                spec.from(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toArray());
+                spec.from(writeMetadata(includedJars).toFile());
+            });
+        }
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private Metadata writeMetadata(List<ResolvedJarJarArtifact> includedJars) {
+    private Path writeMetadata(List<ResolvedJarJarArtifact> includedJars) {
         final Path metadataPath = getJarJarMetadataPath();
         final Metadata metadata = createMetadata(includedJars);
 
-        if (!metadata.jars().isEmpty()) {
-            try {
-                metadataPath.toFile().getParentFile().mkdirs();
-                Files.deleteIfExists(metadataPath);
-                Files.write(metadataPath, MetadataIOHandler.toLines(metadata), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to write JarJar dependency metadata to disk.", e);
-            }
+        try {
+            metadataPath.toFile().getParentFile().mkdirs();
+            Files.deleteIfExists(metadataPath);
+            Files.write(metadataPath, MetadataIOHandler.toLines(metadata), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to write JarJar dependency metadata to disk.", e);
         }
-        return metadata;
+        return metadataPath;
     }
 
     public void configuration(Configuration jarJarConfiguration) {
+        getConfigurationInputs().from(jarJarConfiguration);
         getJarJarArtifacts().configuration(jarJarConfiguration);
         dependsOn(jarJarConfiguration);
     }
 
     public void setConfigurations(Collection<? extends Configuration> configurations) {
+        var newConfig = getObjects().fileCollection();
+        newConfig.from(configurations.toArray());
+        getConfigurationInputs().setFrom(newConfig);
         getJarJarArtifacts().setConfigurations(configurations);
         configurations.forEach(this::dependsOn);
     }
