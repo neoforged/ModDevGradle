@@ -20,7 +20,7 @@ import java.net.URI;
  *     repositories from being added again at the project-level.</li>
  * </ul>
  */
-public class RepositoryPlugin implements Plugin<PluginAware> {
+public class RepositoriesPlugin implements Plugin<PluginAware> {
     @Override
     public void apply(PluginAware target) {
         if (target instanceof Project project) {

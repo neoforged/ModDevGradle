@@ -4,7 +4,6 @@ import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
-import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
@@ -59,7 +58,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.URI;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -104,8 +102,8 @@ public class ModDevPlugin implements Plugin<Project> {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
-        if (!project.getGradle().getPlugins().hasPlugin(RepositoryPlugin.class)) {
-            project.getPlugins().apply(RepositoryPlugin.class);
+        if (!project.getGradle().getPlugins().hasPlugin(RepositoriesPlugin.class)) {
+            project.getPlugins().apply(RepositoriesPlugin.class);
         } else {
             project.getLogger().info("Not enabling NeoForged repositories since they were applied at the settings level");
         }
