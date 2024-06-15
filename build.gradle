@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
     id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
     id 'com.gradle.plugin-publish' version '1.1.0'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'io.github.goooler.shadow' version '8.1.7'
 }
 
 group = 'net.neoforged'
