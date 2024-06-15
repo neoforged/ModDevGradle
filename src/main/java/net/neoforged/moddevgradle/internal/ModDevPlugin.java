@@ -150,10 +150,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 content.includeModule("net.neoforged", "minecraft-dependencies");
             });
         });
-        repositories.addLast(repositories.maven(repo -> {
+        repositories.maven(repo -> {
             repo.setName("NeoForged Releases");
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
-        }));
+        });
 
         project.getDependencies().attributesSchema(attributesSchema -> {
             attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
