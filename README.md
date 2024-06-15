@@ -150,7 +150,7 @@ neoForge {
 
             // You can change the name used for this run in your IDE
             ideName = "Run Game Tests"
-        
+
             // Changes the source set whose runtime classpath is used for this run. This defaults to "main"
             // Eclipse does not support having multiple runtime classpaths per project (except for unit tests).
             sourceSet = sourceSets.main
@@ -282,6 +282,29 @@ public class TestClass {
     }
 }
 ```
+
+### Centralizing Repositories Declaration
+
+This plugin supports Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration) in settings.gradle
+by offering a separate plugin to apply the repositories to develop mods.
+It can be used in the following way in `settings.gradle`:
+
+```groovy
+plugins {
+    id 'net.neoforged.moddev.repositories' version '<version>'
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+```
+
+Please note that defining any repository in build.gradle will completely disable
+the centrally managed repositories for that project.
+You can also use the repositories plugin in a project to add the repositories there,
+even if dependency management has been overridden.
 
 ## Advanced Tips & Tricks
 
