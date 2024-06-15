@@ -4,6 +4,7 @@ import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
@@ -129,16 +130,18 @@ public class ModDevPlugin implements Plugin<Project> {
                     });
         }));
 
-        repositories.addLast(repositories.maven(repo -> {
-            repo.setName("NeoForged Releases");
-            repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
-        }));
-        repositories.addLast(repositories.maven(repo -> {
+        var mojangMaven = repositories.maven(repo -> {
             repo.setName("Mojang Minecraft Libraries");
             repo.setUrl(URI.create("https://libraries.minecraft.net/"));
             repo.metadataSources(sources -> sources.mavenPom());
-            // TODO: Filter known groups that they ship and dont just run everything against it
-        }));
+            repo.content(MojangRepositoryFilter::filter);
+        });
+        // Make sure that Mojang's repository is first
+        if (repositories.getAsMap().size() > 1) {
+            repositories.remove(mojangMaven);
+            repositories.add(0, mojangMaven);
+        }
+
         repositories.maven(repo -> {
             repo.setName("Mojang Meta");
             repo.setUrl("https://maven.neoforged.net/mojang-meta/");
@@ -146,6 +149,10 @@ public class ModDevPlugin implements Plugin<Project> {
             repo.content(content -> {
                 content.includeModule("net.neoforged", "minecraft-dependencies");
             });
+        });
+        repositories.maven(repo -> {
+            repo.setName("NeoForged Releases");
+            repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
         });
 
         project.getDependencies().attributesSchema(attributesSchema -> {

@@ -1,3 +1,7 @@
+import groovy.json.JsonSlurper
+import groovy.transform.EqualsAndHashCode
+import groovy.transform.TupleConstructor
+
 plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
@@ -54,6 +58,9 @@ repositories {
 sourceSets {
     java8
     main {
+        java {
+            srcDirs += project.file('src/generated/java')
+        }
         compileClasspath += java8.output
         runtimeClasspath += java8.output
     }
@@ -186,4 +193,53 @@ publishing {
 // For testkit tests to work, this needs to be present
 tasks.withType(PluginUnderTestMetadata).configureEach {
     it.pluginClasspath.from(sourceSets.java8.output.classesDirs)
+}
+
+abstract class GenerateRepoFilter extends DefaultTask {
+    @OutputFile
+    abstract RegularFileProperty getOutput()
+
+    @EqualsAndHashCode
+    @TupleConstructor
+    static class Artifact implements Comparable<Artifact>  {
+        String group, module
+
+        @Override
+        int compareTo(Artifact o) {
+            final groups = this.group <=> o.group
+            if (groups) return groups
+            return this.module <=> o.module
+        }
+    }
+
+    @TaskAction
+    void run() {
+        final Set<Artifact> artifacts = []
+        final json = new JsonSlurper()
+        final manifest = json.parse('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'.toURL())
+        manifest.versions.each { ver ->
+            final version = json.parse((ver.url as String).toURL())
+            version.libraries.each { lib ->
+                final location = (lib.name as String).split(':', 3)
+                artifacts.add(new Artifact(location[0], location[1]))
+            }
+        }
+        final artifactList = artifacts.toList()
+        Collections.sort(artifactList)
+        final clazz = """
+package net.neoforged.moddevgradle.internal.generated;
+
+public class MojangRepositoryFilter {
+    public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
+${artifactList.collect { "        filter.includeModule(\"${it.group}\", \"${it.module}\");" }.join('\n')}
+    }
+}"""
+        output.get().asFile.write(clazz)
+    }
+}
+
+tasks.register('generateMojangRepositoryFilter', GenerateRepoFilter) {
+    output = project.file('src/generated/java/net/neoforged/moddevgradle/internal/generated/MojangRepositoryFilter.java')
+    group = 'build'
+    description = "Generates a repository filter for Mojang's libraries maven"
 }
