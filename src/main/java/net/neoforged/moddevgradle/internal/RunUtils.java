@@ -18,7 +18,6 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
@@ -41,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -186,6 +186,7 @@ final class RunUtils {
     public static String getArgFileParameter(RegularFile argFile) {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
+
     public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
@@ -193,23 +194,18 @@ final class RunUtils {
     }
 
     public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable File outputDirectory, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
-            modFoldersProvider.getModFolders().set(modsProvider.map(mods -> mods.stream()
-                    .collect(Collectors.toMap(ModModel::getName, mod -> {
-                        var modFolder = project.getObjects().newInstance(ModFolder.class);
-                        modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
-                        for (var sourceSet : mod.getModSourceSets().get()) {
-                            // TODO: this is probably broken in multiproject builds
-                            var sourceSetDir = outputDirectory.toPath().resolve(getIdeaOutName(sourceSet));
-                            modFolder.getFolders().from(sourceSetDir.resolve("classes"));
-                            modFolder.getFolders().from(sourceSetDir.resolve("resources"));
-                        }
-                        return modFolder;
-                    }))));
+            folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
+                var sourceSetDir = outputDirectory.toPath().resolve(getIdeaOutName(sourceSet));
+                output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
+            });
         } else {
-            modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
+            folders = getModFoldersForGradle(project, modsProvider, includeUnitTests);
         }
+
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        modFoldersProvider.getModFolders().set(folders);
         return modFoldersProvider;
     }
 
@@ -218,25 +214,39 @@ final class RunUtils {
     }
 
     private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        var extension = ExtensionUtils.findExtension(project, "neoForge", NeoForgeExtension.class);
-        var unitTestedMod = extension.getUnitTest().getTestedMod()
+        return buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
+            output.from(sourceSet.getOutput());
+        });
+    }
+
+    private static Provider<Map<String, ModFolder>> buildModFolders(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests, BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
+        var extension = ExtensionUtils.findExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
+        var testedModProvider = extension.getUnitTest().getTestedMod()
                 .filter(m -> includeUnitTests)
                 .map(Optional::of)
                 .orElse(Optional.empty());
 
-        return modsProvider.zip(unitTestedMod, (mods, testedMod) -> mods.stream()
+        return modsProvider.zip(testedModProvider, ((mods, testedMod) -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
                     modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
-                    for (var sourceSet : mod.getModSourceSets().get()) {
-                        modFolder.getFolders().from(sourceSet.getOutput());
+
+                    var sourceSets = mod.getModSourceSets().get();
+
+                    for (var sourceSet : sourceSets) {
+                        outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                     }
+
+                    // Add the test source set to the mod under test and if unit tests are enabled
                     if (testedMod.isPresent() && testedMod.get() == mod) {
-                        var sourceSets = ExtensionUtils.findExtension(project, "sourceSets", SourceSetContainer.class);
-                        modFolder.getFolders().from(sourceSets.getByName("test").getOutput());
+                        var testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
+                        if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
+                            outputFolderResolver.accept(testSourceSet, modFolder.getFolders());
+                        }
                     }
+
                     return modFolder;
-                })));
+                }))));
     }
 
     // TODO: Loom has unit tests for this... Probably a good idea!
