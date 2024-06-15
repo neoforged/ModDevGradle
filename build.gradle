@@ -70,6 +70,7 @@ configurations {
         it.extendsFrom implementation, runtimeOnly
     }
     // Change the Category attribute so that includeBuilds don't select the default `runtimeElements` configuration.
+    // The Plugin Publish plugin already disables Maven publication of this configuration automatically.
     runtimeElements {
         attributes {
             attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "not-wanted-publication"))
