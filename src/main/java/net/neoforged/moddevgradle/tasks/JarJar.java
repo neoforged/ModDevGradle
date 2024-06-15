@@ -39,6 +39,7 @@ public abstract class JarJar extends DefaultTask {
     protected abstract ConfigurableFileCollection getInputFiles();
 
     @Inject
+    @ApiStatus.Internal
     protected abstract ObjectFactory getObjects();
 
     @OutputDirectory
