@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal.jarjar;
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
+import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
@@ -130,10 +131,9 @@ public abstract class JarJarArtifacts {
 
     private static void collectFromComponent(ResolvedComponentResult rootComponent, Set<ContainedJarIdentifier> knownIdentifiers, Map<ContainedJarIdentifier, String> versions, Map<ContainedJarIdentifier, String> versionRanges) {
         for (DependencyResult result : rootComponent.getDependencies()) {
-            if (!(result instanceof ResolvedDependencyResult)) {
+            if (!(result instanceof ResolvedDependencyResult resolvedResult)) {
                 continue;
             }
-            ResolvedDependencyResult resolvedResult = (ResolvedDependencyResult) result;
             ComponentSelector requested = resolvedResult.getRequested();
             ResolvedVariantResult variant = resolvedResult.getResolvedVariant();
 
@@ -147,16 +147,27 @@ public abstract class JarJarArtifacts {
 
             String versionRange = null;
             if (requested instanceof ModuleComponentSelector requestedModule) {
-                if (isValidVersionRange(requestedModule.getVersionConstraint().getStrictVersion())) {
-                    versionRange = requestedModule.getVersionConstraint().getStrictVersion();
-                } else if (isValidVersionRange(requestedModule.getVersionConstraint().getRequiredVersion())) {
-                    versionRange = requestedModule.getVersionConstraint().getRequiredVersion();
-                } else if (isValidVersionRange(requestedModule.getVersionConstraint().getPreferredVersion())) {
-                    versionRange = requestedModule.getVersionConstraint().getPreferredVersion();
-                } if (isValidVersionRange(requestedModule.getVersion())) {
-                    versionRange = requestedModule.getVersion();
+                var constraint = requestedModule.getVersionConstraint();
+                if (isValidVersionRange(constraint.getStrictVersion())) {
+                    versionRange = constraint.getStrictVersion();
+                } else if (isValidVersionRange(constraint.getRequiredVersion())) {
+                    versionRange = constraint.getRequiredVersion();
+                } else if (isValidVersionRange(constraint.getPreferredVersion())) {
+                    versionRange = constraint.getPreferredVersion();
+                } else {
+                    // If none of the three version ranges was valid, but any of them was specified, we will now throw
+                    // to inform the user they are using incompatible version ranges
+                    validateSupportedRange(requestedModule, constraint.getStrictVersion());
+                    validateSupportedRange(requestedModule, constraint.getRequiredVersion());
+                    validateSupportedRange(requestedModule, constraint.getPreferredVersion());
+
+                    if (isValidVersionRange(requestedModule.getVersion())) {
+                        versionRange = requestedModule.getVersion();
+                    }
                 }
             }
+
+            // If no range was specified, or this is a project-dependency, use a loose version range
             if (versionRange == null) {
                 versionRange = makeOpenRange(variant);
             }
@@ -172,10 +183,15 @@ public abstract class JarJarArtifacts {
         }
     }
 
+    private static void validateSupportedRange(ModuleComponentSelector component, String range) {
+        if (!range.isEmpty() && !isValidVersionRange(range)) {
+            throw new GradleException("Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + component.getModuleIdentifier());
+        }
+    }
+
     private static @Nullable ArtifactIdentifier capabilityOrModule(final ResolvedVariantResult variant) {
         ArtifactIdentifier moduleIdentifier = null;
-        if (variant.getOwner() instanceof ModuleComponentIdentifier) {
-            ModuleComponentIdentifier moduleComponentIdentifier = (ModuleComponentIdentifier) variant.getOwner();
+        if (variant.getOwner() instanceof ModuleComponentIdentifier moduleComponentIdentifier) {
             moduleIdentifier = new ArtifactIdentifier(
                     moduleComponentIdentifier.getGroup(),
                     moduleComponentIdentifier.getModule(),
@@ -189,7 +205,7 @@ public abstract class JarJarArtifacts {
                         capability.getName(),
                         capability.getVersion()
                 ))
-                .collect(Collectors.toList());
+                .toList();
 
         if (moduleIdentifier != null && capabilityIdentifiers.contains(moduleIdentifier)) {
             return moduleIdentifier;
