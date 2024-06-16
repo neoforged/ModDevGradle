@@ -9,7 +9,7 @@ repositories {
 
 sourceSets {
     api
-    foobar
+    othersourceset
 }
 
 dependencies {
@@ -72,7 +72,7 @@ neoForge {
         testedMod = mods.testproject
     }
 
-    forSourceSet(sourceSets.foobar) {
+    forSourceSet(sourceSets.othersourceset) {
         version = project.neoforge_version
 
         parchment {
@@ -82,7 +82,7 @@ neoForge {
 
         mods {
             foobar {
-                sourceSet sourceSets.foobar
+                sourceSet sourceSets.othersourceset
             }
         }
 
@@ -90,10 +90,10 @@ neoForge {
             configureEach {
                 logLevel = org.slf4j.event.Level.INFO
             }
-            foobarClient {
+            client {
                 client()
             }
-            foobarServer {
+            server {
                 server()
             }
         }

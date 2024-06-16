@@ -37,8 +37,8 @@ public abstract class NeoForgeExtension {
     public NeoForgeExtension(SourceSet sourceSet, ModDevPlugin plugin) {
         this.sourceSet = sourceSet;
         this.plugin = plugin;
-        mods = getProject().container(ModModel.class);
-        runs = getProject().container(RunModel.class);
+        mods = getProject().container(ModModel.class, name -> getProject().getObjects().newInstance(ModModel.class, name, sourceSet));
+        runs = getProject().container(RunModel.class, name -> getProject().getObjects().newInstance(RunModel.class, name, sourceSet));
         parchment = getProject().getObjects().newInstance(Parchment.class);
         neoFormRuntime = getProject().getObjects().newInstance(NeoFormRuntime.class);
         unitTest = getProject().getObjects().newInstance(UnitTest.class, sourceSet);
