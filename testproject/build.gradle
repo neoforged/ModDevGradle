@@ -9,6 +9,7 @@ repositories {
 
 sourceSets {
     api
+    foobar
 }
 
 dependencies {
@@ -69,5 +70,32 @@ neoForge {
     unitTest {
         enable()
         testedMod = mods.testproject
+    }
+
+    forSourceSet(sourceSets.foobar) {
+        version = project.neoforge_version
+
+        parchment {
+            minecraftVersion = "1.20.6"
+            mappingsVersion = "2024.05.01"
+        }
+
+        mods {
+            foobar {
+                sourceSet sourceSets.foobar
+            }
+        }
+
+        runs {
+            configureEach {
+                logLevel = org.slf4j.event.Level.INFO
+            }
+            foobarClient {
+                client()
+            }
+            foobarServer {
+                server()
+            }
+        }
     }
 }

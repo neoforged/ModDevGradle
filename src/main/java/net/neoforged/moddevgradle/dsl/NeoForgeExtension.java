@@ -6,12 +6,14 @@ import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 
 import javax.inject.Inject;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,31 +22,42 @@ import java.util.List;
 public abstract class NeoForgeExtension {
     public static final String NAME = "neoForge";
 
-    private final Project project;
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
     private final NeoFormRuntime neoFormRuntime;
     private final UnitTest unitTest;
+    private final SourceSet sourceSet;
+    private final ModDevPlugin plugin;
 
     @Inject
-    public NeoForgeExtension(Project project) {
-        this.project = project;
-        mods = project.container(ModModel.class);
-        runs = project.container(RunModel.class);
-        parchment = project.getObjects().newInstance(Parchment.class);
-        neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
-        unitTest = project.getObjects().newInstance(UnitTest.class);
+    protected abstract Project getProject();
 
-        getAccessTransformers().convention(project.provider(() -> {
+    @Inject
+    public NeoForgeExtension(SourceSet sourceSet, ModDevPlugin plugin) {
+        this.sourceSet = sourceSet;
+        this.plugin = plugin;
+        mods = getProject().container(ModModel.class);
+        runs = getProject().container(RunModel.class);
+        parchment = getProject().getObjects().newInstance(Parchment.class);
+        neoFormRuntime = getProject().getObjects().newInstance(NeoFormRuntime.class);
+        unitTest = getProject().getObjects().newInstance(UnitTest.class, sourceSet);
+
+        getAccessTransformers().convention(getProject().provider(() -> {
             // TODO Can we scan the source sets for the main source sets resource dir?
             // Only return this when it actually exists
             var defaultPath = "src/main/resources/META-INF/accesstransformer.cfg";
-            if (!project.file(defaultPath).exists()) {
-                return List.of();
+            List<File> out = new ArrayList<>();
+            for (var dir : sourceSet.getResources().getSrcDirs()) {
+                var target = dir.toPath().resolve("META-INF/accesstransformer.cfg");
+                if (target.toFile().exists()) {
+                    out.add(getProject().getLayout().getProjectDirectory().getAsFile().toPath().relativize(target).toFile());
+                }
             }
-            return List.of(defaultPath);
+            return out;
         }));
+
+        plugin.forSourceSet(getProject(), sourceSet, this);
     }
 
     /**
@@ -52,8 +65,8 @@ public abstract class NeoForgeExtension {
      * The plugin automatically adds these dependencies to the main source set.
      */
     public void addModdingDependenciesTo(SourceSet sourceSet) {
-        var configurations = project.getConfigurations();
-        var sourceSets = ExtensionUtils.getSourceSets(project);
+        var configurations = getProject().getConfigurations();
+        var sourceSets = ExtensionUtils.getSourceSets(getProject());
         if (!sourceSets.contains(sourceSet)) {
             throw new GradleException("Cannot add to the source set in another project.");
         }
@@ -62,6 +75,18 @@ public abstract class NeoForgeExtension {
                 .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
         configurations.getByName(sourceSet.getCompileClasspathConfigurationName())
                 .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_COMPILE_DEPENDENCIES));
+    }
+
+    public NeoForgeExtension forSourceSet(SourceSet target) {
+        var extension = getProject().getObjects().newInstance(NeoForgeExtension.class, target, plugin);
+        target.getExtensions().add(NeoForgeExtension.class, NeoForgeExtension.NAME, extension);
+        return extension;
+    }
+
+    public NeoForgeExtension forSourceSet(SourceSet target, Action<NeoForgeExtension> action) {
+        var extension = forSourceSet(target);
+        action.execute(extension);
+        return extension;
     }
 
     /**
@@ -76,7 +101,7 @@ public abstract class NeoForgeExtension {
      */
     public abstract Property<String> getNeoFormVersion();
 
-    public abstract ListProperty<String> getAccessTransformers();
+    public abstract ConfigurableFileCollection getAccessTransformers();
 
     public NamedDomainObjectContainer<ModModel> getMods() {
         return mods;
