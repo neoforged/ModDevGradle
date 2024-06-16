@@ -24,6 +24,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public abstract class JarJar extends DefaultTask {
@@ -63,6 +65,13 @@ public abstract class JarJar extends DefaultTask {
             fileSystemOperations.copy(spec -> {
                 spec.into(getOutputDirectory().dir("META-INF/jarjar"));
                 spec.from(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toArray());
+                for (var includedJar : includedJars) {
+                    var originalName = includedJar.getFile().getName();
+                    var embeddedName = includedJar.getEmbeddedFilename();
+                    if (!originalName.equals(embeddedName)) {
+                        spec.rename(Pattern.quote(originalName), Matcher.quoteReplacement(embeddedName));
+                    }
+                }
                 spec.from(writeMetadata(includedJars).toFile());
             });
         }
