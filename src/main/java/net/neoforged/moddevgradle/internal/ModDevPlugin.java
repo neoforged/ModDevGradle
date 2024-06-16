@@ -4,6 +4,7 @@ import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.dsl.UnitTest;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
@@ -95,7 +96,7 @@ public class ModDevPlugin implements Plugin<Project> {
      */
     public static final String CONFIGURATION_COMPILE_DEPENDENCIES = "neoForgeCompileDependencies";
 
-    private Runnable configureTesting = null;
+    private final Map<String, Consumer<UnitTest>> configureTesting = new HashMap<>();
 
     @Override
     public void apply(Project project) {
@@ -109,14 +110,42 @@ public class ModDevPlugin implements Plugin<Project> {
         }
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
-        var configurations = project.getConfigurations();
-        var layout = project.getLayout();
         var tasks = project.getTasks();
 
-        // We use this directory to store intermediate files used during moddev
-        var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
+        var sourceSets = ExtensionUtils.getSourceSets(project);
 
-        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
+        project.getDependencies().attributesSchema(attributesSchema -> {
+            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
+            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
+        });
+
+        // Try to give people at least a fighting chance to run on the correct java version
+        project.afterEvaluate(ignored -> {
+            var toolchainSpec = javaExtension.getToolchain();
+            try {
+                toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
+            } catch (IllegalStateException e) {
+                // We tried our best
+            }
+        });
+
+        var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
+            task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
+        });
+
+        var extension = project.getObjects().newInstance(NeoForgeExtension.class, sourceSets.getByName("main"), this);
+        sourceSets.getByName("main").getExtensions().add(NeoForgeExtension.class, NeoForgeExtension.NAME, extension);
+        project.getExtensions().add(NeoForgeExtension.class, NeoForgeExtension.NAME, extension);
+
+        setupJarJar(project);
+    }
+
+    public void forSourceSet(Project project, SourceSet sourceSet, NeoForgeExtension extension) {
+        var layout = project.getLayout();
+        var modDevBuildDir = layout.getBuildDirectory().dir("moddev/"+sourceSet.getName());
+        var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
+        var configurations = project.getConfigurations();
+        var tasks = project.getTasks();
         var dependencyFactory = project.getDependencyFactory();
         var hasNeoForge = extension.getVersion().map(ignored -> true).orElse(false);
 
@@ -134,19 +163,14 @@ public class ModDevPlugin implements Plugin<Project> {
                     });
         }));
 
-        project.getDependencies().attributesSchema(attributesSchema -> {
-            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
-            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
-        });
-
-        var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
+        var createManifest = tasks.register(sourceSet.getTaskName(null, "createArtifactManifest"), CreateArtifactManifestTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
-            configureArtifactManifestTask(task, extension);
+            configureArtifactManifestTask(task, extension, sourceSet);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
         });
 
-        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
+        var neoFormRuntimeConfig = configurations.create(sourceSet.getTaskName(null, "neoFormRuntime"), spec -> {
             spec.setDescription("The NeoFormRuntime CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -158,22 +182,20 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // Create an access transformer configuration
-        var accessTransformers = configurations.create("accessTransformers", spec -> {
+        var accessTransformers = configurations.create(sourceSet.getTaskName(null, "accessTransformers"), spec -> {
             spec.setDescription("AccessTransformers to widen visibility of Minecraft classes/fields/methods");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {
-                 dependencies.addLater(
-                        extension.getAccessTransformers()
-                                .map(project::files)
-                                .map(dependencyFactory::create)
+                dependencies.add(
+                        dependencyFactory.create(extension.getAccessTransformers())
                 );
             });
         });
 
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
-        var parchmentData = configurations.create("parchmentData", spec -> {
+        var parchmentData = configurations.create(sourceSet.getTaskName(null, "parchmentData"), spec -> {
             spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -197,7 +219,7 @@ public class ModDevPlugin implements Plugin<Project> {
         };
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+        var createArtifacts = tasks.register(sourceSet.getTaskName(null, "createMinecraftArtifacts"), CreateMinecraftArtifactsTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
@@ -213,7 +235,7 @@ public class ModDevPlugin implements Plugin<Project> {
             configureEngineTask.accept(task);
         });
 
-        var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+        var downloadAssets = tasks.register(sourceSet.getTaskName(null, "downloadAssets"), DownloadAssetsTask.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
@@ -230,7 +252,7 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var runtimeDependenciesConfig = configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
+        var runtimeDependenciesConfig = configurations.create(sourceSet.getTaskName(null, CONFIGURATION_RUNTIME_DEPENDENCIES), config -> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -245,7 +267,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
+        configurations.create(sourceSet.getTaskName(null, CONFIGURATION_COMPILE_DEPENDENCIES), config -> {
             config.setDescription("The compile-time dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -255,30 +277,18 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var sourceSets = ExtensionUtils.getSourceSets(project);
-        var mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-        extension.addModdingDependenciesTo(mainSourceSet);
+        extension.addModdingDependenciesTo(sourceSet);
 
-        configurations.named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
+        configurations.named(sourceSet.getCompileOnlyConfigurationName()).configure(configuration -> {
             configuration.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
 
-        // Try to give people at least a fighting chance to run on the correct java version
-        project.afterEvaluate(ignored -> {
-            var toolchainSpec = javaExtension.getToolchain();
-            try {
-                toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
-            } catch (IllegalStateException e) {
-                // We tried our best
-            }
-        });
-
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        var userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
+        var userDevConfigOnly = project.getConfigurations().create(sourceSet.getTaskName(null, "neoForgeConfigOnly"), spec -> {
             spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -291,8 +301,7 @@ public class ModDevPlugin implements Plugin<Project> {
             })));
         });
 
-        var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
-            task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
+        var ideSyncTask = tasks.named("neoForgeIdeSync", task -> {
             task.dependsOn(createArtifacts);
         });
 
@@ -300,7 +309,7 @@ public class ModDevPlugin implements Plugin<Project> {
         extension.getRuns().configureEach(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
-            var runtimeClasspathConfig = run.getSourceSet().map(sourceSet -> sourceSet.getRuntimeClasspathConfigurationName())
+            var runtimeClasspathConfig = run.getSourceSet().map(s -> s.getRuntimeClasspathConfigurationName())
                     .map(name -> configurations.getByName(name));
 
             var neoForgeModDevModules = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
@@ -380,7 +389,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
                 // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
                 // This records a dependency on compiling and processing the resources of the source set.
-                task.getClasspathProvider().from(mainSourceSet.getRuntimeClasspath());
+                task.getClasspathProvider().from(sourceSet.getRuntimeClasspath());
                 task.getGameDirectory().set(run.getGameDirectory());
 
                 task.getEnvironmentProperty().set(run.getEnvironment());
@@ -394,10 +403,10 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        setupJarJar(project);
-
-        configureTesting = () -> setupTesting(
+        this.configureTesting.put(sourceSet.getName(), unitTest -> this.setupTesting(
                 project,
+                sourceSet,
+                unitTest,
                 modDevBuildDir,
                 userDevConfigOnly,
                 downloadAssets,
@@ -405,7 +414,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 createArtifacts,
                 neoForgeModDevLibrariesDependency,
                 minecraftClassesArtifact
-        );
+        ));
 
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
@@ -416,12 +425,12 @@ public class ModDevPlugin implements Plugin<Project> {
      * Collects all dependencies needed by the NeoFormRuntime and adds them to the task for creating
      * an artifact manifest for NFRT.
      */
-    private void configureArtifactManifestTask(CreateArtifactManifestTask task, NeoForgeExtension extension) {
+    private static void configureArtifactManifestTask(CreateArtifactManifestTask task, NeoForgeExtension extension, SourceSet sourceSet) {
         var project = task.getProject();
         var configurations = project.getConfigurations();
         var dependencyFactory = project.getDependencyFactory();
 
-        var configurationPrefix = "neoFormRuntimeDependencies";
+        var configurationPrefix = sourceSet.getTaskName(null, "neoFormRuntimeDependencies");
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
@@ -515,15 +524,18 @@ public class ModDevPlugin implements Plugin<Project> {
         return IdeDetection.isIntelliJ();
     }
 
-    public void setupTesting() {
-        if (configureTesting == null) {
+    public void setupTesting(SourceSet sourceSet, UnitTest unitTest) {
+        var configure = configureTesting.get(sourceSet.getName());
+        if (configure == null) {
             throw new IllegalStateException("Unit testing was already enabled once!");
         }
-        configureTesting.run();
-        configureTesting = null;
+        configure.accept(unitTest);
+        configureTesting.remove(sourceSet.getName());
     }
 
     private void setupTesting(Project project,
+                              SourceSet parentSourceSet,
+                              UnitTest unitTest,
                               Provider<Directory> modDevDir,
                               Configuration userDevConfigOnly,
                               TaskProvider<DownloadAssetsTask> downloadAssets,
@@ -531,8 +543,7 @@ public class ModDevPlugin implements Plugin<Project> {
                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
                               Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
-        var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
-        var unitTest = extension.getUnitTest();
+        var extension = ExtensionUtils.getExtension(parentSourceSet, NeoForgeExtension.NAME, NeoForgeExtension.class);
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var tasks = project.getTasks();
@@ -540,14 +551,14 @@ public class ModDevPlugin implements Plugin<Project> {
         var dependencyFactory = project.getDependencyFactory();
 
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
-        configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
+        configurations.named(unitTest.sourceSet.get().getCompileOnlyConfigurationName()).configure(configuration -> {
             configuration.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
                 dependencies.addLater(neoForgeModDevLibrariesDependency);
             });
         });
 
-        var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
+        var testFixtures = configurations.create(parentSourceSet.getTaskName(null, "neoForgeTestFixtures"), config -> {
             config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -561,12 +572,12 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var testRuntimeClasspathConfig = configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
+        var testRuntimeClasspathConfig = configurations.named(unitTest.sourceSet.get().getRuntimeClasspathConfigurationName(), files -> {
             files.extendsFrom(configurations.getByName(CONFIGURATION_RUNTIME_DEPENDENCIES));
             files.extendsFrom(testFixtures);
         });
 
-        var neoForgeModDevModules = project.getConfigurations().create("neoForgeTestModules", spec -> {
+        var neoForgeModDevModules = project.getConfigurations().create(parentSourceSet.getTaskName(null, "neoForgeTestModules"), spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -585,7 +596,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
+        var legacyClasspathConfiguration = configurations.create(parentSourceSet.getTaskName(null, "neoForgeTestLibraries"), spec -> {
             spec.setDescription("Contains the legacy classpath of unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -602,7 +613,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
         var runArgsDir = modDevDir.map(dir -> dir.dir("junit"));
 
-        var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
+        var writeLcpTask = tasks.register(parentSourceSet.getTaskName(null, "writeNeoForgeTestClasspath"), WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.setGroup(INTERNAL_TASK_GROUP);
             writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
@@ -613,7 +624,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
         var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
         var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
-        var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
+        var prepareTask = tasks.register(parentSourceSet.getTaskName(null, "prepareNeoForgeTestFiles"), PrepareTest.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Prepares all files needed to run the JUnit test task.");
             task.getGameDirectory().set(gameDirectory);
@@ -630,7 +641,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // Ensure the test files are written on sync so that users who use IDE-only tests can run them
         ideSyncTask.configure(task -> task.dependsOn(prepareTask));
 
-        var testTask = tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class, task -> {
+        var testTask = tasks.named(unitTest.testTask.get(), Test.class, task -> {
             task.dependsOn(prepareTask);
 
             // The FML JUnit plugin uses this system property to read a

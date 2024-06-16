@@ -21,9 +21,13 @@ public abstract class ModModel implements Named {
      * or just standard dependency notation.
      */
     private Configuration configuration;
+    private final String name;
+    private final SourceSet sourceSet;
 
     @Inject
-    public ModModel() {
+    public ModModel(String name, SourceSet sourceSet) {
+        this.name = name;
+        this.sourceSet = sourceSet;
         // TODO: We could potentially do a bit of name validation
         getModSourceSets().convention(List.of());
         getModSourceSets().finalizeValueOnRead();
@@ -33,11 +37,13 @@ public abstract class ModModel implements Named {
     protected abstract Project getProject();
 
     @Override
-    public abstract String getName();
+    public String getName() {
+        return name;
+    }
 
     Configuration getConfiguration() {
         if (configuration == null) {
-            configuration = getProject().getConfigurations().create("neoForgeModContent" + StringUtils.capitalize(getName()), configuration -> {
+            configuration = getProject().getConfigurations().create(sourceSet.getTaskName(null, "neoForgeModContent" + StringUtils.capitalize(getName())), configuration -> {
                 configuration.setCanBeConsumed(false);
                 configuration.setCanBeResolved(true);
             });

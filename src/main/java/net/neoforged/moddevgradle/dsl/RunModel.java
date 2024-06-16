@@ -8,6 +8,8 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.Dependencies;
 import org.gradle.api.artifacts.dsl.DependencyCollector;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.plugins.JavaBasePlugin;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -30,14 +32,14 @@ public abstract class RunModel implements Named, Dependencies {
     private final Configuration configuration;
 
     @Inject
-    public RunModel(String name, Project project) {
+    public RunModel(String name, SourceSet sourceSet) {
         this.name = name;
-        this.baseName = StringUtils.toCamelCase(name, false);
-        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
+        this.baseName = sourceSet.getTaskName(null, StringUtils.toCamelCase(name, false));
+        getMods().convention(sourceSet.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
-        getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
+        getGameDirectory().convention(getProject().getLayout().getProjectDirectory().dir("run"));
 
-        configuration = project.getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
+        configuration = getProject().getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
             configuration.setCanBeResolved(false);
             configuration.setCanBeConsumed(false);
         });
@@ -45,14 +47,17 @@ public abstract class RunModel implements Named, Dependencies {
         getLogLevel().convention(Level.INFO);
 
         // Build a nicer name for the IDE run configuration
-        boolean isSubProject = project.getRootProject() != project;
+        boolean isSubProject = getProject().getRootProject() != getProject();
         var ideName = StringUtils.capitalize(name);
+        if (!sourceSet.getName().equals("main")) {
+            ideName = sourceSet.getName() + " " + ideName;
+        }
         if (isSubProject) {
-            ideName = project.getName() + " - " + ideName;
+            ideName = getProject().getName() + " - " + ideName;
         }
         getIdeName().convention(ideName);
 
-        getSourceSet().convention(ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+        getSourceSet().convention(sourceSet);
     }
 
     @Override
