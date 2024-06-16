@@ -118,7 +118,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
-        var hasNeoForge = extension.getVersion().map(ignored -> true).orElse(false);
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.

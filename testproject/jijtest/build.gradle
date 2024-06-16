@@ -5,7 +5,14 @@ plugins {
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    jarJar project(":coremod")
+    jarJar(project(":coremod"))
+
+    jarJar("org.commonmark:commonmark") {
+        version {
+            strictly '[0.1, 1.0)'
+            prefer '0.21.0'
+        }
+    }
 }
 
 test {

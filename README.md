@@ -173,6 +173,62 @@ neoForge {
 }
 ```
 
+### Jar-in-Jar
+
+To embed external Jar-files into your mod file, you can use the `jarJar` configuration added by the plugin.
+
+#### Subprojects
+
+For example, if you have a coremod in a subproject and want to embed its jar file, you can use the following syntax.
+
+```groovy
+dependencies {
+    jarJar project(":coremod")
+}
+```
+
+When starting the game, FML will use the group and artifact id of an embedded Jar-file to determine if the same file
+has been embedded in other mods.
+For subprojects, the group id is the root project name, while the artifact id is the name of the subproject.
+Besides the group and artifact id, the Java module name of an embedded Jar also has to be unique across all loaded
+Jar files.
+To decrease the likelihood of conflicts if no explicit module name is set,
+we prefix the filename of embedded subprojects with the group id.
+
+#### External Dependencies
+
+When you want to bundle external dependencies, Jar-in-Jar has to be able to select a single copy of that dependency
+when it is bundled by multiple mods (possibly even in different versions). To support this scenario, you should set
+a supported version range to avoid mod incompatibilities.
+
+```groovy
+dependencies {
+    jarJar(implementation("org.commonmark:commonmark")) {
+        version {
+            // The version range your mod is actually compatible with. 
+            // Note that you may receive a *lower* version than your preferred if another
+            // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
+            strictly '[0.1, 1.0)'
+            prefer '0.21.0' // The version actually used in your dev workspace
+        }
+    }
+}
+```
+
+Version ranges use
+the [Maven version range format](https://cwiki.apache.org/confluence/display/MAVENOLD/Dependency+Mediation+and+Conflict+Resolution#DependencyMediationandConflictResolution-DependencyVersionRanges):
+
+| Range         | Meaning                                                                       |
+|---------------|-------------------------------------------------------------------------------|
+| (,1.0]        | x <= 1.0                                                                      |
+| 1.0           | **Soft** requirement on 1.0. It allows for **any** version.                   |
+| [1.0]         | Hard requirement on 1.0                                                       |
+| [1.2,1.3]     | 1.2 <= x <= 1.3                                                               |
+| [1.0,2.0)     | 1.0 <= x < 2.0                                                                |
+| [1.5,)        | x >= 1.5                                                                      |
+| (,1.0],[1.2,) | x <= 1.0 or x >= 1.2. Multiple sets are comma-separated                       |
+| (,1.1),(1.1,) | This excludes 1.1 if it is known not to work in combination with this library |
+
 ### Isolated Source Sets
 
 If you work with source sets that do not extend from `main`, and would like the modding dependencies to be available
@@ -285,7 +341,9 @@ public class TestClass {
 
 ### Centralizing Repositories Declaration
 
-This plugin supports Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration) in settings.gradle
+This plugin supports
+Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration)
+in settings.gradle
 by offering a separate plugin to apply the repositories to develop mods.
 It can be used in the following way in `settings.gradle`:
 
