@@ -101,9 +101,8 @@ public abstract class JarJarArtifacts {
                 continue;
             }
 
-            String version = getVersionFrom(variant);
-
-            String versionRange = makeOpenRange(variant);
+            String version = versions.getOrDefault(jarIdentifier, getVersionFrom(variant));
+            String versionRange = versionRanges.getOrDefault(jarIdentifier, makeOpenRange(variant));
 
             if (version != null && versionRange != null) {
                 data.add(new ResolvedJarJarArtifact(result.getFile(), version, versionRange, jarIdentifier.group(), jarIdentifier.artifact()));
@@ -222,5 +221,6 @@ public abstract class JarJarArtifacts {
     /**
      * Simple artifact identifier class which only references group, name and version.
      */
-    private record ArtifactIdentifier(String group, String name, String version) {}
+    private record ArtifactIdentifier(String group, String name, String version) {
+    }
 }
