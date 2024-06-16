@@ -102,9 +102,8 @@ public abstract class JarJarArtifacts {
                 continue;
             }
 
-            String version = getVersionFrom(variant);
-
-            String versionRange = makeOpenRange(variant);
+            String version = versions.getOrDefault(jarIdentifier, getVersionFrom(variant));
+            String versionRange = versionRanges.getOrDefault(jarIdentifier, makeOpenRange(variant));
 
             if (version != null && versionRange != null) {
                 var embeddedFilename = getEmbeddedFilename(result, jarIdentifier);
@@ -237,5 +236,6 @@ public abstract class JarJarArtifacts {
     /**
      * Simple artifact identifier class which only references group, name and version.
      */
-    private record ArtifactIdentifier(String group, String name, String version) {}
+    private record ArtifactIdentifier(String group, String name, String version) {
+    }
 }
