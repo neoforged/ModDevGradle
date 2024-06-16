@@ -173,6 +173,57 @@ neoForge {
 }
 ```
 
+### Jar-in-Jar
+
+To embed external Jar-files into your mod file, you can use the `jarjar` configuration added by the plugin.
+
+#### Subprojects
+
+For example, if you have a coremod in a subproject and want to embed its jar file, you can use the following syntax.
+
+```groovy
+dependencies {
+    jarJar project(":coremod")
+}
+```
+
+When another mod also has a `coremod` subproject, Jar-in-Jar will use the `group` set in both projects to decide
+whether they conflict or not.
+The filename will also be automatically prefixed with your group to avoid Java module-name conflicts.
+
+#### External Dependencies
+
+When you want to bundle external dependencies, Jar-in-Jar has to be able to select a single copy of that dependency
+when it is bundled by multiple mods (possibly even in different versions). To support this scenario, you should set
+a supported version range to avoid mod incompatibilities.
+
+```groovy
+dependencies {
+    jarJar(implementation("org.commonmark:commonmark")) {
+      version {
+        // The version range your mod is actually compatible with. 
+        // Note that you may receive a *lower* version than your preferred if another
+        // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
+        strictly '[0.1, 1.0)'
+        prefer '0.21.0' // The version actually used in your dev workspace
+      }
+    }
+}
+```
+
+Version ranges use the [Maven version range format](https://cwiki.apache.org/confluence/display/MAVENOLD/Dependency+Mediation+and+Conflict+Resolution#DependencyMediationandConflictResolution-DependencyVersionRanges):
+
+| Range         | Meaning                                                                       |
+|---------------|-------------------------------------------------------------------------------|
+| (,1.0]        | x <= 1.0                                                                      |
+| 1.0           | **Soft** requirement on 1.0. It allows for **any** version.                   |
+| [1.0]         | Hard requirement on 1.0                                                       |
+| [1.2,1.3]     | 1.2 <= x <= 1.3                                                               |
+| [1.0,2.0)     | 1.0 <= x < 2.0                                                                |
+| [1.5,)        | x >= 1.5                                                                      |
+| (,1.0],[1.2,) | x <= 1.0 or x >= 1.2. Multiple sets are comma-separated                       |
+| (,1.1),(1.1,) | This excludes 1.1 if it is known not to work in combination with this library |
+
 ### Isolated Source Sets
 
 If you work with source sets that do not extend from `main`, and would like the modding dependencies to be available
