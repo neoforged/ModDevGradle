@@ -7,6 +7,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentSelector;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.result.DependencyResult;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.artifacts.result.ResolvedComponentResult;
@@ -106,12 +107,26 @@ public abstract class JarJarArtifacts {
             String versionRange = makeOpenRange(variant);
 
             if (version != null && versionRange != null) {
-                data.add(new ResolvedJarJarArtifact(result.getFile(), version, versionRange, jarIdentifier.group(), jarIdentifier.artifact()));
+                var embeddedFilename = getEmbeddedFilename(result, jarIdentifier);
+
+                data.add(new ResolvedJarJarArtifact(result.getFile(), embeddedFilename, version, versionRange, jarIdentifier.group(), jarIdentifier.artifact()));
             }
         }
         return data.stream()
                 .sorted(Comparator.comparing(d -> d.getGroup() + ":" + d.getArtifact()))
                 .collect(Collectors.toList());
+    }
+
+    private static String getEmbeddedFilename(ResolvedArtifactResult result, ContainedJarIdentifier jarIdentifier) {
+        // When we include subprojects, we add the group to the front of the filename in an attempt to avoid
+        // ambiguous module-names between jar-files embedded by different mods.
+        // Example: two mods call their submodule "coremod" and end up with a "coremod.jar", and neither set
+        // an Automatic-Module-Name.
+        String embeddedFilename = result.getFile().getName();
+        if (result.getId().getComponentIdentifier() instanceof ProjectComponentIdentifier) {
+            embeddedFilename = jarIdentifier.group() + "." + result.getFile().getName();
+        }
+        return embeddedFilename;
     }
 
     private static void collectFromComponent(ResolvedComponentResult rootComponent, Set<ContainedJarIdentifier> knownIdentifiers, Map<ContainedJarIdentifier, String> versions, Map<ContainedJarIdentifier, String> versionRanges) {

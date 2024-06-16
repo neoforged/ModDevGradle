@@ -19,13 +19,15 @@ import java.util.jar.Manifest;
 public class ResolvedJarJarArtifact {
 
     private final File file;
+    private final String embeddedFilename;
     private final String version;
     private final String versionRange;
     private final String group;
     private final String artifact;
 
-    public ResolvedJarJarArtifact(File file, String version, String versionRange, String group, String artifact) {
+    public ResolvedJarJarArtifact(File file, String embeddedFilename, String version, String versionRange, String group, String artifact) {
         this.file = file;
+        this.embeddedFilename = embeddedFilename;
         this.version = version;
         this.versionRange = versionRange;
         this.group = group;
@@ -48,13 +50,18 @@ public class ResolvedJarJarArtifact {
     }
 
     public ContainedJarMetadata createContainerMetadata() {
-        return new ContainedJarMetadata(createContainedJarIdentifier(), createContainedVersion(), "META-INF/jarjar/"+file.getName(), isObfuscated(file));
+        return new ContainedJarMetadata(createContainedJarIdentifier(), createContainedVersion(), "META-INF/jarjar/"+embeddedFilename, isObfuscated(file));
     }
 
     @InputFile
     @PathSensitive(PathSensitivity.NAME_ONLY)
     public File getFile() {
         return file;
+    }
+
+    @Input
+    public String getEmbeddedFilename() {
+        return embeddedFilename;
     }
 
     @Input
