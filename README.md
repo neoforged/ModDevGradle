@@ -175,7 +175,7 @@ neoForge {
 
 ### Jar-in-Jar
 
-To embed external Jar-files into your mod file, you can use the `jarjar` configuration added by the plugin.
+To embed external Jar-files into your mod file, you can use the `jarJar` configuration added by the plugin.
 
 #### Subprojects
 
