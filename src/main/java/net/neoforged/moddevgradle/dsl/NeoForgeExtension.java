@@ -78,8 +78,11 @@ public abstract class NeoForgeExtension {
     }
 
     public NeoForgeExtension forSourceSet(SourceSet target) {
-        var extension = getProject().getObjects().newInstance(NeoForgeExtension.class, target, plugin);
-        target.getExtensions().add(NeoForgeExtension.class, NeoForgeExtension.NAME, extension);
+        var extension = target.getExtensions().findByType(NeoForgeExtension.class);
+        if (extension == null) {
+            extension = getProject().getObjects().newInstance(NeoForgeExtension.class, target, plugin);
+            target.getExtensions().add(NeoForgeExtension.class, NeoForgeExtension.NAME, extension);
+        }
         return extension;
     }
 
