@@ -236,13 +236,7 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setCanBeConsumed(false);
             config.withDependencies(dependencies -> {
                 dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                // In Vanilla-Mode, we have to add the Vanilla resources too since the legacy
-                // classpath (where they normally are) is ignored
-                dependencies.addLater(project.getProviders().zip(
-                        createArtifacts.map(task -> project.files(task.getResourcesArtifact())),
-                        hasNeoForge,
-                        (resources, hasNeoForgeValue) -> !hasNeoForgeValue ? dependencyFactory.create(resources) : null
-                ));
+                dependencies.addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
 
                 // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
                 // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
