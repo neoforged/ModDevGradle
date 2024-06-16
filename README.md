@@ -187,9 +187,13 @@ dependencies {
 }
 ```
 
-When another mod also has a `coremod` subproject, Jar-in-Jar will use the `group` set in both projects to decide
-whether they conflict or not.
-The filename will also be automatically prefixed with your group to avoid Java module-name conflicts.
+When starting the game, FML will use the group and artifact id of an embedded Jar-file to determine if the same file
+has been embedded in other mods.
+For subprojects, the group id is the root project name, while the artifact id is the name of the subproject.
+Besides the group and artifact id, the Java module name of an embedded Jar also has to be unique across all loaded
+Jar files.
+To decrease the likelihood of conflicts if no explicit module name is set,
+we prefix the filename of embedded subprojects with the group id.
 
 #### External Dependencies
 
@@ -200,18 +204,19 @@ a supported version range to avoid mod incompatibilities.
 ```groovy
 dependencies {
     jarJar(implementation("org.commonmark:commonmark")) {
-      version {
-        // The version range your mod is actually compatible with. 
-        // Note that you may receive a *lower* version than your preferred if another
-        // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
-        strictly '[0.1, 1.0)'
-        prefer '0.21.0' // The version actually used in your dev workspace
-      }
+        version {
+            // The version range your mod is actually compatible with. 
+            // Note that you may receive a *lower* version than your preferred if another
+            // Mod is only compatible up to 1.7.24, for example, your mod might get 1.7.24 at runtime.
+            strictly '[0.1, 1.0)'
+            prefer '0.21.0' // The version actually used in your dev workspace
+        }
     }
 }
 ```
 
-Version ranges use the [Maven version range format](https://cwiki.apache.org/confluence/display/MAVENOLD/Dependency+Mediation+and+Conflict+Resolution#DependencyMediationandConflictResolution-DependencyVersionRanges):
+Version ranges use
+the [Maven version range format](https://cwiki.apache.org/confluence/display/MAVENOLD/Dependency+Mediation+and+Conflict+Resolution#DependencyMediationandConflictResolution-DependencyVersionRanges):
 
 | Range         | Meaning                                                                       |
 |---------------|-------------------------------------------------------------------------------|
@@ -336,7 +341,9 @@ public class TestClass {
 
 ### Centralizing Repositories Declaration
 
-This plugin supports Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration) in settings.gradle
+This plugin supports
+Gradle's [centralized repositories declaration](https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:centralized-repository-declaration)
+in settings.gradle
 by offering a separate plugin to apply the repositories to develop mods.
 It can be used in the following way in `settings.gradle`:
 
