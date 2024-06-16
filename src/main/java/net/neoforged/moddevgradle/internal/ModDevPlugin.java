@@ -256,8 +256,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var sourceSets = ExtensionUtils.getSourceSets(project);
-        var mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-        extension.addModdingDependenciesTo(mainSourceSet);
+        extension.addModdingDependenciesTo(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
 
         configurations.named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
             configuration.withDependencies(dependencies -> {
@@ -380,7 +379,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
                 // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
                 // This records a dependency on compiling and processing the resources of the source set.
-                task.getClasspathProvider().from(mainSourceSet.getRuntimeClasspath());
+                task.getClasspathProvider().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
                 task.getGameDirectory().set(run.getGameDirectory());
 
                 task.getEnvironmentProperty().set(run.getEnvironment());
