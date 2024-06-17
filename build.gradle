@@ -90,8 +90,10 @@ dependencies {
     compileOnly "com.intellij:annotations:9.0.4"
     shaded "com.google.code.gson:gson:2.10.1"
     implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
-    implementation "net.neoforged:EclipseLaunchConfigs:0.1.11"
-    implementation "net.neoforged:JarJarMetadata:0.4.1"
+    shaded "net.neoforged:EclipseLaunchConfigs:0.1.11"
+    shaded("net.neoforged:JarJarMetadata:0.4.2") {
+        exclude group: 'org.slf4j'
+    }
 
     java8CompileOnly gradleApi()
 
@@ -196,10 +198,11 @@ publishing {
     }
 }
 
-// The java-gradle-plugin ignores the java8 source-set we added to the main source sets classpath
-// For testkit tests to work, this needs to be present
+// By default, the testkit will use sourceSets.main.runtimeClasspath (= the configuration + the source set's outputs).
+// That contains the non-shaded plugin classes, and does not contain our shaded dependencies!
+// Instead, let's use the shadow jar and configurations.runtimeClasspath.
 tasks.withType(PluginUnderTestMetadata).configureEach {
-    it.pluginClasspath.from(sourceSets.java8.output.classesDirs)
+    it.pluginClasspath.setFrom tasks.shadowJar, configurations.runtimeClasspath
 }
 
 abstract class GenerateRepoFilter extends DefaultTask {
