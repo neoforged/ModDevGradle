@@ -199,7 +199,7 @@ publishing {
 }
 
 // By default, the testkit will use sourceSets.main.runtimeClasspath (= the configuration + the source set's outputs).
-// That contains the non-shaded plugin sources, and does not contain our shaded dependencies!
+// That contains the non-shaded plugin classes, and does not contain our shaded dependencies!
 // Instead, let's use the shadow jar and configurations.runtimeClasspath.
 tasks.withType(PluginUnderTestMetadata).configureEach {
     it.pluginClasspath.setFrom tasks.shadowJar, configurations.runtimeClasspath
