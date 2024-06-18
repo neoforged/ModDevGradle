@@ -148,22 +148,14 @@ public abstract class JarJarArtifacts {
             String versionRange = null;
             if (requested instanceof ModuleComponentSelector requestedModule) {
                 var constraint = requestedModule.getVersionConstraint();
-                if (isValidVersionRange(constraint.getStrictVersion())) {
-                    versionRange = constraint.getStrictVersion();
-                } else if (isValidVersionRange(constraint.getRequiredVersion())) {
-                    versionRange = constraint.getRequiredVersion();
-                } else if (isValidVersionRange(constraint.getPreferredVersion())) {
-                    versionRange = constraint.getPreferredVersion();
+                if (!constraint.getStrictVersion().isEmpty()) {
+                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule);
+                } else if (!constraint.getRequiredVersion().isEmpty()) {
+                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule);
+                } else if (!constraint.getPreferredVersion().isEmpty()) {
+                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule);
                 } else {
-                    // If none of the three version ranges was valid, but any of them was specified, we will now throw
-                    // to inform the user they are using incompatible version ranges
-                    validateSupportedRange(requestedModule, constraint.getStrictVersion());
-                    validateSupportedRange(requestedModule, constraint.getRequiredVersion());
-                    validateSupportedRange(requestedModule, constraint.getPreferredVersion());
-
-                    if (isValidVersionRange(requestedModule.getVersion())) {
-                        versionRange = requestedModule.getVersion();
-                    }
+                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule);
                 }
             }
 
@@ -180,12 +172,6 @@ public abstract class JarJarArtifacts {
             if (versionRange != null) {
                 versionRanges.put(jarIdentifier, versionRange);
             }
-        }
-    }
-
-    private static void validateSupportedRange(ModuleComponentSelector component, String range) {
-        if (!range.isEmpty() && !isValidVersionRange(range)) {
-            throw new GradleException("Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + component.getModuleIdentifier());
         }
     }
 
@@ -237,16 +223,16 @@ public abstract class JarJarArtifacts {
         return moduleOrCapabilityVersion(variant);
     }
 
-    private static boolean isValidVersionRange(final @Nullable String range) {
-        if (range == null) {
-            return false;
-        }
+    private static String validateVersionRange(String range, ModuleComponentSelector module) {
         try {
-            final VersionRange data = VersionRange.createFromVersionSpec(range);
-            return data.hasRestrictions() && data.getRecommendedVersion() == null && !range.contains("+");
-        } catch (InvalidVersionSpecificationException e) {
-            return false;
+            var data = VersionRange.createFromVersionSpec(range);
+            if (data.hasRestrictions() && data.getRecommendedVersion() == null && !range.contains("+")) {
+                return range;
+            }
+        } catch (InvalidVersionSpecificationException ignored) {
         }
+
+        throw new GradleException("Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier());
     }
 
     /**
