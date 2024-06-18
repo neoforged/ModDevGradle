@@ -81,9 +81,9 @@ public abstract class NeoForgeExtension {
 
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.
-     * <p/>
+     * <p>
      * This list expects entries in the same format expected by {@link Project#file(Object)}.
-     * <p/>
+     * <p>
      * If you do not set this property, the plugin will look for an access transformer file at
      * {@code META-INF/accesstransformer.cfg} relative to your main source sets resource directories.
      *
