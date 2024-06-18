@@ -9,9 +9,9 @@ import org.gradle.api.Project;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.util.List;
 
 /**
@@ -37,13 +37,16 @@ public abstract class NeoForgeExtension {
         unitTest = project.getObjects().newInstance(UnitTest.class);
 
         getAccessTransformers().convention(project.provider(() -> {
-            // TODO Can we scan the source sets for the main source sets resource dir?
             // Only return this when it actually exists
-            var defaultPath = "src/main/resources/META-INF/accesstransformer.cfg";
-            if (!project.file(defaultPath).exists()) {
-                return List.of();
+            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            for (var resources : mainSourceSet.getResources()) {
+                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
+                if (project.file(defaultPath).exists()) {
+                    return List.of(defaultPath.getAbsolutePath());
+                }
             }
-            return List.of(defaultPath);
+
+            return List.of();
         }));
     }
 
@@ -76,6 +79,16 @@ public abstract class NeoForgeExtension {
      */
     public abstract Property<String> getNeoFormVersion();
 
+    /**
+     * The list of additional access transformers that should be applied to the Minecraft source code.
+     * <p/>
+     * This list expects entries in the same format expected by {@link Project#file(Object)}.
+     * <p/>
+     * If you do not set this property, the plugin will look for an access transformer file at
+     * {@code META-INF/accesstransformer.cfg} relative to your main source sets resource directories.
+     *
+     * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
+     */
     public abstract ListProperty<String> getAccessTransformers();
 
     public NamedDomainObjectContainer<ModModel> getMods() {
