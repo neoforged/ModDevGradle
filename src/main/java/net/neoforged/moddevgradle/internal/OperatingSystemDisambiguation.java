@@ -5,6 +5,9 @@ import org.gradle.api.GradleException;
 import org.gradle.api.attributes.AttributeDisambiguationRule;
 import org.gradle.api.attributes.MultipleCandidatesDetails;
 
+/**
+ * This disambiguation rule will select native dependencies based on the operating system Gradle is currently running on.
+ */
 public abstract class OperatingSystemDisambiguation implements AttributeDisambiguationRule<String> {
     @Override
     public void execute(MultipleCandidatesDetails<String> details) {

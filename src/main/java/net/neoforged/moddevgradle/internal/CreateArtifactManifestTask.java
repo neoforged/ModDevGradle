@@ -12,6 +12,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
+/**
+ * This task creates a properties file for NFRT that maps artifact ids found in
+ * NeoForge/NeoForm configuration data to existing files on disk.
+ */
 abstract class CreateArtifactManifestTask extends DefaultTask {
     @Input
     abstract SetProperty<ArtifactManifestEntry> getNeoForgeModDevArtifacts();

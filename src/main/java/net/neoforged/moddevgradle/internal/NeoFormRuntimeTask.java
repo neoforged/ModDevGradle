@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Base task implementation for running NFRT.
+ * Base task implementation for running the NFRT CLI, regardless of which sub-command is used.
  */
 abstract public class NeoFormRuntimeTask extends DefaultTask {
 

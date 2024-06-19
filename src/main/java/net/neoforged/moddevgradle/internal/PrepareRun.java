@@ -8,6 +8,9 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 
+/**
+ * Prepare all files needed to run a particular flavor of the game.
+ */
 abstract class PrepareRun extends PrepareRunOrTest {
     @Input
     public abstract Property<String> getRunType();
