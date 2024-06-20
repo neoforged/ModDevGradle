@@ -224,15 +224,24 @@ public abstract class JarJarArtifacts {
     }
 
     private static String validateVersionRange(String range, ModuleComponentSelector module) {
+        var errorPrefix = "Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier() + ": ";
+
+        VersionRange data;
         try {
-            var data = VersionRange.createFromVersionSpec(range);
-            if (data.hasRestrictions() && data.getRecommendedVersion() == null && !range.contains("+")) {
-                return range;
-            }
-        } catch (InvalidVersionSpecificationException ignored) {
+            data = VersionRange.createFromVersionSpec(range);
+        } catch (InvalidVersionSpecificationException e) {
+            throw new GradleException(errorPrefix + e.getMessage());
         }
 
-        throw new GradleException("Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier());
+        if (!data.hasRestrictions()) {
+            throw new GradleException(errorPrefix + "no restrictions");
+        } else if (data.getRecommendedVersion() != null) {
+            throw new GradleException(errorPrefix + "recommended versions are unsupported");
+        } else if (range.contains("+")) {
+            throw new GradleException(errorPrefix + "dynamic versions are unsupported");
+        }
+
+        return range;
     }
 
     /**
