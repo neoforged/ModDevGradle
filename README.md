@@ -22,13 +22,6 @@ org.gradle.configuration-cache=true
 In `settings.gradle`:
 
 ```groovy
-pluginManagement {
-    repositories {
-        // Add the usual NeoForged maven repository.
-        maven { url = 'https://maven.neoforged.net/releases' }
-    }
-}
-
 plugins {
     // This plugin allows Gradle to automatically download arbitrary versions of Java for you
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
@@ -40,11 +33,12 @@ In `build.gradle`:
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://github.com/neoforged/ModDevGradle/packages/2159800.
-    id 'net.neoforged.moddev' version '0.1.74'
+    id 'net.neoforged.moddev' version '0.1.94'
 }
 
 neoForge {
     // We currently only support NeoForge versions later than 21.0.x
+    // See https://projects.neoforged.net/neoforged/neoforge for the latest updates
     version = "21.0.0-beta"
 
     runs {
