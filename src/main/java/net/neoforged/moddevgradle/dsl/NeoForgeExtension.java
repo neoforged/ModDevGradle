@@ -39,7 +39,7 @@ public abstract class NeoForgeExtension {
         getAccessTransformers().convention(project.provider(() -> {
             // Only return this when it actually exists
             var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            for (var resources : mainSourceSet.getResources()) {
+            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
                 var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
                 if (project.file(defaultPath).exists()) {
                     return List.of(defaultPath.getAbsolutePath());
