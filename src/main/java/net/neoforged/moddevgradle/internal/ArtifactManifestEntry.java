@@ -7,6 +7,11 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Objects;
 
+/**
+ * Represents an entry in the Artifact manifest given to NFRT to prevent re-downloading of
+ * dependencies that Gradle has already downloaded to its cache.
+ * It uses the same format used in NeoForm/NeoForge configuration data to identify an artifact (Maven format).
+ */
 final class ArtifactManifestEntry implements Serializable {
     @Input
     private final String artifactId;

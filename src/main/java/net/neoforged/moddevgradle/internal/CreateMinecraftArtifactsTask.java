@@ -12,6 +12,10 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.Collections;
 
+/**
+ * The primary task for creating the Minecraft artifacts that mods will be compiled against,
+ * using the NFRT CLI.
+ */
 @DisableCachingByDefault(because = "Implements its own caching")
 abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
     @Inject
