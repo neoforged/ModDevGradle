@@ -33,7 +33,7 @@ In `build.gradle`:
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://github.com/neoforged/ModDevGradle/packages/2159800.
-    id 'net.neoforged.moddev' version '0.1.94'
+    id 'net.neoforged.moddev' version '0.1.99'
 }
 
 neoForge {
