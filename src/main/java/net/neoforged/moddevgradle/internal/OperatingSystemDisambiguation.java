@@ -16,7 +16,7 @@ public abstract class OperatingSystemDisambiguation implements AttributeDisambig
         if (osName.startsWith("Linux") || osName.startsWith("LINUX")) {
             osName = "linux";
         } else if (osName.startsWith("Mac OS X")) {
-            osName = "macosx";
+            osName = "osx";
         } else if (osName.startsWith("Windows")) {
             osName = "windows";
         } else {
