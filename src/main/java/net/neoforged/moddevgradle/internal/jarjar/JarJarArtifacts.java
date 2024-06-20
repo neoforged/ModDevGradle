@@ -237,7 +237,7 @@ public abstract class JarJarArtifacts {
             throw new GradleException(errorPrefix + "no restrictions");
         } else if (data.getRecommendedVersion() != null) {
             throw new GradleException(errorPrefix + "recommended versions are unsupported");
-        } else if (range.contains("+")) {
+        } else if (range.endsWith("+")) {
             throw new GradleException(errorPrefix + "dynamic versions are unsupported");
         }
 
