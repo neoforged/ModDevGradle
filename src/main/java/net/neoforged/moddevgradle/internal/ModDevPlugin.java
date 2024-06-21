@@ -48,7 +48,6 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
-import org.jetbrains.gradle.ext.ModuleRef;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.event.Level;
@@ -739,7 +738,7 @@ public class ModDevPlugin implements Plugin<Project> {
         if (!sourceSets.contains(sourceSet)) {
             throw new GradleException("Cannot use source set from another project for run " + run.getName());
         }
-        appRun.setModuleRef(new ModuleRef(project, sourceSet));
+        appRun.setModuleName(RunUtils.getIntellijModuleName(project, sourceSet));
         appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
         appRun.setEnvs(run.getEnvironment().get());
 
