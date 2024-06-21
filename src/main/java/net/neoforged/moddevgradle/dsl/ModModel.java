@@ -47,11 +47,6 @@ public abstract class ModModel implements Named {
 
     // Do not name getSourceSets or it will conflict with project.sourceSets in scripts.
     public abstract ListProperty<SourceSet> getModSourceSets();
-
-    public void sourceSet(SourceSet sourceSet) {
-        sourceSet(sourceSet, getProject());
-    }
-
     public void dependency(CharSequence dependencyNotation) {
         getConfiguration().getDependencies().add(getProject().getDependencyFactory().create(dependencyNotation));
     }
@@ -64,11 +59,7 @@ public abstract class ModModel implements Named {
         getConfiguration().extendsFrom(configuration);
     }
 
-    public void sourceSet(SourceSet sourceSet, Project project) {
-        if (!project.getExtensions().getByType(SourceSetContainer.class).contains(sourceSet)) {
-            throw new IllegalArgumentException("Source set " + sourceSet + " does not belong to project " + project);
-        }
-
+    public void sourceSet(SourceSet sourceSet) {
         getModSourceSets().add(sourceSet);
     }
 }
