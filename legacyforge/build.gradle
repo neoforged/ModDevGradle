@@ -1,0 +1,198 @@
+plugins {
+    id 'maven-publish'
+}
+
+
+import groovy.json.JsonSlurper
+import org.gradle.api.attributes.java.TargetJvmVersion
+
+import javax.inject.Inject
+import java.util.zip.ZipFile
+
+def minecraft_version = "1.20.1"
+def forge_version = "47.1.54"
+def forge_artifact = "net.neoforged:forge:${minecraft_version}-${forge_version}:userdev"
+var combined_version = "${minecraft_version}-${forge_version}"
+def java_target = 17
+
+repositories {
+    maven {
+        url = "https://maven.neoforged.net/releases/"
+    }
+}
+
+// Pull the config JSON from the userdev artifact
+configurations {
+    forgeArtifact {
+        canBeConsumed = false
+        dependencies.add(dependencyFactory.create(forge_artifact))
+    }
+}
+
+// Read the userdev config json
+Object userdevConfig
+try (var zf = new ZipFile(configurations.forgeArtifact.singleFile)) {
+    var entry = zf.getEntry("config.json")
+    if (entry == null) {
+        throw new GradleException("No userdev config found in " + forge_artifact)
+    }
+    def slurper = new JsonSlurper()
+    try (var input = zf.getInputStream(entry)) {
+        userdevConfig = slurper.parse(input)
+    }
+}
+
+var modules = userdevConfig.modules
+println("Modules: " + modules)
+var mcp = userdevConfig.mcp
+println("MCP: " + mcp)
+var sources = userdevConfig.sources
+println("Sources: " + sources)
+var universal = userdevConfig.universal
+println("Universal: " + universal)
+var libraries = userdevConfig.libraries
+println("Libraries: " + libraries)
+
+abstract class ComponentMaker {
+    @Inject
+    abstract SoftwareComponentFactory getComponentFactory()
+}
+
+def componentMaker = objects.newInstance(ComponentMaker)
+def legacyforgeComponent = componentMaker.componentFactory.adhoc('legacyforge')
+components.add(legacyforgeComponent)
+
+configurations {
+
+    ///////// NeoForm Capabilities
+    modDevBundle {
+        canBeResolved = false
+        attributes {
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, java_target)
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_API))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-moddev-bundle:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+        dependencies.add(dependencyFactory.create(mcp))
+        dependencies.add(dependencyFactory.create(userdevConfig))
+    }
+    modDevConfig {
+        canBeResolved = false
+        attributes {
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, java_target)
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_API))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-moddev-config:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+    }
+    universalJar {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+            attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, JavaVersion.current().majorVersion.toInteger())
+            attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
+        }
+        outgoing {
+            // Implicit capability
+            capability "net.neoforged.moddevgradle:mdg-legacyforge:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+    }
+    modDevApiElements {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_API))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-dependencies:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+        dependencies.add(dependencyFactory.create("net.neoforged:minecraft-dependencies:${minecraft_version}"))
+    }
+    modDevRuntimeElements {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-dependencies:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+        dependencies.add(dependencyFactory.create("net.neoforged:minecraft-dependencies:${minecraft_version}"))
+    }
+    modDevModulePath {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-moddev-module-path:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+    }
+    modDevTestFixtures {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
+            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+        }
+        outgoing {
+            capability "net.neoforged:neoforge-moddev-test-fixtures:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+    }
+    universalSources {
+        canBeResolved = false
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
+            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, DocsType.SOURCES))
+        }
+        outgoing {
+            // Implicit capability
+            capability "net.neoforged.moddevgradle:mdg-legacyforge:${combined_version}"
+        }
+        legacyforgeComponent.addVariantsFromConfiguration(it) {}
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            group 'net.neoforged.moddevgradle'
+            artifactId 'mdg-legacyforge'
+            version combined_version
+            from components.legacyforge
+            pom {
+                name = 'LegacyForgeForModDevGradle'
+            }
+        }
+    }
+    repositories {
+        maven {
+            if (rootProject.hasProperty('MAVEN_USER') && rootProject.hasProperty('MAVEN_PASSWORD') && rootProject.hasProperty('MAVEN_URL')) {
+                url rootProject.getProperty('MAVEN_URL')
+                authentication {
+                    basic(BasicAuthentication)
+                }
+                credentials {
+                    username = rootProject.getProperty('MAVEN_USER') ?: 'not'
+                    password = rootProject.getProperty('MAVEN_PASSWORD') ?: 'set'
+                }
+            } else {
+                url 'file://' + rootProject.file('repo').getAbsolutePath()
+            }
+        }
+    }
+}

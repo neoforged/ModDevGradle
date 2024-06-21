@@ -1,0 +1,11 @@
+plugins {
+    id 'net.neoforged.moddev'
+}
+
+repositories {
+    mavenLocal()
+}
+
+neoForge {
+    version = '1.20.1-47.1.54'
+}

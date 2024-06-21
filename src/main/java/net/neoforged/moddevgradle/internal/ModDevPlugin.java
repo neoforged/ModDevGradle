@@ -129,10 +129,12 @@ public class ModDevPlugin implements Plugin<Project> {
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
 
+        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyMetadataTransform.class);
+
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
-        var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+        var neoForgeModDevLibrariesDependency = extension.getNeoForgeArtifact().map(artifactId -> {
+            return dependencyFactory.create(artifactId)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
@@ -312,8 +314,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+            spec.withDependencies(set -> set.addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                return dependencyFactory.create(artifact)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
@@ -346,8 +348,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 // NOTE: When running in vanilla mode, this configuration is simply empty
                 spec.withDependencies(set -> {
-                    set.addLater(extension.getVersion().map(version -> {
-                        return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                    set.addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                        return dependencyFactory.create(artifact)
                                 .capabilities(caps -> {
                                     caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
                                 })
@@ -465,7 +467,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var configurationPrefix = "neoFormRuntimeDependencies";
 
-        Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
+        Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
         Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 

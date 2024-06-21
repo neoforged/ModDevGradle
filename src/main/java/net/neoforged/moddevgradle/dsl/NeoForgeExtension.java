@@ -42,6 +42,13 @@ public abstract class NeoForgeExtension {
         parchment = project.getObjects().newInstance(Parchment.class);
         neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
+        getNeoForgeArtifact().convention(getVersion().map(version -> {
+            if (version.startsWith("1.20.1-")) {
+                return "net.neoforged:forge:" + version;
+            } else {
+                return "net.neoforged:neoforge:" + version;
+            }
+        }));
 
         accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
         interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
@@ -91,6 +98,13 @@ public abstract class NeoForgeExtension {
      * Vanilla artifacts that have no NeoForge code added.
      */
     public abstract Property<String> getNeoFormVersion();
+
+    /**
+     * Is derived automatically from {@link #getVersion()}.
+     *
+     * @return Maven artifact coordinate (group:module:version)
+     */
+    public abstract Property<String> getNeoForgeArtifact();
 
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.
