@@ -21,6 +21,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.gradle.ext.ModuleRef;
 import org.slf4j.event.Level;
 import org.xml.sax.InputSource;
 
@@ -298,6 +299,27 @@ final class RunUtils {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to evaluate xpath " + expression + " on file " + file, e);
         }
+    }
+
+    /**
+     * Convert a project and source set to an IntelliJ module name.
+     * Do not use {@link ModuleRef} as it does not correctly handle projects with a space in their name!
+     */
+    public static String getIntellijModuleName(Project project, SourceSet sourceSet) {
+        var moduleName = new StringBuilder();
+        // The `replace` call here is our bug fix compared to ModuleRef!
+        // The actual IDEA logic is more complicated, but this should cover the majority of use cases.
+        // See https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java#L205
+        // which calls https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/platform/util-rt/src/com/intellij/util/PathUtilRt.java#L120
+        moduleName.append(project.getRootProject().getName().replace(" ", "_"));
+        if (!project.getPath().equals(":")) {
+            moduleName.append(project.getPath().replaceAll(":", "."));
+        }
+        if (!sourceSet.getName().isEmpty()) {
+            moduleName.append(".");
+            moduleName.append(sourceSet.getName());
+        }
+        return moduleName.toString();
     }
 }
 
