@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -194,11 +195,25 @@ final class RunUtils {
         return modFoldersProvider;
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable File outputDirectory, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
+    private static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
+        for (var p : someProject.getRootProject().getAllprojects()) {
+            var sourceSets = ExtensionUtils.findSourceSets(p);
+            if (sourceSets != null) {
+                for (var s : sourceSets) {
+                    if (s == sourceSet) {
+                        return p;
+                    }
+                }
+            }
+        }
+        throw new IllegalArgumentException("Could not find project for source set " + someProject);
+    }
+
+    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable Function<Project, File> outputDirectory, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
         Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
             folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-                var sourceSetDir = outputDirectory.toPath().resolve(getIdeaOutName(sourceSet));
+                var sourceSetDir = outputDirectory.apply(findSourceSetProject(project, sourceSet)).toPath().resolve(getIdeaOutName(sourceSet));
                 output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
             });
         } else {
@@ -257,12 +272,13 @@ final class RunUtils {
     public static final String IDEA_OUTPUT_XPATH = "/project/component[@name='ProjectRootManager']/output/@url";
 
     /**
-     * Returns the configured output directory, only if "Build and run using" is set to "IDEA".
+     * Returns a function that maps a project to the configured output directory,
+     * only if "Build and run using" is set to "IDEA".
      * In other cases, returns {@code null}.
      */
     @Nullable
-    static File getIntellijOutputDirectory(Project project) {
-        var ideaDir = IdeDetection.getIntellijProjectDir(project);
+    static Function<Project, File> getIntellijOutputDirectory(Project someProject) {
+        var ideaDir = IdeDetection.getIntellijProjectDir(someProject);
         if (ideaDir == null) {
             return null;
         }
@@ -282,11 +298,11 @@ final class RunUtils {
             outputDirUrl = "file://$PROJECT_DIR$/out";
         }
 
-        outputDirUrl = outputDirUrl.replace("$PROJECT_DIR$", project.getProjectDir().getAbsolutePath());
+        // The output dir can start with something like "//C:\"; File can handle it.
         outputDirUrl = outputDirUrl.replaceAll("^file:", "");
 
-        // The output dir can start with something like "//C:\"; File can handle it.
-        return new File(outputDirUrl);
+        var outputDirTemplate = outputDirUrl;
+        return p -> new File(outputDirTemplate.replace("$PROJECT_DIR$", p.getProjectDir().getAbsolutePath()));
     }
 
     @Nullable
