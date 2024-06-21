@@ -312,13 +312,11 @@ final class RunUtils {
         // See https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java#L205
         // which calls https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/platform/util-rt/src/com/intellij/util/PathUtilRt.java#L120
         moduleName.append(project.getRootProject().getName().replace(" ", "_"));
-        if (!project.getPath().equals(":")) {
+        if (project != project.getRootProject()) {
             moduleName.append(project.getPath().replaceAll(":", "."));
         }
-        if (!sourceSet.getName().isEmpty()) {
-            moduleName.append(".");
-            moduleName.append(sourceSet.getName());
-        }
+        moduleName.append(".");
+        moduleName.append(sourceSet.getName());
         return moduleName.toString();
     }
 }
