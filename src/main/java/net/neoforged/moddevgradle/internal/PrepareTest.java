@@ -25,4 +25,9 @@ abstract class PrepareTest extends PrepareRunOrTest {
     protected String resolveMainClass(UserDevRunType runConfig) {
         return null; // No main class to override
     }
+
+    @Override
+    protected boolean isClientDistribution() {
+        return true;
+    }
 }

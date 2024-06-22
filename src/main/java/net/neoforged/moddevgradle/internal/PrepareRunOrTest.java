@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
+import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
@@ -90,6 +91,9 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Nullable
     protected abstract String resolveMainClass(UserDevRunType runConfig);
 
+    @Internal
+    protected abstract boolean isClientDistribution();
+
     private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
         var result = new ArrayList<String>();
         for (var jvmArg : runConfig.jvmArgs()) {
@@ -100,6 +104,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
                         .collect(Collectors.joining(File.pathSeparator));
             }
             result.add(RunUtils.escapeJvmArg(arg));
+        }
+        if (isClientDistribution() && OperatingSystem.current() == OperatingSystem.MACOS) {
+            // TODO: it might be more future-proof to source this from the platform args in the MC version json
+            result.add("-XstartOnFirstThread");
         }
         return result;
     }
