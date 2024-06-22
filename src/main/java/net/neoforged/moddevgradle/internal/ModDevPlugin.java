@@ -65,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -728,7 +729,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static void addIntelliJRunConfiguration(Project project,
                                                     RunConfigurationContainer runConfigurations,
-                                                    @Nullable File outputDirectory,
+                                                    @Nullable Function<Project, File> outputDirectory,
                                                     RunModel run,
                                                     PrepareRun prepareTask) {
         var appRun = new Application(run.getIdeName().get(), project);
@@ -890,14 +891,13 @@ public class ModDevPlugin implements Plugin<Project> {
                         project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
                     }
-                    addEclipseLaunchConfiguration(project, null, run, prepareTask);
+                    addEclipseLaunchConfiguration(project, run, prepareTask);
                 }
             });
         }
     }
 
     private static void addEclipseLaunchConfiguration(Project project,
-                                                      @Nullable File outputDirectory,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
         //Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
@@ -908,7 +908,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
                         // TODO: Eclipse output folders, are those relevant for Eclipse runs?
-                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
+                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, null, run.getMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .envVar(run.getEnvironment().get())

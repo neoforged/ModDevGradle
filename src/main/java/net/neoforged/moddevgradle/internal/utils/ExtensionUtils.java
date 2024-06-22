@@ -47,4 +47,9 @@ public final class ExtensionUtils {
     public static SourceSetContainer getSourceSets(Project project) {
         return getExtension(project, "sourceSets", SourceSetContainer.class);
     }
+
+    @Nullable
+    public static SourceSetContainer findSourceSets(Project project) {
+        return findExtension(project, "sourceSets", SourceSetContainer.class);
+    }
 }
