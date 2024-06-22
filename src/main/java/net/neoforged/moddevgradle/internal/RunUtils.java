@@ -196,6 +196,12 @@ final class RunUtils {
     }
 
     private static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
+        for (var s : ExtensionUtils.getSourceSets(someProject)) {
+            if (s == sourceSet) {
+                return someProject;
+            }
+        }
+        // The code below will break with cross-project isolation, but that's expected when depending on other source sets!
         for (var p : someProject.getRootProject().getAllprojects()) {
             var sourceSets = ExtensionUtils.findSourceSets(p);
             if (sourceSets != null) {
