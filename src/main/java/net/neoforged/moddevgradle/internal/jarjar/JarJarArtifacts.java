@@ -1,9 +1,12 @@
 package net.neoforged.moddevgradle.internal.jarjar;
 
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
+import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.ArtifactIdentifier;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
@@ -234,19 +237,29 @@ public abstract class JarJarArtifacts {
         }
 
         if (!data.hasRestrictions()) {
-            // This is if just a version was specified i.e. "org.slf4j:slf4j:1.2.3" then "1.2.3" is the recommended version
-            // according to the maven version parser, but for Gradle it's a required version
-            if (data.getRecommendedVersion() != null) {
-                return makeOpenRange(variant);
-            }
-            throw new GradleException(errorPrefix + "no restrictions");
-        } else if (data.getRecommendedVersion() != null) {
-            throw new GradleException(errorPrefix + "recommended versions are unsupported");
-        } else if (range.endsWith("+") || range.startsWith("latest.")) {
+            // If there was no restriction, just use the current version as the lower bound
+            return makeOpenRange(variant);
+        } else if (isDynamicVersionRange(data)) {
             throw new GradleException(errorPrefix + "dynamic versions are unsupported");
         }
 
         return range;
+    }
+
+    private static boolean isDynamicVersionRange(VersionRange data) {
+        for (var restriction : data.getRestrictions()) {
+            if (isDynamicVersion(restriction.getLowerBound()) || isDynamicVersion(restriction.getUpperBound())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isDynamicVersion(@Nullable ArtifactVersion version) {
+        if (version == null) {
+            return false;
+        }
+        return version.toString().endsWith("+") || version.toString().startsWith("latest.");
     }
 
     /**

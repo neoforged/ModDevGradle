@@ -130,10 +130,14 @@ class JarJarTest {
     public void testUnsupportedDynamicVersion() {
         var e = assertThrows(UnexpectedBuildFailure.class, () -> runWithSource("""
                 dependencies {
-                    jarJar(implementation("org.slf4j:slf4j-api:2.0.+"))
+                    jarJar(implementation("org.slf4j:slf4j-api")) {
+                        version {
+                            prefer '[2.0.+, 3.0)'
+                        }
+                    }
                 }
                 """));
-        assertThat(e).hasMessageContaining("Unsupported version constraint '2.0.+' on Jar-in-Jar dependency org.slf4j:slf4j-api");
+        assertThat(e).hasMessageContaining("Unsupported version constraint '[2.0.+, 3.0)' on Jar-in-Jar dependency org.slf4j:slf4j-api: dynamic versions are unsupported");
     }
 
     private BuildResult runWithSource(String source) throws IOException {
