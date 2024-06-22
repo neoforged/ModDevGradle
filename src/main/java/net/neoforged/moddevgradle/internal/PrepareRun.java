@@ -41,4 +41,9 @@ abstract class PrepareRun extends PrepareRunOrTest {
     protected String resolveMainClass(UserDevRunType runConfig) {
         return getMainClass().getOrElse(runConfig.main());
     }
+
+    @Override
+    protected boolean isClientDistribution() {
+        return getRunType().get().equals("client") || getRunType().get().equals("data");
+    }
 }
