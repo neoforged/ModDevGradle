@@ -149,13 +149,13 @@ public abstract class JarJarArtifacts {
             if (requested instanceof ModuleComponentSelector requestedModule) {
                 var constraint = requestedModule.getVersionConstraint();
                 if (!constraint.getStrictVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule);
+                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule, variant);
                 } else if (!constraint.getRequiredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule);
+                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule, variant);
                 } else if (!constraint.getPreferredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule);
+                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule, variant);
                 } else {
-                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule);
+                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule, variant);
                 }
             }
 
@@ -223,7 +223,7 @@ public abstract class JarJarArtifacts {
         return moduleOrCapabilityVersion(variant);
     }
 
-    private static String validateVersionRange(String range, ModuleComponentSelector module) {
+    private static String validateVersionRange(String range, ModuleComponentSelector module, ResolvedVariantResult variant) {
         var errorPrefix = "Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier() + ": ";
 
         VersionRange data;
@@ -234,6 +234,11 @@ public abstract class JarJarArtifacts {
         }
 
         if (!data.hasRestrictions()) {
+            // This is if just a version was specified i.e. "org.slf4j:slf4j:1.2.3" then "1.2.3" is the recommended version
+            // according to the maven version parser, but for Gradle it's a required version
+            if (data.getRecommendedVersion() != null) {
+                return makeOpenRange(variant);
+            }
             throw new GradleException(errorPrefix + "no restrictions");
         } else if (data.getRecommendedVersion() != null) {
             throw new GradleException(errorPrefix + "recommended versions are unsupported");

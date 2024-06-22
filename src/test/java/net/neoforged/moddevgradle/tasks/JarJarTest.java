@@ -1,5 +1,12 @@
 package net.neoforged.moddevgradle.tasks;
 
+import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
+import net.neoforged.jarjar.metadata.ContainedJarMetadata;
+import net.neoforged.jarjar.metadata.ContainedVersion;
+import net.neoforged.jarjar.metadata.Metadata;
+import net.neoforged.jarjar.metadata.MetadataIOHandler;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.UnexpectedBuildFailure;
@@ -9,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
@@ -27,7 +35,7 @@ class JarJarTest {
     }
 
     @Test
-    public void testSuccessfulEmbed() throws IOException {
+    public void testSuccessfulEmbed() throws Exception {
         var result = runWithSource("""
                 dependencies {
                     jarJar(implementation("org.slf4j:slf4j-api")) {
@@ -39,6 +47,44 @@ class JarJarTest {
                 }
                 """);
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+
+        assertThat(listFiles()).containsOnly(
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
+        );
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[0.1,3.0)"), new DefaultArtifactVersion("2.0.13")),
+                                "META-INF/jarjar/slf4j-api-2.0.13.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
+    }
+
+    @Test
+    public void testSimpleStringVersion() throws Exception {
+        var result = runWithSource("""
+                dependencies {
+                    jarJar(implementation("org.slf4j:slf4j-api:2.0.13"))
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+
+        assertThat(listFiles()).containsOnly(
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
+        );
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
+                                "META-INF/jarjar/slf4j-api-2.0.13.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
     }
 
     @Test
@@ -107,6 +153,24 @@ class JarJarTest {
                 .withArguments("jarjar")
                 .withDebug(true)
                 .build();
+    }
+
+    private List<String> listFiles() throws IOException {
+        var path = tempDir.resolve("build/generated/jarJar");
+        if (!Files.isDirectory(path)) {
+            return List.of();
+        }
+        try (var stream = Files.walk(path)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .map(p -> path.relativize(p).toString().replace('\\', '/')).toList();
+        }
+    }
+
+    private Metadata readMetadata() throws IOException {
+        try (var in = Files.newInputStream(tempDir.resolve("build/generated/jarJar/META-INF/jarjar/metadata.json"))) {
+            return MetadataIOHandler.fromStream(in).orElseThrow();
+        }
     }
 
 }
