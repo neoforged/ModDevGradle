@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal.jarjar;
 
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.api.GradleException;
@@ -147,15 +148,24 @@ public abstract class JarJarArtifacts {
 
             String versionRange = null;
             if (requested instanceof ModuleComponentSelector requestedModule) {
-                var constraint = requestedModule.getVersionConstraint();
-                if (!constraint.getStrictVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule);
-                } else if (!constraint.getRequiredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule);
-                } else if (!constraint.getPreferredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule);
+                String rawVersionRange = getModuleVersionRange(requestedModule);
+                var errorPrefix = "Unsupported version constraint '" + rawVersionRange + "' on Jar-in-Jar dependency " + requestedModule.getModuleIdentifier() + ": ";
+
+                VersionRange data;
+                try {
+                    data = VersionRange.createFromVersionSpec(rawVersionRange);
+                } catch (InvalidVersionSpecificationException e) {
+                    throw new GradleException(errorPrefix + e.getMessage());
+                }
+
+                if (isDynamicVersionRange(data)) {
+                    throw new GradleException(errorPrefix + "dynamic versions are unsupported");
+                } else if (data.hasRestrictions()) {
+                    versionRange = rawVersionRange;
                 } else {
-                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule);
+                    // Single version is requested -> make an open range with the result of the resolution,
+                    // instead of the version that the user specified.
+                    versionRange = makeOpenRange(variant);
                 }
             }
 
@@ -172,6 +182,19 @@ public abstract class JarJarArtifacts {
             if (versionRange != null) {
                 versionRanges.put(jarIdentifier, versionRange);
             }
+        }
+    }
+
+    private static String getModuleVersionRange(ModuleComponentSelector requestedModule) {
+        var constraint = requestedModule.getVersionConstraint();
+        if (!constraint.getStrictVersion().isEmpty()) {
+            return constraint.getStrictVersion();
+        } else if (!constraint.getRequiredVersion().isEmpty()) {
+            return constraint.getRequiredVersion();
+        } else if (!constraint.getPreferredVersion().isEmpty()) {
+            return constraint.getPreferredVersion();
+        } else {
+            return requestedModule.getVersion();
         }
     }
 
@@ -223,25 +246,20 @@ public abstract class JarJarArtifacts {
         return moduleOrCapabilityVersion(variant);
     }
 
-    private static String validateVersionRange(String range, ModuleComponentSelector module) {
-        var errorPrefix = "Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier() + ": ";
-
-        VersionRange data;
-        try {
-            data = VersionRange.createFromVersionSpec(range);
-        } catch (InvalidVersionSpecificationException e) {
-            throw new GradleException(errorPrefix + e.getMessage());
+    private static boolean isDynamicVersionRange(VersionRange data) {
+        for (var restriction : data.getRestrictions()) {
+            if (isDynamicVersion(restriction.getLowerBound()) || isDynamicVersion(restriction.getUpperBound())) {
+                return true;
+            }
         }
+        return false;
+    }
 
-        if (!data.hasRestrictions()) {
-            throw new GradleException(errorPrefix + "no restrictions");
-        } else if (data.getRecommendedVersion() != null) {
-            throw new GradleException(errorPrefix + "recommended versions are unsupported");
-        } else if (range.endsWith("+") || range.startsWith("latest.")) {
-            throw new GradleException(errorPrefix + "dynamic versions are unsupported");
+    private static boolean isDynamicVersion(@Nullable ArtifactVersion version) {
+        if (version == null) {
+            return false;
         }
-
-        return range;
+        return version.toString().endsWith("+") || version.toString().startsWith("latest.");
     }
 
     /**

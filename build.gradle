@@ -71,6 +71,8 @@ configurations {
     shaded
     // Place shaded dependencies into `compileOnly` so that they do not leak into our publications' dependencies.
     compileOnly.extendsFrom shaded
+    testCompileOnly.extendsFrom shaded
+    testRuntimeOnly.extendsFrom shaded
     shadowRuntimeElements {
         // `shadowRuntimeElements` is what gets published.
         // We want it to contain the non-shaded runtime dependencies.
