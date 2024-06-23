@@ -87,6 +87,38 @@ class JarJarTest {
         ), readMetadata());
     }
 
+    /**
+     * When a single version is specified, the jarjar metadata should use the real resolved version,
+     * rather than the one the user indicated (which can get upgraded).
+     */
+    @Test
+    public void testSimpleStringVersionPullsRangeFromResolution() throws Exception {
+        // Note that slf4j 0.0.1 does not exist!
+        var result = runWithSource("""
+                dependencies {
+                    jarJar(implementation("org.slf4j:slf4j-api:0.0.1"))
+                    constraints {
+                        jarJar(implementation("org.slf4j:slf4j-api:2.0.13"))
+                    }
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+
+        assertThat(listFiles()).containsOnly(
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
+        );
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
+                                "META-INF/jarjar/slf4j-api-2.0.13.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
+    }
+
     @Test
     public void testUnsupportedStrictlyRange() {
         var e = assertThrows(UnexpectedBuildFailure.class, () -> runWithSource("""
