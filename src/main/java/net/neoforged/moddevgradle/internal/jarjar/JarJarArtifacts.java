@@ -3,10 +3,8 @@ package net.neoforged.moddevgradle.internal.jarjar;
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
-import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.api.GradleException;
-import org.gradle.api.artifacts.ArtifactIdentifier;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
@@ -33,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -152,13 +151,13 @@ public abstract class JarJarArtifacts {
             if (requested instanceof ModuleComponentSelector requestedModule) {
                 var constraint = requestedModule.getVersionConstraint();
                 if (!constraint.getStrictVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule, variant);
+                    versionRange = validateVersionRange(constraint.getStrictVersion(), requestedModule);
                 } else if (!constraint.getRequiredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule, variant);
+                    versionRange = validateVersionRange(constraint.getRequiredVersion(), requestedModule);
                 } else if (!constraint.getPreferredVersion().isEmpty()) {
-                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule, variant);
+                    versionRange = validateVersionRange(constraint.getPreferredVersion(), requestedModule);
                 } else {
-                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule, variant);
+                    versionRange = validateVersionRange(requestedModule.getVersion(), requestedModule);
                 }
             }
 
@@ -214,11 +213,13 @@ public abstract class JarJarArtifacts {
 
     private static @Nullable String makeOpenRange(final ResolvedVariantResult variant) {
         String baseVersion = moduleOrCapabilityVersion(variant);
-
         if (baseVersion == null) {
             return null;
         }
+        return makeOpenRange(baseVersion);
+    }
 
+    private static String makeOpenRange(String baseVersion) {
         return "[" + baseVersion + ",)";
     }
 
@@ -226,7 +227,7 @@ public abstract class JarJarArtifacts {
         return moduleOrCapabilityVersion(variant);
     }
 
-    private static String validateVersionRange(String range, ModuleComponentSelector module, ResolvedVariantResult variant) {
+    private static String validateVersionRange(String range, ModuleComponentSelector module) {
         var errorPrefix = "Unsupported version constraint '" + range + "' on Jar-in-Jar dependency " + module.getModuleIdentifier() + ": ";
 
         VersionRange data;
@@ -237,8 +238,8 @@ public abstract class JarJarArtifacts {
         }
 
         if (!data.hasRestrictions()) {
-            // If there was no restriction, just use the current version as the lower bound
-            return makeOpenRange(variant);
+            // If there was no restriction, just use the recommended version as the lower bound
+            return makeOpenRange(Objects.requireNonNull(data.getRecommendedVersion()).toString());
         } else if (isDynamicVersionRange(data)) {
             throw new GradleException(errorPrefix + "dynamic versions are unsupported");
         }

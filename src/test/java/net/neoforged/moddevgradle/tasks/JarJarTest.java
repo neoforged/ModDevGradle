@@ -112,6 +112,9 @@ class JarJarTest {
         assertThat(e).hasMessageContaining("Unsupported version constraint '[0.1, 3.0[' on Jar-in-Jar dependency org.slf4j:slf4j-api");
     }
 
+    /**
+     * {@code x[} is alternative notation for {@code x)} in math and Gradle. Maven does not support it, so we should reject it.
+     */
     @Test
     public void testUnsupportedPreferredRange() {
         var e = assertThrows(UnexpectedBuildFailure.class, () -> runWithSource("""
