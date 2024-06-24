@@ -210,8 +210,8 @@ public class ModDevPlugin implements Plugin<Project> {
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getVersion().map(v -> "neoforge").orElse(extension.getNeoFormVersion().map(v -> "vanilla")),
-                        (dir, prefix) -> dir.file(prefix + "-minecraft-joined-local" + suffix + ".jar"));
+                        extension.getVersion().map(v -> "neoforge-" + v).orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v)),
+                        (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
             task.getCompiledWithSourcesArtifact().set(jarPathFactory.apply("-merged"));
