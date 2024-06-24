@@ -153,7 +153,7 @@ neoForge {
 }
 ```
 
-Please have a look at [RunModel.java](src/java17/java/net/neoforged/moddevgradle/dsl/RunModel.java) for the list of
+Please have a look at [RunModel.java](src/main/java/net/neoforged/moddevgradle/dsl/RunModel.java) for the list of
 supported properties.
 Here is an example that sets a system property to change the log level to debug:
 
