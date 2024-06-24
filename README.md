@@ -323,7 +323,6 @@ dependencies {
 With this dependency, you can annotate your test class as follows:
 
 ```java
-
 @ExtendWith(EphemeralTestServerProvider.class)
 public class TestClass {
     @Test
