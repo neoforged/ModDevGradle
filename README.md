@@ -83,7 +83,7 @@ Apply the plugin as usual and use a configuration block like this:
 ```groovy
 neoForge {
     // Look for versions on https://projects.neoforged.net/neoforged/neoform
-    neoFormVersion = "1.21.-20240613.152323"
+    neoFormVersion = "1.21-20240613.152323"
 
     runs {
         client {
