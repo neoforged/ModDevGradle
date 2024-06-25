@@ -3,6 +3,8 @@ package net.neoforged.moddevgradle.internal;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -25,8 +27,14 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
     @InputFiles
     abstract ConfigurableFileCollection getAccessTransformers();
 
+    @Input
+    abstract Property<Boolean> getParchmentEnabled();
+
     @InputFiles
     abstract ConfigurableFileCollection getParchmentData();
+
+    @InputFiles
+    abstract Property<String> getParchmentConflictResolutionPrefix();
 
     @OutputFile
     abstract RegularFileProperty getCompiledWithSourcesArtifact();
@@ -54,12 +62,20 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
             args.add(accessTransformer.getAbsolutePath());
         }
 
-        var parchmentData = getParchmentData().getFiles();
-        if (parchmentData.size() == 1) {
-            args.add("--parchment-data");
-            args.add(parchmentData.iterator().next().getAbsolutePath());
-        } else if (parchmentData.size() > 1) {
-            throw new GradleException("More than one parchment data file were specified: " + parchmentData);
+        if (getParchmentEnabled().get()) {
+            var parchmentData = getParchmentData().getFiles();
+            if (parchmentData.size() == 1) {
+                args.add("--parchment-data");
+                args.add(parchmentData.iterator().next().getAbsolutePath());
+            } else if (parchmentData.size() > 1) {
+                throw new GradleException("More than one parchment data file was specified: " + parchmentData);
+            }
+
+            var conflictResolutionPrefix = getParchmentConflictResolutionPrefix().getOrElse("");
+            if (getParchmentConflictResolutionPrefix().isPresent() && !conflictResolutionPrefix.isBlank()) {
+                args.add("--parchment-conflict-prefix");
+                args.add(conflictResolutionPrefix);
+            }
         }
 
         Collections.addAll(
