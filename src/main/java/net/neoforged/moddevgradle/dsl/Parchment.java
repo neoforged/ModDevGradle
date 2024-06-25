@@ -2,15 +2,12 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.jetbrains.annotations.ApiStatus;
 
 import javax.inject.Inject;
-import java.net.URI;
 
 /**
  * Allows configuration of Parchment mappings for userdev.
@@ -37,7 +34,7 @@ public abstract class Parchment {
                 project.getProviders().gradleProperty("neoForge.parchment.mappingsVersion")
         );
         getConflictResolutionPrefix().convention(
-                project.getProviders().gradleProperty("neoForge.parchment.mappingsVersion").orElse("p_")
+                project.getProviders().gradleProperty("neoForge.parchment.conflictResolutionPrefix").orElse("p_")
         );
         getEnabled().convention(getParchmentArtifact()
                 .map(s -> !s.isEmpty()).orElse(PropertyUtils.getBooleanProperty(project, "neoForge.parchment.enabled").orElse(false)));
