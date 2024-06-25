@@ -33,7 +33,7 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
     @InputFiles
     abstract ConfigurableFileCollection getParchmentData();
 
-    @InputFiles
+    @Input
     abstract Property<String> getParchmentConflictResolutionPrefix();
 
     @OutputFile
