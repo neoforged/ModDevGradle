@@ -205,6 +205,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
             task.getAccessTransformers().from(accessTransformers);
             task.getParchmentData().from(parchmentData);
+            task.getParchmentEnabled().set(parchment.getEnabled());
+            task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
             var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {

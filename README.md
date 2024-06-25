@@ -259,8 +259,8 @@ from [ParchmentMC](https://parchmentmc.org/docs/getting-started).
 The easiest way is setting the Parchment version in your gradle.properties:
 
 ```properties
-neoForge.parchment.minecraftVersion=1.20.6
-neoForge.parchment.mappingsVersion=2024.05.01
+neoForge.parchment.minecraftVersion=1.21
+neoForge.parchment.mappingsVersion=2024.06.23
 ```
 
 Alternatively, you can set it in your build.gradle:

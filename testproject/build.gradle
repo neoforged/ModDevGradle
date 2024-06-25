@@ -61,8 +61,8 @@ neoForge {
     }
 
     parchment {
-        minecraftVersion = "1.20.6"
-        mappingsVersion = "2024.05.01"
+        minecraftVersion = "1.21"
+        mappingsVersion = "2024.06.23"
     }
 
     unitTest {
