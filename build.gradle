@@ -5,8 +5,8 @@ import groovy.transform.TupleConstructor
 plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
-    id "net.neoforged.gradleutils" version "3.0.0-alpha.13"
-    id 'com.gradle.plugin-publish' version '1.1.0'
+    id 'net.neoforged.gradleutils' version '3.0.0'
+    id 'com.gradle.plugin-publish' version '1.2.1'
     id 'io.github.goooler.shadow' version '8.1.7'
 }
 
@@ -209,6 +209,7 @@ publishing {
 // Instead, let's use the shadow jar and configurations.runtimeClasspath.
 tasks.withType(PluginUnderTestMetadata).configureEach {
     it.pluginClasspath.setFrom tasks.shadowJar, configurations.runtimeClasspath
+    it.inputs.file(jar.archiveFile)
 }
 
 abstract class GenerateRepoFilter extends DefaultTask {
