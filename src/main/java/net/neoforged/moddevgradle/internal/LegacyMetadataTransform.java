@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataRule;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
+import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.Usage;
@@ -10,6 +11,7 @@ import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
 
+// @CacheableTransform
 public class LegacyMetadataTransform implements ComponentMetadataRule {
     private final ObjectFactory objects;
     private final RepositoryResourceAccessor repositoryResourceAccessor;
