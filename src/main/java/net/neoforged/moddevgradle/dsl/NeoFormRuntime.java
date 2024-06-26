@@ -7,7 +7,7 @@ import org.gradle.api.provider.Property;
 import javax.inject.Inject;
 
 public abstract class NeoFormRuntime {
-    private static final String DEFAULT_NFRT_VERSION = "0.1.58";
+    private static final String DEFAULT_NFRT_VERSION = "0.1.59";
 
     @Inject
     public NeoFormRuntime(Project project) {
@@ -16,6 +16,7 @@ public abstract class NeoFormRuntime {
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));
         getVerbose().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.verbose").orElse(false));
         getAnalyzeCacheMisses().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.analyzeCacheMisses").orElse(false));
+        getValidateAccessTransformers().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.validateAccessTransformers").orElse(true));
     }
 
     /**
@@ -34,4 +35,10 @@ public abstract class NeoFormRuntime {
 
     public abstract Property<Boolean> getAnalyzeCacheMisses();
 
+    /**
+     * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.
+     * <p>
+     * {@code true} by default.
+     */
+    public abstract Property<Boolean> getValidateAccessTransformers();
 }

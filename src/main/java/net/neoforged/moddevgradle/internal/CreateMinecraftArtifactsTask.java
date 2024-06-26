@@ -6,6 +6,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
@@ -26,6 +27,10 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
 
     @InputFiles
     abstract ConfigurableFileCollection getAccessTransformers();
+
+    @Input
+    @Optional
+    abstract Property<Boolean> getValidateAccessTransformers();
 
     @Input
     abstract Property<Boolean> getParchmentEnabled();
@@ -60,6 +65,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
         for (var accessTransformer : accessTransformers) {
             args.add("--access-transformer");
             args.add(accessTransformer.getAbsolutePath());
+        }
+        if (getValidateAccessTransformers().getOrElse(false)) {
+            args.add("--validate-access-transformers");
         }
 
         if (getParchmentEnabled().get()) {

@@ -377,7 +377,7 @@ configurations.all {
 ```groovy
 neoForge {
     neoFormRuntime {
-        // Use specific NFRT version
+        // Use a specific NFRT version
         // Gradle Property: neoForge.neoFormRuntime.version
         version = "1.2.3"
 
@@ -396,6 +396,10 @@ neoForge {
         // Print more information when NFRT cannot use a cached result
         // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
         analyzeCacheMisses = true
+      
+        // Enable AT validation, raising fatal errors when ATs have invalid targets (enabled by default)
+        // Gradle Property: neoForge.neoFormRuntime.validateAccessTransformers
+        validateAccessTransformers = false
     }
 }
 ```
