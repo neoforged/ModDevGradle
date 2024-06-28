@@ -11,7 +11,7 @@ import javax.inject.Inject;
  * the Minecraft artifacts for compiling and mods.
  */
 public abstract class NeoFormRuntime {
-    private static final String DEFAULT_NFRT_VERSION = "0.1.58";
+    private static final String DEFAULT_NFRT_VERSION = "0.1.63";
 
     @Inject
     public NeoFormRuntime(Project project) {
@@ -65,5 +65,4 @@ public abstract class NeoFormRuntime {
      * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.analyzeCacheMisses}.
      */
     public abstract Property<Boolean> getAnalyzeCacheMisses();
-
 }

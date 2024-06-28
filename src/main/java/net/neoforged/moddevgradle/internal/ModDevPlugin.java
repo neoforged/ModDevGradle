@@ -204,6 +204,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
             task.getAccessTransformers().from(accessTransformers);
+            task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());

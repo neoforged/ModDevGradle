@@ -48,6 +48,7 @@ public abstract class NeoForgeExtension {
 
             return List.of();
         }));
+        getValidateAccessTransformers().convention(false);
     }
 
     /**
@@ -90,6 +91,13 @@ public abstract class NeoForgeExtension {
      * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
      */
     public abstract ListProperty<String> getAccessTransformers();
+
+    /**
+     * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.
+     * <p>
+     * <b>Default</b> {@code false}<br>
+     */
+    public abstract Property<Boolean> getValidateAccessTransformers();
 
     public NamedDomainObjectContainer<ModModel> getMods() {
         return mods;
