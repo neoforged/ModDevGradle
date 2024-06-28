@@ -39,7 +39,11 @@ plugins {
 neoForge {
     // We currently only support NeoForge versions later than 21.0.x
     // See https://projects.neoforged.net/neoforged/neoforge for the latest updates
-    version = "21.0.0-beta"
+    version = "21.0.42-beta"
+    
+    // Validate AT files and raise errors when they have invalid targets
+    // This option is false by default, but turning it on is recommended
+    validateAccessTransformers = true
 
     runs {
         client {
@@ -396,10 +400,6 @@ neoForge {
         // Print more information when NFRT cannot use a cached result
         // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
         analyzeCacheMisses = true
-      
-        // Enable AT validation, raising fatal errors when ATs have invalid targets (enabled by default)
-        // Gradle Property: neoForge.neoFormRuntime.validateAccessTransformers
-        validateAccessTransformers = false
     }
 }
 ```

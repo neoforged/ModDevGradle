@@ -20,7 +20,6 @@ public abstract class NeoFormRuntime {
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));
         getVerbose().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.verbose").orElse(false));
         getAnalyzeCacheMisses().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.analyzeCacheMisses").orElse(false));
-        getValidateAccessTransformers().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.validateAccessTransformers").orElse(false));
     }
 
     /**
@@ -66,12 +65,4 @@ public abstract class NeoFormRuntime {
      * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.analyzeCacheMisses}.
      */
     public abstract Property<Boolean> getAnalyzeCacheMisses();
-
-    /**
-     * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.
-     * <p>
-     * <b>Default</b> {@code false}<br>
-     * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.validateAccessTransformers}.
-     */
-    public abstract Property<Boolean> getValidateAccessTransformers();
 }
