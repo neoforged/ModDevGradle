@@ -11,7 +11,7 @@ import javax.inject.Inject;
  * the Minecraft artifacts for compiling and mods.
  */
 public abstract class NeoFormRuntime {
-    private static final String DEFAULT_NFRT_VERSION = "0.1.59";
+    private static final String DEFAULT_NFRT_VERSION = "0.1.63";
 
     @Inject
     public NeoFormRuntime(Project project) {
@@ -20,7 +20,7 @@ public abstract class NeoFormRuntime {
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));
         getVerbose().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.verbose").orElse(false));
         getAnalyzeCacheMisses().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.analyzeCacheMisses").orElse(false));
-        getValidateAccessTransformers().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.validateAccessTransformers").orElse(true));
+        getValidateAccessTransformers().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.validateAccessTransformers").orElse(false));
     }
 
     /**
@@ -70,7 +70,8 @@ public abstract class NeoFormRuntime {
     /**
      * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.
      * <p>
-     * {@code true} by default.
+     * <b>Default</b> {@code false}<br>
+     * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.validateAccessTransformers}.
      */
     public abstract Property<Boolean> getValidateAccessTransformers();
 }
