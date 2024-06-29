@@ -831,24 +831,32 @@ public class ModDevPlugin implements Plugin<Project> {
         String artifactId;
         String ext = "";
         String classifier = null;
+
+        var filename = result.getFile().getName();
+        var startOfExt = filename.lastIndexOf('.');
+        if (startOfExt != -1) {
+            ext = filename.substring(startOfExt + 1);
+            filename = filename.substring(0, startOfExt);
+        }
+
         if (result.getId() instanceof ModuleComponentArtifactIdentifier moduleId) {
             var artifact = moduleId.getComponentIdentifier().getModule();
             var version = moduleId.getComponentIdentifier().getVersion();
             var expectedBasename = artifact + "-" + version;
-            var filename = result.getFile().getName();
-            var startOfExt = filename.lastIndexOf('.');
-            if (startOfExt != -1) {
-                ext = filename.substring(startOfExt + 1);
-                filename = filename.substring(0, startOfExt);
-            }
 
             if (filename.startsWith(expectedBasename + "-")) {
                 classifier = filename.substring((expectedBasename + "-").length());
             }
             artifactId = moduleId.getComponentIdentifier().getGroup() + ":" + artifact + ":" + version;
         } else {
-            ext = "jar";
-            artifactId = result.getId().getComponentIdentifier().toString();
+            // Try using the capability
+            var capabilities = result.getVariant().getCapabilities();
+            if (capabilities.size() == 1) {
+                var capability = capabilities.get(0);
+                artifactId = capability.getGroup() + ":" + capability.getName() + ":" + capability.getVersion();
+            } else {
+                artifactId = result.getId().getComponentIdentifier().toString();
+            }
         }
         String gav = artifactId;
         if (classifier != null) {
