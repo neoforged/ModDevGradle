@@ -122,6 +122,10 @@ neoForge {
             // client()
             // data()
             // server()
+        
+            // Changes the working directory used for this run.
+            // The default is the 'run' subdirectory of your project
+            gameDirectory = project.file('runs/client')
 
             // Add arguments passed to the main method
             programArguments = ["--arg"]
