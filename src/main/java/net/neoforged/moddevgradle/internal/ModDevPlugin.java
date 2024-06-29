@@ -141,11 +141,23 @@ public class ModDevPlugin implements Plugin<Project> {
             attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
         });
 
+        var createManifestConfigurations = configureArtifactManifestConfigurations(project, extension);
         var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
-            configureArtifactManifestTask(task, extension);
             task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
+            for (var configuration : createManifestConfigurations) {
+                // Convert to a serializable representation for the task.
+                task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
+                    return results.stream().map(result -> {
+                        var gav = guessMavenGav(result);
+                        return new ArtifactManifestEntry(
+                                gav,
+                                result.getFile()
+                        );
+                    }).collect(Collectors.toSet());
+                }));
+            }
         });
 
         var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
@@ -423,11 +435,9 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     /**
-     * Collects all dependencies needed by the NeoFormRuntime and adds them to the task for creating
-     * an artifact manifest for NFRT.
+     * Collects all dependencies needed by the NeoFormRuntime
      */
-    private void configureArtifactManifestTask(CreateArtifactManifestTask task, NeoForgeExtension extension) {
-        var project = task.getProject();
+    private List<Configuration> configureArtifactManifestConfigurations(Project project, NeoForgeExtension extension) {
         var configurations = project.getConfigurations();
         var dependencyFactory = project.getDependencyFactory();
 
@@ -505,18 +515,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        for (var configuration : List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath)) {
-            // Convert to a serializable representation for the task.
-            task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                return results.stream().map(result -> {
-                    var gav = guessMavenGav(result);
-                    return new ArtifactManifestEntry(
-                            gav,
-                            result.getFile()
-                    );
-                }).collect(Collectors.toSet());
-            }));
-        }
+        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath);
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
