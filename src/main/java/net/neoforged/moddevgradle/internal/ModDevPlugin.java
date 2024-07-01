@@ -849,7 +849,10 @@ public class ModDevPlugin implements Plugin<Project> {
             }
             artifactId = moduleId.getComponentIdentifier().getGroup() + ":" + artifact + ":" + version;
         } else {
-            // Try using the capability
+            // When we encounter a project reference, the component identifier does not expose the group or module name.
+            // But we can access the list of capabilities associated with the published variant the artifact originates from.
+            // If the capability was not overridden, this will be the project GAV. If it is *not* the project GAV,
+            // it will be at least in valid GAV format, not crashing NFRT when it parses the manifest. It will just be ignored.
             var capabilities = result.getVariant().getCapabilities();
             if (capabilities.size() == 1) {
                 var capability = capabilities.get(0);
