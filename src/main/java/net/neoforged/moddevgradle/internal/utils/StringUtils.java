@@ -2,14 +2,37 @@ package net.neoforged.moddevgradle.internal.utils;
 
 import org.jetbrains.annotations.ApiStatus;
 
+import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
 @ApiStatus.Internal
 public final class StringUtils {
-    private StringUtils() {}
+    private StringUtils() {
+    }
 
     private static final Pattern NOT_LETTERS = Pattern.compile("\\P{L}");
+
+    /**
+     * Get the platform native charset. To see how this differs from the default charset,
+     * see https://openjdk.org/jeps/400. This property cannot be overriden via system
+     * property.
+     */
+    public static Charset getNativeCharset() {
+        return NativeEncodingHolder.charset;
+    }
+
+    private static class NativeEncodingHolder {
+        static final Charset charset;
+
+        static {
+            var nativeEncoding = System.getProperty("native.encoding");
+            if (nativeEncoding == null) {
+                throw new IllegalStateException("The native.encoding system property is not available, but should be since Java 17!");
+            }
+            charset = Charset.forName(nativeEncoding);
+        }
+    }
 
     /**
      * Converts an arbitrary input string to a sanitized camel case string.
