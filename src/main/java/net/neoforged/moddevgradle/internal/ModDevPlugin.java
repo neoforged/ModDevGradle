@@ -320,7 +320,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
-        extension.getRuns().configureEach(run -> {
+        extension.getRuns().all(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
             var runtimeClasspathConfig = run.getSourceSet().map(sourceSet -> sourceSet.getRuntimeClasspathConfigurationName())
@@ -699,7 +699,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static void setupJarJar(Project project) {
         SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
-        sourceSets.configureEach(sourceSet -> {
+        sourceSets.all(sourceSet -> {
             final Configuration configuration = project.getConfigurations().create(sourceSet.getTaskName(null, "jarJar"));
             configuration.setTransitive(false);
             // jarJar configurations should be resolvable, but ought not to be exposed to consumers;
