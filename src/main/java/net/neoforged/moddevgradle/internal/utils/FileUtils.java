@@ -5,7 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -23,14 +23,20 @@ public final class FileUtils {
     private FileUtils() {
     }
 
-    public static void writeStringSafe(Path destination, String content) throws IOException {
+    public static void writeStringSafe(Path destination, String content, Charset charset) throws IOException {
+        if (!charset.newEncoder().canEncode(content)) {
+            throw new IllegalArgumentException("The given character set " + charset
+                                               + " cannot represent this string: " + content);
+        }
+
         try (var out = newSafeFileOutputStream(destination)) {
-            out.write(content.getBytes(StandardCharsets.UTF_8));
+            var encodedContent = content.getBytes(charset);
+            out.write(encodedContent);
         }
     }
 
-    public static void writeLinesSafe(Path destination, List<String> lines) throws IOException {
-        writeStringSafe(destination, String.join("\n", lines));
+    public static void writeLinesSafe(Path destination, List<String> lines, Charset charset) throws IOException {
+        writeStringSafe(destination, String.join("\n", lines), charset);
     }
 
     public static OutputStream newSafeFileOutputStream(Path destination) throws IOException {

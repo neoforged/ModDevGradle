@@ -10,6 +10,7 @@ import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.TreeSet;
 
 abstract class WriteLegacyClasspath extends DefaultTask {
@@ -32,6 +33,7 @@ abstract class WriteLegacyClasspath extends DefaultTask {
         }
 
         var destination = getLegacyClasspathFile().getAsFile().get().toPath();
-        FileUtils.writeStringSafe(destination, legacyClasspath.toString());
+        // BootStrapLauncher reads this file using UTF-8
+        FileUtils.writeStringSafe(destination, legacyClasspath.toString(), StandardCharsets.UTF_8);
     }
 }
