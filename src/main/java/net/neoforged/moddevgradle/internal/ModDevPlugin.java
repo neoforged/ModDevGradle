@@ -57,6 +57,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -663,7 +664,8 @@ public class ModDevPlugin implements Plugin<Project> {
             try {
                 var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
                 Files.createDirectories(vmArgsFilePath.getParent());
-                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs);
+                // JVM args generally expect platform encoding
+                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, Charset.defaultCharset());
             } catch (IOException e) {
                 throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
             }

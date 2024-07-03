@@ -8,6 +8,7 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
+import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
@@ -35,7 +36,7 @@ abstract class CreateArtifactManifestTask extends DefaultTask {
             artifactsManifest.setProperty(artifact.artifactId(), artifact.file().getAbsolutePath());
         }
 
-        try (var out = new FileOutputStream(getManifestFile().get().getAsFile())) {
+        try (var out = new BufferedOutputStream(new FileOutputStream(getManifestFile().get().getAsFile()))) {
             artifactsManifest.store(out, "");
         }
     }

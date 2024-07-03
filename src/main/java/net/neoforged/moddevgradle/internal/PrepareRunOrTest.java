@@ -24,6 +24,7 @@ import org.slf4j.event.Level;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -183,7 +184,12 @@ abstract class PrepareRunOrTest extends DefaultTask {
             addSystemProp(entry.getKey(), entry.getValue(), lines);
         }
 
-        FileUtils.writeLinesSafe(getVmArgsFile().get().getAsFile().toPath(), lines);
+        FileUtils.writeLinesSafe(
+                getVmArgsFile().get().getAsFile().toPath(),
+                lines,
+                // JVM expects default character set
+                Charset.defaultCharset()
+        );
     }
 
     private void writeProgramArguments(UserDevRunType runConfig) throws IOException {
@@ -232,7 +238,12 @@ abstract class PrepareRunOrTest extends DefaultTask {
             });
         }
 
-        FileUtils.writeLinesSafe(getProgramArgsFile().get().getAsFile().toPath(), lines);
+        FileUtils.writeLinesSafe(
+                getProgramArgsFile().get().getAsFile().toPath(),
+                lines,
+                // DevLaunch reads the file using standard platform encoding
+                Charset.defaultCharset()
+        );
     }
 
     private static void addSystemProp(String name, String value, List<String> lines) {
