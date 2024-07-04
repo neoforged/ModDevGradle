@@ -1,9 +1,12 @@
 # Gradle Plugin for Developing Minecraft Mods on NeoForge
 
+![ModDevGradle Logo](assets/moddevgradle_logo.svg)
+
 Check the NeoForged Project Listing for [latest releases](https://projects.neoforged.net/neoforged/ModDevGradle).
 
 ## Features
 
+- Uses the latest Gradle best practices and is compatible with Gradle 8.8
 - Creates the necessary artifacts to compile Minecraft mods for [NeoForge](https://neoforged.net/)
 - Runs the game from Gradle or IntelliJ for debugging and testing
 - Automatically creates and uses a development-friendly logging configuration for the testing the mod
