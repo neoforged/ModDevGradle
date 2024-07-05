@@ -187,6 +187,16 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
+        // Create a configuration for grabbing interface injection data
+        var interfaceInjectionData = configurations.create("interfaceInjectionData", spec -> {
+            spec.setDescription("Interface injection data add interface extend/implements clauses to Minecraft classes at development time");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.defaultDependencies(dependencies -> {
+                 dependencies.add(dependencyFactory.create(extension.getInjectInterfaceData()));
+            });
+        });
+
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
@@ -218,6 +228,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
             task.getAccessTransformers().from(accessTransformers);
+            task.getInterfaceInjectionData().from(interfaceInjectionData);
             task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());

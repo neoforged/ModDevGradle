@@ -6,6 +6,7 @@ import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
@@ -91,6 +92,15 @@ public abstract class NeoForgeExtension {
      * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
      */
     public abstract ListProperty<String> getAccessTransformers();
+
+    /**
+     * The data-files describing additional interface implementation declarations to be added to
+     * Minecraft classes.
+     * <p>
+     * <strong>This is an advanced property: Injecting interfaces in your development environment using this property will not implement
+     * the interfaces in your published mod. You have to use Mixin or ASM to do that.</strong>
+     */
+    public abstract ConfigurableFileCollection getInjectInterfaceData();
 
     /**
      * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.

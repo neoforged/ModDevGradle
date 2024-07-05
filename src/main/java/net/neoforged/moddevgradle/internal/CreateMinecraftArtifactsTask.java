@@ -28,6 +28,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
     @InputFiles
     abstract ConfigurableFileCollection getAccessTransformers();
 
+    @InputFiles
+    abstract ConfigurableFileCollection getInterfaceInjectionData();
+
     @Input
     @Optional
     abstract Property<Boolean> getValidateAccessTransformers();
@@ -61,11 +64,16 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
         var args = new ArrayList<String>();
         args.add("run");
 
-        var accessTransformers = getAccessTransformers().getFiles();
-        for (var accessTransformer : accessTransformers) {
+        for (var accessTransformer : getAccessTransformers().getFiles()) {
             args.add("--access-transformer");
             args.add(accessTransformer.getAbsolutePath());
         }
+
+        for (var interfaceInjectionFile : getInterfaceInjectionData().getFiles()) {
+            args.add("--interface-injection-data");
+            args.add(interfaceInjectionFile.getAbsolutePath());
+        }
+
         if (getValidateAccessTransformers().getOrElse(false)) {
             args.add("--validate-access-transformers");
         }
