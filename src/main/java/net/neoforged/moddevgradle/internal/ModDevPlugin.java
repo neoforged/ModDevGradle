@@ -7,6 +7,7 @@ import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
+import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -665,7 +666,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
                 Files.createDirectories(vmArgsFilePath.getParent());
                 // JVM args generally expect platform encoding
-                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, Charset.defaultCharset());
+                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, StringUtils.getNativeCharset());
             } catch (IOException e) {
                 throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
             }

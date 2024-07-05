@@ -49,7 +49,7 @@ final class RunUtils {
     private RunUtils() {
     }
 
-    public static String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.0";
+    public static String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.1";
     public static String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
 
     public static String escapeJvmArg(String arg) {

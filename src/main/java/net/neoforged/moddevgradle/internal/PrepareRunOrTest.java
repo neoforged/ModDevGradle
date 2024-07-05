@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
+import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
@@ -24,7 +25,7 @@ import org.slf4j.event.Level;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +37,8 @@ import java.util.stream.Collectors;
  * Performs preparation for running the game or running a test.
  *
  * <p><ul>
- *     <li>Writes the JVM and program arguments for running the game to args-files.</li>
- *     <li>Creates the run folder.</li>
+ * <li>Writes the JVM and program arguments for running the game to args-files.</li>
+ * <li>Creates the run folder.</li>
  * </ul>
  */
 abstract class PrepareRunOrTest extends DefaultTask {
@@ -139,13 +140,13 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
                 "client", new UserDevRunType(
-                        true, "net.minecraft.client.main.Main", clientArgs, List.of(),true, false, false, false, Map.of(), Map.of()
+                        true, "net.minecraft.client.main.Main", clientArgs, List.of(), true, false, false, false, Map.of(), Map.of()
                 ),
                 "server", new UserDevRunType(
-                true, "net.minecraft.server.Main", commonArgs, List.of(),false, true, false, false, Map.of(), Map.of()
+                        true, "net.minecraft.server.Main", commonArgs, List.of(), false, true, false, false, Map.of(), Map.of()
                 ),
                 "data", new UserDevRunType(
-                        true, "net.minecraft.data.Main", commonArgs, List.of(),false, false, true, false, Map.of(), Map.of()
+                        true, "net.minecraft.data.Main", commonArgs, List.of(), false, false, true, false, Map.of(), Map.of()
                 )
         ));
     }
@@ -188,7 +189,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 getVmArgsFile().get().getAsFile().toPath(),
                 lines,
                 // JVM expects default character set
-                Charset.defaultCharset()
+                StringUtils.getNativeCharset()
         );
     }
 
@@ -241,8 +242,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
         FileUtils.writeLinesSafe(
                 getProgramArgsFile().get().getAsFile().toPath(),
                 lines,
-                // DevLaunch reads the file using standard platform encoding
-                Charset.defaultCharset()
+                // FML Junit and DevLaunch (starting in 1.0.1) read this file using UTF-8
+                StandardCharsets.UTF_8
         );
     }
 
