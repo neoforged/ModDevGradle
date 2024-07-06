@@ -404,7 +404,7 @@ at development time. This feature requires that mods use ASM or Mixins to make t
 
 To use this feature, place an [injection data-file](https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection) in your project.
 It does not need to be under `src`.
-Configure the ´interfaceInjectionData` property to include this data-file.
+Configure the `interfaceInjectionData` property to include this data-file.
 
 > [!IMPORTANT]
 > This feature only applies at development time. You need to use Mixins or Coremods to make it work at runtime.
