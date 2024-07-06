@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8.6",
+  "package": "testproject.mixins",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "AddFunExtensionsMixin"
+  ],
+  "client": [],
+  "server": []
+}

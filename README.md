@@ -368,6 +368,65 @@ the centrally managed repositories for that project.
 You can also use the repositories plugin in a project to add the repositories there,
 even if dependency management has been overridden.
 
+### Access Transformers
+
+Access Transformers are an advanced feature allowing mods to relax the access modifiers on Minecraft classes,
+ fields, and methods.
+
+To use this feature, you can place an access transformer data file at `src/resources/META-INF/accesstransformer.cfg`,
+adhering to the [access transformer format](https://docs.neoforged.net/docs/advanced/accesstransformers/).
+
+When you use the default file location, you do not need to configure anything.
+
+If you'd like to use additional or different access transformer files, you can modify the paths MDG reads them from
+by setting the `accessTransformers` property.
+
+> [!IMPORTANT]
+> If you do not use the default path, you have to also modify your neoforge.mods.toml and configure the paths.
+> Please see the [NeoForge documentation](https://docs.neoforged.net/docs/advanced/accesstransformers/) for details.
+
+The elements are in the same format that `project.files(...)` expects.
+
+```
+neoForge {
+    // Pulling in an access transformer from the parent project
+    accessTransformers = ["../src/main/resources/META-INF/accesstransformer.cfg"]
+}
+```
+
+In addition, you can add additional access transformers to the `accessTransformers` configuration using normal
+Project dependency syntax in your dependencies block.
+
+### Interface Injection
+
+Interface injection is an advanced feature allowing mods to add additional interfaces to Minecraft classes and interfaces
+at development time. This feature requires that mods use ASM or Mixins to make the same extensions at runtime.
+
+To use this feature, place an [interface injection data-file](https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection) in your project and configure the `interfaceInjectionData` property to include it.
+Since this feature only applies at development time, you do not need to include this data file in your jar.
+
+> [!IMPORTANT]
+> This feature only applies at development time. You need to use Mixins or Coremods to make it work at runtime.
+
+`build.gradle`
+```groovy
+neoForge {
+    interfaceInjectionData = files("interfaces.json")
+}
+```
+
+`interfaces.json`
+```json
+{
+  "net/minecraft/world/item/ItemStack": [
+    "testproject/FunExtensions"
+  ]
+}
+```
+
+In addition, you can add additional data-files to the `interfaceInjectionData` configuration using normal
+Project dependency syntax in your dependencies block.
+
 ## Advanced Tips & Tricks
 
 ### Overriding Platform Libraries
