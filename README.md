@@ -403,7 +403,7 @@ Interface injection is an advanced feature allowing mods to add additional inter
 at development time. This feature requires that mods use ASM or Mixins to make the same extensions at runtime.
 
 To use this feature, place an [injection data-file](https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection) in your project.
-It does not need to be under `src`.
+Since this feature only applies at development time, you do not need to include this data file in your jar.
 Configure the `interfaceInjectionData` property to include this data-file.
 
 > [!IMPORTANT]
