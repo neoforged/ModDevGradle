@@ -407,17 +407,15 @@ It does not need to be under `src`.
 Configure the ´interfaceInjectionData` property to include this data-file.
 
 > [!IMPORTANT]
-> If you do not use the default path, you have to also modify your neoforge.mods.toml and configure the paths.
-> Please see the [NeoForge documentation](https://docs.neoforged.net/docs/advanced/accesstransformers/) for details.
+> This feature only applies at development time. You need to use Mixins or Coremods to make it work at runtime.
 
 ```
 neoForge {
-    // Pulling in an access transformer from the parent project
-    interfaceInjectionData = ["../src/main/resources/META-INF/accesstransformer.cfg"]
+    interfaceInjectionData = files("interfaces.json")
 }
 ```
 
-In addition, you can add additional access transformers to the `interfaceInjectionData` configuration using normal
+In addition, you can add additional data-files to the `interfaceInjectionData` configuration using normal
 Project dependency syntax in your dependencies block.
 
 https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection
