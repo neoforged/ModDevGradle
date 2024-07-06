@@ -188,7 +188,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Create a configuration for grabbing interface injection data
         var interfaceInjectionData = configurations.create("interfaceInjectionData", spec -> {
-            spec.setDescription("Interface injection data add interface extend/implements clauses to Minecraft classes at development time");
+            spec.setDescription("Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {

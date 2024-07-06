@@ -416,7 +416,7 @@ neoForge {
 ```
 
 `interfaces.json`
-```json filename="interfaces.json"
+```json
 {
   "net/minecraft/world/item/ItemStack": [
     "testproject/FunExtensions"
