@@ -99,6 +99,8 @@ public abstract class NeoForgeExtension {
      * <p>
      * <strong>This is an advanced property: Injecting interfaces in your development environment using this property will not implement
      * the interfaces in your published mod. You have to use Mixin or ASM to do that.</strong>
+     *
+     * @see <a href="https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection">Interface Injection Data Format</a>
      */
     public abstract ConfigurableFileCollection getInterfaceInjectionData();
 
