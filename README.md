@@ -418,8 +418,6 @@ neoForge {
 In addition, you can add additional data-files to the `interfaceInjectionData` configuration using normal
 Project dependency syntax in your dependencies block.
 
-https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection
-
 ## Advanced Tips & Tricks
 
 ### Overriding Platform Libraries
