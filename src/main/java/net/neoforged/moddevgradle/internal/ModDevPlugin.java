@@ -330,6 +330,12 @@ public class ModDevPlugin implements Plugin<Project> {
             task.dependsOn(createArtifacts);
         });
 
+        var additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
+            spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+        });
+
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         extension.getRuns().all(run -> {
             var type = RunUtils.getRequiredType(project, run);
@@ -368,8 +374,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.withDependencies(set -> {
                     set.addLater(neoForgeModDevLibrariesDependency);
                 });
-                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
-                spec.getDependencies().addAllLater(run.getAdditionalRuntimeClasspath().getDependencies());
+                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration(), additionalClasspath);
             });
 
             var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {

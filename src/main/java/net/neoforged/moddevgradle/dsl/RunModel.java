@@ -6,7 +6,6 @@ import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.Dependencies;
-import org.gradle.api.artifacts.dsl.DependencyCollector;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
@@ -112,8 +111,6 @@ public abstract class RunModel implements Named, Dependencies {
     public Configuration getAdditionalRuntimeClasspathConfiguration() {
         return configuration;
     }
-
-    public abstract DependencyCollector getAdditionalRuntimeClasspath();
 
     public abstract Property<Level> getLogLevel();
 
