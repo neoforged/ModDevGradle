@@ -16,6 +16,9 @@ license="CC0"
 # A URL to refer people to when problems occur with this mod
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
 
+[[mixins]]
+config="testmod.mixins.json"
+
 # A list of mods - how many allowed here is determined by the individual mod loader
 [[mods]] #mandatory
 

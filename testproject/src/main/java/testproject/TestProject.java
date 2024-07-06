@@ -2,6 +2,8 @@ package testproject;
 
 import apitest.ApiTest;
 import net.minecraft.DetectedVersion;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.fml.common.Mod;
 import subproject.SubProject;
 
@@ -13,5 +15,7 @@ public class TestProject {
         System.out.println(SubProject.class.getName());
 
         new ApiTest(); // access something from the api source set
+
+        System.out.println(new ItemStack(Items.ACACIA_BOAT).testmodThisIsMine());
     }
 }

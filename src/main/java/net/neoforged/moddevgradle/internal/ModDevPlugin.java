@@ -58,7 +58,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -193,7 +192,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {
-                 dependencies.add(dependencyFactory.create(extension.getInjectInterfaceData()));
+                 dependencies.add(dependencyFactory.create(extension.getInterfaceInjectionData()));
             });
         });
 

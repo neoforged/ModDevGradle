@@ -27,6 +27,8 @@ neoForge {
     version = project.neoforge_version
     addModdingDependenciesTo(sourceSets.api)
 
+    interfaceInjectionData = files("interfaces.json")
+
     runs {
         configureEach {
             logLevel = org.slf4j.event.Level.INFO

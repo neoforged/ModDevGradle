@@ -100,7 +100,7 @@ public abstract class NeoForgeExtension {
      * <strong>This is an advanced property: Injecting interfaces in your development environment using this property will not implement
      * the interfaces in your published mod. You have to use Mixin or ASM to do that.</strong>
      */
-    public abstract ConfigurableFileCollection getInjectInterfaceData();
+    public abstract ConfigurableFileCollection getInterfaceInjectionData();
 
     /**
      * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.
