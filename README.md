@@ -408,12 +408,14 @@ Since this feature only applies at development time, you do not need to include 
 > [!IMPORTANT]
 > This feature only applies at development time. You need to use Mixins or Coremods to make it work at runtime.
 
-```groovy filename="build.gradle"
+`build.gradle`
+```groovy
 neoForge {
     interfaceInjectionData = files("interfaces.json")
 }
 ```
 
+`interfaces.json`
 ```json filename="interfaces.json"
 {
   "net/minecraft/world/item/ItemStack": [
