@@ -402,9 +402,10 @@ Project dependency syntax in your dependencies block.
 Interface injection is an advanced feature allowing mods to add additional interfaces to Minecraft classes and interfaces
 at development time. This feature requires that mods use ASM or Mixins to make the same extensions at runtime.
 
-To use this feature, place an [injection data-file](https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection) in your project.
+To use this feature,
+place an [interface injection data-file](https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection) in your project
+and configure the `interfaceInjectionData` property to include it.
 Since this feature only applies at development time, you do not need to include this data file in your jar.
-Configure the `interfaceInjectionData` property to include this data-file.
 
 > [!IMPORTANT]
 > This feature only applies at development time. You need to use Mixins or Coremods to make it work at runtime.
