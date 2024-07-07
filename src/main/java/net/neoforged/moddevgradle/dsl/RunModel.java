@@ -64,10 +64,19 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract Property<String> getIdeName();
 
+    /**
+     * Directory that the game will run in. Defaults to {@code run/}.
+     */
     public abstract DirectoryProperty getGameDirectory();
 
+    /**
+     * Additional environment variables.
+     */
     public abstract MapProperty<String, String> getEnvironment();
 
+    /**
+     * Shorthand to set a single environment variable.
+     */
     public void environment(String key, String value) {
         getEnvironment().put(key, value);
     }
@@ -77,6 +86,9 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract MapProperty<String, String> getSystemProperties();
 
+    /**
+     * Shorthand to set a single system property.
+     */
     public void systemProperty(String key, String value) {
         getSystemProperties().put(key, value);
     }
@@ -91,6 +103,9 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract ListProperty<String> getProgramArguments();
 
+    /**
+     * Shorthand to add a single program argument.
+     */
     public void programArgument(String arg) {
         getProgramArguments().add(arg);
     }
@@ -100,10 +115,17 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract ListProperty<String> getJvmArguments();
 
+    /**
+     * Shorthand to add a single JVM argument.
+     */
     public void jvmArgument(String arg) {
         getJvmArguments().add(arg);
     }
 
+    /**
+     * The mods for this run. Defaults to all mods registered in the project.
+     * @see ModModel
+     */
     public abstract SetProperty<ModModel> getMods();
 
     /**
@@ -112,21 +134,21 @@ public abstract class RunModel implements Named, Dependencies {
     public abstract Property<String> getType();
 
     /**
-     * Equivalent to setting {@code type = "client"}
+     * Equivalent to setting {@code type = "client"}.
      */
     public void client() {
         getType().set("client");
     }
 
     /**
-     * Equivalent to setting {@code type = "data"}
+     * Equivalent to setting {@code type = "data"}.
      */
     public void data() {
         getType().set("data");
     }
 
     /**
-     * Equivalent to setting {@code type = "server"}
+     * Equivalent to setting {@code type = "server"}.
      */
     public void server() {
         getType().set("server");
