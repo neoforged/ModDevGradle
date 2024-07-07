@@ -59,6 +59,9 @@ public abstract class RunModel implements Named, Dependencies {
         return name;
     }
 
+    /**
+     * Name for the run configuration in the IDE.
+     */
     public abstract Property<String> getIdeName();
 
     public abstract DirectoryProperty getGameDirectory();
@@ -69,6 +72,9 @@ public abstract class RunModel implements Named, Dependencies {
         getEnvironment().put(key, value);
     }
 
+    /**
+     * Additional system properties to add to the JVM arguments.
+     */
     public abstract MapProperty<String, String> getSystemProperties();
 
     public void systemProperty(String key, String value) {
@@ -80,12 +86,18 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract Property<String> getMainClass();
 
+    /**
+     * Additional program arguments to add to the run configuration.
+     */
     public abstract ListProperty<String> getProgramArguments();
 
     public void programArgument(String arg) {
         getProgramArguments().add(arg);
     }
 
+    /**
+     * Additional JVM arguments to be added to the run configuration.
+     */
     public abstract ListProperty<String> getJvmArguments();
 
     public void jvmArgument(String arg) {
@@ -94,16 +106,28 @@ public abstract class RunModel implements Named, Dependencies {
 
     public abstract SetProperty<ModModel> getMods();
 
+    /**
+     * Sets the run configuration type from NeoForge that should be used.
+     */
     public abstract Property<String> getType();
 
+    /**
+     * Equivalent to setting {@code type = "client"}
+     */
     public void client() {
         getType().set("client");
     }
 
+    /**
+     * Equivalent to setting {@code type = "data"}
+     */
     public void data() {
         getType().set("data");
     }
 
+    /**
+     * Equivalent to setting {@code type = "server"}
+     */
     public void server() {
         getType().set("server");
     }
@@ -112,6 +136,9 @@ public abstract class RunModel implements Named, Dependencies {
         return configuration;
     }
 
+    /**
+     * Changes the games log-level.
+     */
     public abstract Property<Level> getLogLevel();
 
     /**
