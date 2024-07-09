@@ -9,6 +9,7 @@ import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
 
 import javax.inject.Inject;
@@ -28,6 +29,9 @@ public abstract class NeoForgeExtension {
     private final NeoFormRuntime neoFormRuntime;
     private final UnitTest unitTest;
 
+    private final DataFileCollection accessTransformers;
+    private final DataFileCollection interfaceInjectionData;
+
     @Inject
     public NeoForgeExtension(Project project) {
         this.project = project;
@@ -37,7 +41,10 @@ public abstract class NeoForgeExtension {
         neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
 
-        getAccessTransformers().convention(project.provider(() -> {
+        accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
+        interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
+
+        getAccessTransformers().getFiles().convention(project.provider(() -> {
             var collection = project.getObjects().fileCollection();
 
             // Only return this when it actually exists
@@ -91,7 +98,17 @@ public abstract class NeoForgeExtension {
      *
      * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
      */
-    public abstract ConfigurableFileCollection getAccessTransformers();
+    public void accessTransformers(Action<DataFileCollection> action) {
+        action.execute(accessTransformers);
+    }
+
+    public DataFileCollection getAccessTransformers() {
+        return accessTransformers;
+    }
+
+    public void setAccessTransformers(Object... paths) {
+        getAccessTransformers().getFiles().setFrom(paths);
+    }
 
     /**
      * The data-files describing additional interface implementation declarations to be added to
@@ -102,7 +119,17 @@ public abstract class NeoForgeExtension {
      *
      * @see <a href="https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection">Interface Injection Data Format</a>
      */
-    public abstract ConfigurableFileCollection getInterfaceInjectionData();
+    public void interfaceInjectionData(Action<DataFileCollection> action) {
+        action.execute(interfaceInjectionData);
+    }
+
+    public DataFileCollection getInterfaceInjectionData() {
+        return interfaceInjectionData;
+    }
+
+    public void setInterfaceInjectionData(Object... paths) {
+        getInterfaceInjectionData().getFiles().setFrom(paths);
+    }
 
     /**
      * Enable access transformer validation, raising fatal errors if an AT targets a member that doesn't exist.

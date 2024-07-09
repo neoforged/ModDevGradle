@@ -68,12 +68,6 @@ sourceSets {
     }
 }
 
-var cfc = project.objects.fileCollection()
-
-cfc.convention(project.provider{ project.objects.fileCollection().from('gradle.prpoerites', 'gradlew') })
-
-println(cfc.getFiles())
-
 configurations {
     // Configuration for all dependencies that we want shaded.
     shaded
