@@ -2,8 +2,6 @@ import groovy.json.JsonSlurper
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.TupleConstructor
 
-import java.util.concurrent.Callable
-
 plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
