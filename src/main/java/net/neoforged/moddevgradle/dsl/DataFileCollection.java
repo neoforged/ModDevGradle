@@ -3,23 +3,22 @@ package net.neoforged.moddevgradle.dsl;
 import org.gradle.api.file.ConfigurableFileCollection;
 
 /**
- * A DSL model that can hold data files (such as ATs) to be used or exposed.
+ * Holds data files (such as ATs) to be used or exposed.
  */
 public abstract class DataFileCollection {
-
     /**
-     * Add the given paths to the file collection.
+     * Add the given paths to the {@linkplain #getFiles() file collection}.
      * <p>
-     * This method replaces any values set conventionally.
+     * Using this method replaces any previously present default value.
      */
     public void from(Object... paths) {
         getFiles().from(paths);
     }
 
     /**
-     * Add the given paths to the published files collection.
+     * Add the given paths to the {@linkplain #getPublished() published file collection}.
      * <p>
-     * This method replaces any values set conventionally.
+     * Using this method replaces any previously present default value.
      */
     public void publish(Object... paths) {
         getPublished().from(paths);

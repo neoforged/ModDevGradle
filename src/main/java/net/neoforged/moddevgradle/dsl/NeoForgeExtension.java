@@ -106,6 +106,9 @@ public abstract class NeoForgeExtension {
         return accessTransformers;
     }
 
+    /**
+     * Replaces current access transformers.
+     */
     public void setAccessTransformers(Object... paths) {
         getAccessTransformers().getFiles().setFrom(paths);
     }
@@ -127,6 +130,9 @@ public abstract class NeoForgeExtension {
         return interfaceInjectionData;
     }
 
+    /**
+     * Replaces current interface injection data files.
+     */
     public void setInterfaceInjectionData(Object... paths) {
         getInterfaceInjectionData().getFiles().setFrom(paths);
     }
