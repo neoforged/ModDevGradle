@@ -215,7 +215,10 @@ final class RunUtils {
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project, @Nullable Function<Project, File> outputDirectory, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
+    public static ModFoldersProvider getIdeaModFoldersProvider(Project project,
+                                                               @Nullable Function<Project, File> outputDirectory,
+                                                               Provider<Set<ModModel>> modsProvider,
+                                                               boolean includeUnitTests) {
         Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
             folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
@@ -225,6 +228,20 @@ final class RunUtils {
         } else {
             folders = getModFoldersForGradle(project, modsProvider, includeUnitTests);
         }
+
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        modFoldersProvider.getModFolders().set(folders);
+        return modFoldersProvider;
+    }
+
+    public static ModFoldersProvider getEclipseModFoldersProvider(Project project,
+                                                                  Provider<Set<ModModel>> modsProvider,
+                                                                  boolean includeUnitTests) {
+        var folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
+            output.from(findSourceSetProject(project, sourceSet).getProjectDir().toPath()
+                    .resolve("bin")
+                    .resolve(sourceSet.getName()));
+        });
 
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(folders);
