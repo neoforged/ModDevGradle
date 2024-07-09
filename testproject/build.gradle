@@ -28,6 +28,13 @@ neoForge {
     addModdingDependenciesTo(sourceSets.api)
 
     interfaceInjectionData = files("interfaces.json")
+    interfaceInjectionData {
+        publish(file('interfaces.json'))
+    }
+
+    accessTransformers {
+        publish(project.file('src/main/resources/META-INF/accesstransformer.cfg'))
+    }
 
     runs {
         configureEach {
