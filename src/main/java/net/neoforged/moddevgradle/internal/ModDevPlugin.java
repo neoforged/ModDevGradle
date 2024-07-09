@@ -178,7 +178,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {
-                 dependencies.addLater(
+                dependencies.addLater(
                         extension.getAccessTransformers()
                                 .map(project::files)
                                 .map(dependencyFactory::create)
@@ -192,7 +192,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.defaultDependencies(dependencies -> {
-                 dependencies.add(dependencyFactory.create(extension.getInterfaceInjectionData()));
+                dependencies.add(dependencyFactory.create(extension.getInterfaceInjectionData()));
             });
         });
 
@@ -939,13 +939,12 @@ public class ModDevPlugin implements Plugin<Project> {
                                                       PrepareRun prepareTask) {
         //Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         //And so that post sync tasks are only ran once for all subprojects.
-        EclipseModel model = project.getExtensions().findByType(EclipseModel.class);
+        var model = project.getExtensions().getByType(EclipseModel.class);
 
         var config = JavaApplicationLaunchConfig.builder(model.getProject().getName())
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
-                        // TODO: Eclipse output folders, are those relevant for Eclipse runs?
-                        RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, null, run.getMods(), false).getArgument())
+                        RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .envVar(run.getEnvironment().get())
