@@ -177,12 +177,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("AccessTransformers to widen visibility of Minecraft classes/fields/methods");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
-                 dependencies.addLater(
-                        extension.getAccessTransformers()
-                                .map(project::files)
-                                .map(dependencyFactory::create)
-                );
+            spec.withDependencies(dependencies -> {
+                 dependencies.add(dependencyFactory.create(extension.getAccessTransformers()));
             });
         });
 
@@ -191,7 +187,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
+            spec.withDependencies(dependencies -> {
                  dependencies.add(dependencyFactory.create(extension.getInterfaceInjectionData()));
             });
         });

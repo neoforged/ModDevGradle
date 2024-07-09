@@ -5,7 +5,7 @@ plugins {
 neoForge {
     neoFormVersion = "1.21-20240613.152323"
 
-    accessTransformers = ["accesstransformer.cfg"]
+    accessTransformers = project.files("accesstransformer.cfg")
 
     runs {
         client {

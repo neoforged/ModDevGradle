@@ -38,16 +38,18 @@ public abstract class NeoForgeExtension {
         unitTest = project.getObjects().newInstance(UnitTest.class);
 
         getAccessTransformers().convention(project.provider(() -> {
+            var collection = project.getObjects().fileCollection();
+
             // Only return this when it actually exists
             var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
             for (var resources : mainSourceSet.getResources().getSrcDirs()) {
                 var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
                 if (project.file(defaultPath).exists()) {
-                    return List.of(defaultPath.getAbsolutePath());
+                    return collection.from(defaultPath.getAbsolutePath());
                 }
             }
 
-            return List.of();
+            return collection;
         }));
         getValidateAccessTransformers().convention(false);
     }
@@ -84,14 +86,12 @@ public abstract class NeoForgeExtension {
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.
      * <p>
-     * This list expects entries in the same format expected by {@link Project#file(Object)}.
-     * <p>
      * If you do not set this property, the plugin will look for an access transformer file at
      * {@code META-INF/accesstransformer.cfg} relative to your main source sets resource directories.
      *
      * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
      */
-    public abstract ListProperty<String> getAccessTransformers();
+    public abstract ConfigurableFileCollection getAccessTransformers();
 
     /**
      * The data-files describing additional interface implementation declarations to be added to

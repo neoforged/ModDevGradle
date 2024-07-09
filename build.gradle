@@ -2,6 +2,8 @@ import groovy.json.JsonSlurper
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.TupleConstructor
 
+import java.util.concurrent.Callable
+
 plugins {
     id 'java-gradle-plugin'
     id 'maven-publish'
@@ -65,6 +67,12 @@ sourceSets {
         runtimeClasspath += java8.output
     }
 }
+
+var cfc = project.objects.fileCollection()
+
+cfc.convention(project.provider{ project.objects.fileCollection().from('gradle.prpoerites', 'gradlew') })
+
+println(cfc.getFiles())
 
 configurations {
     // Configuration for all dependencies that we want shaded.
