@@ -90,7 +90,8 @@ public abstract class JarJarArtifacts {
         for (ResolvedComponentResult rootComponent : rootComponents) {
             collectFromComponent(rootComponent, knownIdentifiers, versions, versionRanges);
         }
-        List<ResolvedJarJarArtifact> data = new ArrayList<>();
+        var data = new ArrayList<ResolvedJarJarArtifact>();
+        var filesAdded = new HashSet<String>();
         for (ResolvedArtifactResult result : artifacts) {
             ResolvedVariantResult variant = result.getVariant();
 
@@ -110,7 +111,11 @@ public abstract class JarJarArtifacts {
             if (version != null && versionRange != null) {
                 var embeddedFilename = getEmbeddedFilename(result, jarIdentifier);
 
-                data.add(new ResolvedJarJarArtifact(result.getFile(), embeddedFilename, version, versionRange, jarIdentifier.group(), jarIdentifier.artifact()));
+                var dataEntry = new ResolvedJarJarArtifact(result.getFile(), embeddedFilename, version, versionRange, jarIdentifier.group(), jarIdentifier.artifact());
+                if (!filesAdded.add(embeddedFilename)) {
+                    throw new GradleException("Trying to add multiple files at the same embedded location: " + embeddedFilename);
+                }
+                data.add(dataEntry);
             }
         }
         return data.stream()
