@@ -15,7 +15,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation "net.neoforged:testframework:${project.neoforge_version}"
 
-    implementation project(":subproject")
+    implementation(accessTransformers(interfaceInjectionData(project(":subproject"))))
     implementation sourceSets.api.output
 }
 

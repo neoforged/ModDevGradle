@@ -9,8 +9,14 @@ neoForge {
     neoFormRuntime {
         // verbose = true
     }
+
+    interfaceInjectionData {
+        from(project.file('interfaces.json'))
+        publish(project.file('interfaces.json'))
+    }
 }
 
 dependencies {
-    implementation(accessTransformers(interfaceInjectionData(project(':common'))))
+    implementation(accessTransformers(project(':common')))
+    accessTransformersElements(project(':common'))
 }
