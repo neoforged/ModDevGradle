@@ -1,0 +1,3 @@
+{
+  "net/minecraft/core/BlockPos": "subproject/extensions/BlockPosExtension"
+}

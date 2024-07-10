@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  */
 public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<T> {
     private static final int MIN_JAVA_VERSION = 17;
-    private static final GradleVersion MIN_GRADLE_VERSION = GradleVersion.version("8.7");
+    private static final GradleVersion MIN_GRADLE_VERSION = GradleVersion.version("8.8");
 
     private final String pluginClassName;
 

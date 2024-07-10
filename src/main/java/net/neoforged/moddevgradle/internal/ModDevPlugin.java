@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
+import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
@@ -9,6 +10,7 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -18,12 +20,14 @@ import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
+import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
@@ -65,6 +69,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -173,28 +178,12 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // Create an access transformer configuration
-        var accessTransformers = configurations.create("accessTransformers", spec -> {
-            spec.setDescription("AccessTransformers to widen visibility of Minecraft classes/fields/methods");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
-                dependencies.addLater(
-                        extension.getAccessTransformers()
-                                .map(project::files)
-                                .map(dependencyFactory::create)
-                );
-            });
-        });
+        var accessTransformers = dataFileConfiguration(project, "accessTransformers", "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
+                "accesstransformer", extension.getAccessTransformers());
 
         // Create a configuration for grabbing interface injection data
-        var interfaceInjectionData = configurations.create("interfaceInjectionData", spec -> {
-            spec.setDescription("Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
-                dependencies.add(dependencyFactory.create(extension.getInterfaceInjectionData()));
-            });
-        });
+        var interfaceInjectionData = dataFileConfiguration(project, "interfaceInjectionData", "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
+                "interfaceinjection", extension.getInterfaceInjectionData());
 
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
@@ -974,6 +963,42 @@ public class ModDevPlugin implements Plugin<Project> {
         } catch (XMLStreamException e) {
             throw new RuntimeException("Failed to write launch file: " + file, e);
         }
+    }
+
+    private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
+        var depFactory = project.getDependencyFactory();
+        Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
+
+        var configuration = project.getConfigurations().create(name, spec -> {
+            spec.setDescription(description);
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getFiles())));
+        });
+        var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
+            spec.setDescription("Published data files for " + name);
+            spec.setCanBeConsumed(true);
+            spec.setCanBeResolved(false);
+            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getPublished())));
+        });
+
+        // Set up the publishing conditionally
+        AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+
+        AtomicBoolean configured = new AtomicBoolean();
+        Runnable configurePublishing = () -> {
+            if (configured.compareAndSet(false, true)) {
+                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {});
+            }
+        };
+
+        elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
+        elementsConfiguration.getArtifacts().configureEach(artifact -> configurePublishing.run());
+
+        configuration.attributes(attributeAction);
+        elementsConfiguration.attributes(attributeAction);
+
+        return configuration;
     }
 
 }

@@ -116,6 +116,7 @@ java {
 }
 
 jar {
+    archiveClassifier = 'slim'
     from sourceSets.java8.output
 }
 
@@ -209,7 +210,7 @@ publishing {
 // Instead, let's use the shadow jar and configurations.runtimeClasspath.
 tasks.withType(PluginUnderTestMetadata).configureEach {
     it.pluginClasspath.setFrom tasks.shadowJar, configurations.runtimeClasspath
-    it.inputs.file(jar.archiveFile)
+    it.inputs.file(shadowJar.archiveFile)
 }
 
 abstract class GenerateRepoFilter extends DefaultTask {
