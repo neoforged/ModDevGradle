@@ -462,6 +462,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
+        Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -532,7 +533,16 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath);
+        var tools = configurations.create(configurationPrefix + "ExternalTools", spec -> {
+            spec.setDescription("The external tools used by the NeoForm runtime");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.withDependencies(dependencies -> dependencies.addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
+                caps.requireCapability("net.neoforged:neoform-runtime-external-tools");
+            }))));
+        });
+
+        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath, tools);
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
