@@ -145,7 +145,7 @@ javadoc {
 // This is a shameless ripoff from Fabric Loom:
 // https://github.com/FabricMC/fabric-loom/blob/dev/1.6/build.gradle
 // Need to tweak this file to pretend we are compatible with j8 so the bootstrap will run.
-tasks.withType(GenerateModuleMetadata) {
+tasks.withType(GenerateModuleMetadata).configureEach {
     doLast {
         def file = outputFile.get().asFile
 
