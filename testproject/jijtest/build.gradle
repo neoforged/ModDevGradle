@@ -2,14 +2,30 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+sourceSets {
+    service
+}
+
+def serviceJar = tasks.register("serviceJar", Jar) {
+    from(sourceSets.service.output)
+    archiveClassifier = "service"
+    manifest {
+        attributes(
+            'FMLModType': 'LIBRARY',
+            'Automatic-Module-Name': 'jij.service'
+        )
+    }
+}
+
 evaluationDependsOn(":coremod") // Because of the sourceset reference
 
 dependencies {
     implementation project(":coremod")
-
+    implementation files(sourceSets.service.output)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     jarJar(project(":coremod"))
+    jarJar(files(serviceJar))
 
     jarJar("org.commonmark:commonmark") {
         version {
@@ -38,6 +54,9 @@ neoForge {
         }
         coremod {
             sourceSet project(":coremod").sourceSets.main
+        }
+        service {
+            sourceSet sourceSets.service
         }
     }
 

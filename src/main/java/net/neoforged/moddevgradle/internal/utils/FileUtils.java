@@ -1,17 +1,27 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import org.gradle.api.GradleException;
 import org.jetbrains.annotations.ApiStatus;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.module.ModuleDescriptor;
 import java.nio.charset.Charset;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
+import java.util.jar.JarFile;
+import java.util.zip.ZipFile;
 
 @ApiStatus.Internal
 public final class FileUtils {
@@ -21,6 +31,47 @@ public final class FileUtils {
     private static final int MAX_TRIES = 2;
 
     private FileUtils() {
+    }
+
+    /**
+     * Finds an explicitly defined Java module name in the given Jar file.
+     */
+    public static Optional<String> getExplicitJavaModuleName(File file) throws IOException {
+        try (var jf = new JarFile(file, false, ZipFile.OPEN_READ, JarFile.runtimeVersion())) {
+            var moduleInfoEntry = jf.getJarEntry("module-info.class");
+            if (moduleInfoEntry != null) {
+                try (var in = jf.getInputStream(moduleInfoEntry)) {
+                    return Optional.of(ModuleDescriptor.read(in).name());
+                }
+            }
+
+            var manifest = jf.getManifest();
+            if (manifest == null) {
+                return Optional.empty();
+            }
+
+            var automaticModuleName = manifest.getMainAttributes().getValue("Automatic-Module-Name");
+            if (automaticModuleName == null) {
+                return Optional.empty();
+            }
+
+            return Optional.of(automaticModuleName);
+        } catch (Exception e) {
+            throw new IOException("Failed to determine the Java module name of " + file + ": " + e, e);
+        }
+
+    }
+
+    public static String hashFile(File file, String algorithm) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
+            try (var input = new DigestInputStream(new FileInputStream(file), digest)) {
+                input.transferTo(OutputStream.nullOutputStream());
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (Exception e) {
+            throw new GradleException("Failed to hash file " + file, e);
+        }
     }
 
     public static void writeStringSafe(Path destination, String content, Charset charset) throws IOException {

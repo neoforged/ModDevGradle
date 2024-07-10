@@ -5,6 +5,7 @@ import net.neoforged.jarjar.metadata.ContainedJarMetadata;
 import net.neoforged.jarjar.metadata.ContainedVersion;
 import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
+import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.testkit.runner.BuildResult;
@@ -17,6 +18,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
@@ -32,6 +35,103 @@ class JarJarTest {
     public void testNoSourceWhenNoDependenciesAreDefined() throws IOException {
         var result = runWithSource("");
         assertEquals(NO_SOURCE, result.task(":jarJar").getOutcome());
+    }
+
+    @Test
+    void testEmbeddingCurseMavenDependencyProducesWarning() throws IOException {
+        var result = runWithSource("""
+                repositories {
+                    maven {
+                        url "https://www.cursemaven.com"
+                        content {
+                            includeGroup "curse.maven"
+                        }
+                    }
+                }
+                dependencies {
+                    jarJar(implementation("curse.maven:jade-324717:5444008"))
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        assertThat(result.getOutput()).contains("Embedding dependency curse.maven:jade-324717:5444008 from cursemaven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.");
+    }
+
+    @Test
+    void testCannotEmbedLocalFileWithoutExplicitJavaModuleName() throws IOException {
+        var localFile = tempDir.resolve("file.jar");
+        new JarOutputStream(Files.newOutputStream(localFile), new Manifest()).close();
+
+        var e = assertThrows(UnexpectedBuildFailure.class, () -> runWithSource("""
+                dependencies {
+                    jarJar(files("file.jar"))
+                }
+                """));
+        assertThat(e).hasMessageFindingMatch("Cannot embed local file dependency .*file.jar because it has no explicit Java module name.\\s*" +
+                                             "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\\s*" +
+                                             "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
+    }
+
+    @Test
+    void testCanEmbedLocalFileWithAutomaticModuleName() throws Exception {
+        var localFile = tempDir.resolve("file.jar");
+        var manifest = new Manifest();
+        manifest.getMainAttributes().putValue("Manifest-Version", "1.0");
+        manifest.getMainAttributes().putValue("Automatic-Module-Name", "super_duper_module");
+        new JarOutputStream(Files.newOutputStream(localFile), manifest).close();
+        var md5Hash = FileUtils.hashFile(localFile.toFile(), "MD5");
+
+        var result = runWithSource("""
+                dependencies {
+                    jarJar(files("file.jar"))
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("", "super_duper_module"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[" + md5Hash + "]"), new DefaultArtifactVersion(md5Hash)),
+                                "META-INF/jarjar/file.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
+    }
+
+    @Test
+    void testCanEmbedLocalFileWithModuleInfo() throws Exception {
+        var moduleInfoJava = tempDir.resolve("src/service/java/module-info.java");
+        Files.createDirectories(moduleInfoJava.getParent());
+        Files.writeString(moduleInfoJava, "module super_duper_module {}");
+
+        var result = runWithSource("""
+                sourceSets {
+                    service
+                }
+                compileServiceJava {
+                    // otherwise testkit needs to run with J21
+                    options.release = 9
+                }
+                var serviceJar = tasks.register(sourceSets.service.jarTaskName, Jar) {
+                    from sourceSets.service.output
+                    archiveClassifier = "service"
+                }
+                dependencies {
+                    jarJar(files(serviceJar))
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        var md5Hash = FileUtils.hashFile(tempDir.resolve("build/libs/jijtest-service.jar").toFile(), "MD5");
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("", "super_duper_module"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[" + md5Hash + "]"), new DefaultArtifactVersion(md5Hash)),
+                                "META-INF/jarjar/jijtest-service.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
     }
 
     @Test
@@ -176,20 +276,27 @@ class JarJarTest {
     }
 
     private BuildResult runWithSource(String source) throws IOException {
-        Files.writeString(tempDir.resolve("settings.gradle"), "");
-        Files.writeString(tempDir.resolve("build.gradle"), """
-                                                                   plugins {
-                                                                     id "net.neoforged.moddev"
-                                                                   }
-                                                                   repositories {
-                                                                     mavenCentral()
-                                                                   }
-                                                                   """ + source);
+        Files.writeString(tempDir.resolve("settings.gradle"), """
+                plugins {
+                    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+                }
+                rootProject.name = 'jijtest'
+                """);
+        Files.writeString(
+                tempDir.resolve("build.gradle"),
+                """
+                        plugins {
+                          id "net.neoforged.moddev"
+                        }
+                        repositories {
+                          mavenCentral()
+                        }
+                        """ + source);
 
         return GradleRunner.create()
                 .withPluginClasspath()
                 .withProjectDir(tempDir.toFile())
-                .withArguments("jarjar")
+                .withArguments("jarjar", "--stacktrace")
                 .withDebug(true)
                 .build();
     }
