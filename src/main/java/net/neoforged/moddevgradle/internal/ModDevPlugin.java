@@ -661,7 +661,7 @@ public class ModDevPlugin implements Plugin<Project> {
             // The FML JUnit plugin uses this system property to read a
             // file containing the program arguments needed to launch
             task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
-            task.jvmArgs(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(vmArgsFile.get())));
+            task.jvmArgs(RunUtils.getArgFileParameter(vmArgsFile.get()));
 
             var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
             task.getJvmArgumentProviders().add(modFoldersProvider);
