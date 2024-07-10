@@ -116,6 +116,7 @@ java {
 }
 
 jar {
+    archiveClassifier = 'slim'
     from sourceSets.java8.output
 }
 
