@@ -12,7 +12,5 @@ neoForge {
 }
 
 dependencies {
-    implementation(project(':'))
-    accessTransformers(project(':'))
-    interfaceInjectionData(project(':'))
+    implementation(accessTransformers(interfaceInjectionData(project(':common'))))
 }
