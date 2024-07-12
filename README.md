@@ -238,7 +238,7 @@ the [Maven version range format](https://cwiki.apache.org/confluence/display/MAV
 External dependencies will only be loaded in your runs if they are mods (with a `META-INF/neoforge.mods.toml` file),
 or if they have the `FMLModType` entry set in their `META-INF/MANIFEST.MF` file.
 Usually, Java libraries do not fit either of these requirements,
-leading to a `ClassNotFoundException` at run time when you try to run your mod.
+leading to a `ClassNotFoundException` at run time when you try to call them from your mod.
 
 To fix this, the library needs to be added to the `additionalRuntimeClasspath` as follows:
 ```groovy
