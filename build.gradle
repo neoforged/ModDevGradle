@@ -99,7 +99,7 @@ dependencies {
 
     java8CompileOnly gradleApi()
 
-    testImplementation(enforcedPlatform("org.junit:junit-bom:5.10.2"))
+    testImplementation(enforcedPlatform("org.junit:junit-bom:5.10.3"))
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation 'org.assertj:assertj-core:3.26.0'
