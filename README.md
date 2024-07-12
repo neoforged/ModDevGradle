@@ -234,6 +234,25 @@ the [Maven version range format](https://cwiki.apache.org/confluence/display/MAV
 | (,1.0],[1.2,) | x <= 1.0 or x >= 1.2. Multiple sets are comma-separated                       |
 | (,1.1),(1.1,) | This excludes 1.1 if it is known not to work in combination with this library |
 
+#### External Dependencies: Runs
+External dependencies will only be loaded in your runs if they are mods (with a `META-INF/neoforge.mods.toml` file),
+or if they have the `FMLModType` entry set in their `META-INF/MANIFEST.MF` file.
+Usually, Java libraries do not fit either of these requirements,
+leading to a `ClassNotFoundException` at run time when you try to run your mod.
+
+To fix this, the library needs to be added to the `additionalRuntimeClasspath` as follows:
+```groovy
+dependencies {
+    // This is still required to add the library in your jar and at compile time.
+    jarJar(implementation("org.commonmark:commonmark")) { /* ... */ }
+    // This adds the library to all the runs.
+    additionalRuntimeClasspath "org.commonmark:commonmark:0.21.0"
+}
+```
+
+_Advanced_: The additional runtime classpath can be configured per-run.
+For example, to add a dependency to the `client` run only, it can be added to `clientAdditionalRuntimeClasspath`.
+
 ### Isolated Source Sets
 
 If you work with source sets that do not extend from `main`, and would like the modding dependencies to be available
