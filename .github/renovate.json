@@ -2,5 +2,18 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>neoforged/actions:renovate_preset"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "NeoFormRuntime\\.java$"
+      ],
+      "depNameTemplate": "net.neoforged:neoform-runtime",
+      "matchStrings": [
+        "DEFAULT_NFRT_VERSION\\s*=\\s*\"(?<currentValue>[\\d\\.\\-a-z]+)\""
+      ],
+      "datasourceTemplate": "maven"
+    }
   ]
 }
