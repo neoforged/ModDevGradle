@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import org.gradle.api.GradleException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -15,23 +16,25 @@ import org.gradle.api.tasks.SourceSet;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
+import java.util.regex.Pattern;
 
 /**
  * Model of a run. Each run will generate a corresponding IDE run and {@code runXxx} gradle task.
  */
 public abstract class RunModel implements Named, Dependencies {
+    private static final Pattern VALID_RUN_NAME = Pattern.compile("[a-zA-Z][\\w-]*");
+
     private final String name;
-    /**
-     * Sanitized name: converted to upper camel case and with invalid characters removed.
-     */
-    final String baseName;
 
     private final Configuration configuration;
 
     @Inject
     public RunModel(String name, Project project) {
         this.name = name;
-        this.baseName = StringUtils.toCamelCase(name, false);
+        if (!VALID_RUN_NAME.matcher(name).matches()) {
+            throw new GradleException("Run name '" + name + "' is invalid! It must match " + VALID_RUN_NAME.pattern());
+        }
+
         getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
