@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
+import net.neoforged.elc.configs.LaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
@@ -26,12 +28,14 @@ import org.slf4j.event.Level;
 import org.xml.sax.InputSource;
 
 import javax.inject.Inject;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -232,6 +236,18 @@ final class RunUtils {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(folders);
         return modFoldersProvider;
+    }
+
+    public static void writeEclipseLaunchConfig(Project project, String name, LaunchConfig config) {
+        var file = project.file(".eclipse/configurations/" + name + ".launch");
+        file.getParentFile().mkdirs();
+        try (var writer = new FileWriter(file, false)) {
+            config.write(writer);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to write launch file: " + file, e);
+        } catch (XMLStreamException e) {
+            throw new RuntimeException("Failed to write launch file: " + file, e);
+        }
     }
 
     public static ModFoldersProvider getEclipseModFoldersProvider(Project project,
