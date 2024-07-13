@@ -948,7 +948,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .envVar(run.getEnvironment().get())
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
-                .jreContainer("JavaSE-21") // TODO
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
 
         var filename = run.getIdeName().get();
