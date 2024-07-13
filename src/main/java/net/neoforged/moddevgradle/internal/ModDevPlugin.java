@@ -936,8 +936,8 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
-        //Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
-        //And so that post sync tasks are only ran once for all subprojects.
+        // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
+        // And so that post sync tasks are only ran once for all subprojects.
         var model = project.getExtensions().getByType(EclipseModel.class);
 
         var config = JavaApplicationLaunchConfig.builder(model.getProject().getName())
