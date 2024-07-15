@@ -18,6 +18,8 @@ public class InternalModelHelper {
     }
 
     public static String nameOfRun(RunModel run, @Nullable String prefix, @Nullable String suffix) {
-        return StringUtils.uncapitalize((prefix == null ? "" : prefix) + run.getName() + (suffix == null ? "" : StringUtils.capitalize(suffix)));
+        return StringUtils.uncapitalize((prefix == null ? "" : prefix)
+                                        + StringUtils.capitalize(run.getName())
+                                        + (suffix == null ? "" : StringUtils.capitalize(suffix)));
     }
 }
