@@ -129,7 +129,9 @@ public class ModDevPlugin implements Plugin<Project> {
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
 
-        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyMetadataTransform.class);
+        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyMetadataTransform.class, actionConfiguration -> {
+            actionConfiguration.params(project.getProjectDir());
+        });
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
