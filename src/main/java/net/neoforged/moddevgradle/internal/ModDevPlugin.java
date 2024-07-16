@@ -953,7 +953,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     .entry(LaunchGroup.entry(launchConfigName)
                             .enabled(true)
                             .adoptIfRunning(false)
-                            .mode(LaunchGroup.Mode.DEBUG)
+                            .mode(LaunchGroup.Mode.INHERIT)
                             .action(LaunchGroup.Action.none()))
                     .build();
             RunUtils.writeEclipseLaunchConfig(project, runIdeName, withGradleTasksConfig);
