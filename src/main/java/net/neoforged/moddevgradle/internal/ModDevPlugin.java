@@ -793,7 +793,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 public Map<String, ?> toMap() {
                     var result = (Map<String, Object>) super.toMap();
                     result.put("projectPath", project.getProjectDir().getAbsolutePath().replaceAll("\\\\", "/"));
-                    var tasks = run.getTasksBefore().stream().map(TaskProvider::getName).collect(Collectors.joining(" "));
+                    var tasks = run.getTasksBefore().stream().map(task -> task.get().getPath()).collect(Collectors.joining(" "));
                     result.put("taskName", tasks);
                     return result;
                 }
@@ -934,7 +934,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             // Creates a launch config to run the preparation tasks
             var prepareRunConfig = GradleLaunchConfig.builder(eclipseProjectName)
-                    .tasks(run.getTasksBefore().stream().map(TaskProvider::getName).toArray(String[]::new))
+                    .tasks(run.getTasksBefore().stream().map(task -> task.get().getPath()).toArray(String[]::new))
                     .build();
             var prepareRunLaunchName = "Prepare " + runIdeName;
             RunUtils.writeEclipseLaunchConfig(project, prepareRunLaunchName, prepareRunConfig);
