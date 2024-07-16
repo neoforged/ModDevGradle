@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.Dependencies;
 import org.gradle.api.file.DirectoryProperty;
@@ -13,9 +14,13 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskProvider;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
@@ -27,6 +32,11 @@ public abstract class RunModel implements Named, Dependencies {
     private final String name;
 
     private final Configuration configuration;
+
+    /**
+     * The Gradle tasks that should be run before running this run.
+     */
+    private List<TaskProvider<?>> tasksBefore = new ArrayList<>();
 
     @Inject
     public RunModel(String name, Project project) {
@@ -127,6 +137,7 @@ public abstract class RunModel implements Named, Dependencies {
 
     /**
      * The mods for this run. Defaults to all mods registered in the project.
+     *
      * @see ModModel
      */
     public abstract SetProperty<ModModel> getMods();
@@ -155,6 +166,40 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public void server() {
         getType().set("server");
+    }
+
+    /**
+     * Gets the names of Gradle tasks that should be run before running this run.
+     */
+    public List<TaskProvider<?>> getTasksBefore() {
+        return tasksBefore;
+    }
+
+    /**
+     * Sets the names of Gradle tasks that should be run before running this run.
+     * This also slows down running through your IDE since it will first execute Gradle to run the requested
+     * tasks, and then run the actual game.
+     */
+    public void setTasksBefore(List<TaskProvider<?>> taskNames) {
+        this.tasksBefore = new ArrayList<>(Objects.requireNonNull(taskNames, "taskNames"));
+    }
+
+    /**
+     * Configures the given Task to be run before launching the game.
+     * This also slows down running through your IDE since it will first execute Gradle to run the requested
+     * tasks, and then run the actual game.
+     */
+    public void taskBefore(TaskProvider<?> task) {
+        this.tasksBefore.add(task);
+    }
+
+    /**
+     * Configures the given Task to be run before launching the game.
+     * This also slows down running through your IDE since it will first execute Gradle to run the requested
+     * tasks, and then run the actual game.
+     */
+    public void taskBefore(Task task) {
+        this.tasksBefore.add(task.getProject().getTasks().named(task.getName()));
     }
 
     public Configuration getAdditionalRuntimeClasspathConfiguration() {

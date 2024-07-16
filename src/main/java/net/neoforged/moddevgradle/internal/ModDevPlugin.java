@@ -1,10 +1,13 @@
 package net.neoforged.moddevgradle.internal;
 
+import net.neoforged.elc.configs.GradleLaunchConfig;
 import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
+import net.neoforged.elc.configs.LaunchGroup;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
@@ -18,7 +21,6 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
@@ -42,7 +44,6 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
 import org.gradle.internal.DefaultTaskExecutionRequest;
-import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
@@ -51,23 +52,23 @@ import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.gradle.plugins.ide.idea.model.IdeaProject;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
+import org.jetbrains.gradle.ext.BeforeRunTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.event.Level;
 
-import javax.xml.stream.XMLStreamException;
+import javax.inject.Inject;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -156,7 +157,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 // Convert to a serializable representation for the task.
                 task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
                     return results.stream().map(result -> {
-                        var gav = guessMavenGav(result);
+                        var gav = DependencyUtils.guessMavenGav(result);
                         return new ArtifactManifestEntry(
                                 gav,
                                 result.getFile()
@@ -395,6 +396,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArguments().set(run.getProgramArguments());
                 task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
+                task.dependsOn(run.getTasksBefore());
             });
             prepareRunTasks.put(run, prepareRunTask);
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
@@ -775,6 +777,30 @@ public class ModDevPlugin implements Plugin<Project> {
         );
         appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
+
+        if (!run.getTasksBefore().isEmpty()) {
+            // This is slightly annoying.
+            // idea-ext does not expose the ability to run multiple gradle tasks at once, but the IDE model is capable of it.
+            class GradleTasks extends BeforeRunTask {
+                @Inject
+                GradleTasks(String nameParam) {
+                    type = "gradleTask";
+                    name = nameParam;
+                }
+
+                @SuppressWarnings("unchecked")
+                @Override
+                public Map<String, ?> toMap() {
+                    var result = (Map<String, Object>) super.toMap();
+                    result.put("projectPath", project.getProjectDir().getAbsolutePath().replaceAll("\\\\", "/"));
+                    var tasks = run.getTasksBefore().stream().map(task -> task.get().getPath()).collect(Collectors.joining(" "));
+                    result.put("taskName", tasks);
+                    return result;
+                }
+            }
+            appRun.getBeforeRun().add(new GradleTasks("Prepare"));
+        }
+
         runConfigurations.add(appRun);
     }
 
@@ -843,50 +869,6 @@ public class ModDevPlugin implements Plugin<Project> {
         return null;
     }
 
-    static String guessMavenGav(ResolvedArtifactResult result) {
-        String artifactId;
-        String ext = "";
-        String classifier = null;
-
-        var filename = result.getFile().getName();
-        var startOfExt = filename.lastIndexOf('.');
-        if (startOfExt != -1) {
-            ext = filename.substring(startOfExt + 1);
-            filename = filename.substring(0, startOfExt);
-        }
-
-        if (result.getId() instanceof ModuleComponentArtifactIdentifier moduleId) {
-            var artifact = moduleId.getComponentIdentifier().getModule();
-            var version = moduleId.getComponentIdentifier().getVersion();
-            var expectedBasename = artifact + "-" + version;
-
-            if (filename.startsWith(expectedBasename + "-")) {
-                classifier = filename.substring((expectedBasename + "-").length());
-            }
-            artifactId = moduleId.getComponentIdentifier().getGroup() + ":" + artifact + ":" + version;
-        } else {
-            // When we encounter a project reference, the component identifier does not expose the group or module name.
-            // But we can access the list of capabilities associated with the published variant the artifact originates from.
-            // If the capability was not overridden, this will be the project GAV. If it is *not* the project GAV,
-            // it will be at least in valid GAV format, not crashing NFRT when it parses the manifest. It will just be ignored.
-            var capabilities = result.getVariant().getCapabilities();
-            if (capabilities.size() == 1) {
-                var capability = capabilities.get(0);
-                artifactId = capability.getGroup() + ":" + capability.getName() + ":" + capability.getVersion();
-            } else {
-                artifactId = result.getId().getComponentIdentifier().toString();
-            }
-        }
-        String gav = artifactId;
-        if (classifier != null) {
-            gav += ":" + classifier;
-        }
-        if (!"jar".equals(ext)) {
-            gav += "@" + ext;
-        }
-        return gav;
-    }
-
     private static void configureEclipseModel(Project project,
                                               TaskProvider<Task> ideSyncTask,
                                               TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
@@ -936,11 +918,47 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
+
         // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
-        // And so that post sync tasks are only ran once for all subprojects.
+        // And so that post sync tasks are only run once for all subprojects.
         var model = project.getExtensions().getByType(EclipseModel.class);
 
-        var config = JavaApplicationLaunchConfig.builder(model.getProject().getName())
+        var runIdeName = run.getIdeName().get();
+        var launchConfigName = runIdeName;
+        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
+
+        // If the user wants to run tasks before the actual execution, we create a launch group to facilitate that
+        if (!run.getTasksBefore().isEmpty()) {
+            // Rename the main launch to "Run " ...
+            launchConfigName = "Run " + runIdeName;
+
+            // Creates a launch config to run the preparation tasks
+            var prepareRunConfig = GradleLaunchConfig.builder(eclipseProjectName)
+                    .tasks(run.getTasksBefore().stream().map(task -> task.get().getPath()).toArray(String[]::new))
+                    .build();
+            var prepareRunLaunchName = "Prepare " + runIdeName;
+            RunUtils.writeEclipseLaunchConfig(project, prepareRunLaunchName, prepareRunConfig);
+
+            // This is the launch group that will first launch Gradle, and then the game
+            var withGradleTasksConfig = LaunchGroup.builder()
+                    .entry(LaunchGroup.entry(prepareRunLaunchName)
+                            .enabled(true)
+                            .adoptIfRunning(false)
+                            .mode(LaunchGroup.Mode.RUN)
+                            // See https://github.com/eclipse/buildship/issues/1272
+                            // for why we cannot just wait for termination
+                            .action(LaunchGroup.Action.delay(2)))
+                    .entry(LaunchGroup.entry(launchConfigName)
+                            .enabled(true)
+                            .adoptIfRunning(false)
+                            .mode(LaunchGroup.Mode.INHERIT)
+                            .action(LaunchGroup.Action.none()))
+                    .build();
+            RunUtils.writeEclipseLaunchConfig(project, runIdeName, withGradleTasksConfig);
+        }
+
+        // This is the actual main launch configuration that launches the game
+        var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
                         RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument())
@@ -949,19 +967,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 .envVar(run.getEnvironment().get())
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+        RunUtils.writeEclipseLaunchConfig(project, launchConfigName, config);
 
-        var filename = run.getIdeName().get();
-
-        var file = project.file(".eclipse/configurations/" + filename + ".launch");
-
-        file.getParentFile().mkdirs();
-        try (var writer = new FileWriter(file, false)) {
-            config.write(writer);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to write launch file: " + file, e);
-        } catch (XMLStreamException e) {
-            throw new RuntimeException("Failed to write launch file: " + file, e);
-        }
     }
 
     private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
@@ -987,7 +994,8 @@ public class ModDevPlugin implements Plugin<Project> {
         AtomicBoolean configured = new AtomicBoolean();
         Runnable configurePublishing = () -> {
             if (configured.compareAndSet(false, true)) {
-                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {});
+                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+                });
             }
         };
 
