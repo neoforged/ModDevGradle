@@ -34,7 +34,7 @@ public abstract class RunModel implements Named, Dependencies {
     private final Configuration configuration;
 
     /**
-     * The name of Gradle tasks that should be run before running this run.
+     * The Gradle tasks that should be run before running this run.
      */
     private List<TaskProvider<?>> tasksBefore = new ArrayList<>();
 
