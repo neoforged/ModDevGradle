@@ -2,12 +2,14 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
 import org.gradle.api.Project;
+import org.gradle.api.Transformer;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 import org.jetbrains.annotations.ApiStatus;
 
 import javax.inject.Inject;
+import java.util.function.BiFunction;
 
 /**
  * Allows configuration of Parchment mappings for userdev.
@@ -15,15 +17,18 @@ import javax.inject.Inject;
 @ApiStatus.NonExtendable
 public abstract class Parchment {
     @Inject
-    public Parchment(Project project) {
+    public Parchment(final Project project) {
         getParchmentArtifact().convention(
                 project.getProviders().gradleProperty("neoForge.parchment.parchmentArtifact").orElse(
                         getMinecraftVersion()
-                                .zip(getMappingsVersion(), (minecraftVersion, mappingVersion) -> {
-                                    return "org.parchmentmc.data"
-                                           + ":" + "parchment-" + minecraftVersion
-                                           + ":" + mappingVersion
-                                           + "@zip";
+                                .zip(getMappingsVersion(), new BiFunction<String, String, String>() {
+                                    @Override
+                                    public String apply(String minecraftVersion, String mappingVersion) {
+                                        return "org.parchmentmc.data"
+                                               + ":" + "parchment-" + minecraftVersion
+                                               + ":" + mappingVersion
+                                               + "@zip";
+                                    }
                                 })
                 )
         );
@@ -37,7 +42,12 @@ public abstract class Parchment {
                 project.getProviders().gradleProperty("neoForge.parchment.conflictResolutionPrefix").orElse("p_")
         );
         getEnabled().convention(getParchmentArtifact()
-                .map(s -> !s.isEmpty()).orElse(PropertyUtils.getBooleanProperty(project, "neoForge.parchment.enabled").orElse(false)));
+                .map(new Transformer<Boolean, String>() {
+                    @Override
+                    public Boolean transform(String s) {
+                        return !s.isEmpty();
+                    }
+                }).orElse(PropertyUtils.getBooleanProperty(project, "neoForge.parchment.enabled").orElse(false)));
     }
 
     /**

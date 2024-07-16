@@ -4,9 +4,12 @@ import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarArtifacts;
 import net.neoforged.moddevgradle.internal.jarjar.ResolvedJarJarArtifact;
+import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.CopySpec;
+import org.gradle.api.file.DeleteSpec;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.model.ObjectFactory;
@@ -50,35 +53,43 @@ public abstract class JarJar extends DefaultTask {
     private final FileSystemOperations fileSystemOperations;
 
     @Inject
-    public JarJar(FileSystemOperations fileSystemOperations) {
+    public JarJar(final FileSystemOperations fileSystemOperations) {
         this.fileSystemOperations = fileSystemOperations;
         this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("generated/" + getName()));
     }
 
     @TaskAction
     protected void run() {
-        List<ResolvedJarJarArtifact> includedJars = getJarJarArtifacts().getResolvedArtifacts().get();
-        fileSystemOperations.delete(spec -> spec.delete(getOutputDirectory()));
+        final List<ResolvedJarJarArtifact> includedJars = getJarJarArtifacts().getResolvedArtifacts().get();
+        fileSystemOperations.delete(new Action<DeleteSpec>() {
+            @Override
+            public void execute(DeleteSpec spec) {
+                spec.delete(JarJar.this.getOutputDirectory());
+            }
+        });
 
         // Only copy metadata if not empty, always delete
         if (!includedJars.isEmpty()) {
-            fileSystemOperations.copy(spec -> {
-                spec.into(getOutputDirectory().dir("META-INF/jarjar"));
-                spec.from(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toArray());
-                for (var includedJar : includedJars) {
-                    var originalName = includedJar.getFile().getName();
-                    var embeddedName = includedJar.getEmbeddedFilename();
-                    if (!originalName.equals(embeddedName)) {
-                        spec.rename(Pattern.quote(originalName), Matcher.quoteReplacement(embeddedName));
+            fileSystemOperations.copy(new Action<CopySpec>() {
+                @Override
+                public void execute(CopySpec spec) {
+                    spec.into(JarJar.this.getOutputDirectory().dir("META-INF/jarjar"));
+                    spec.from(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toArray());
+                    for (final ResolvedJarJarArtifact includedJar : includedJars) {
+                        final String originalName = includedJar.getFile().getName();
+                        final String embeddedName = includedJar.getEmbeddedFilename();
+                        if (!originalName.equals(embeddedName)) {
+                            spec.rename(Pattern.quote(originalName), Matcher.quoteReplacement(embeddedName));
+                        }
                     }
+                    spec.from(JarJar.this.writeMetadata(includedJars).toFile());
                 }
-                spec.from(writeMetadata(includedJars).toFile());
             });
         }
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private Path writeMetadata(List<ResolvedJarJarArtifact> includedJars) {
+    private Path writeMetadata(final List<ResolvedJarJarArtifact> includedJars) {
         final Path metadataPath = getJarJarMetadataPath();
         final Metadata metadata = createMetadata(includedJars);
 
@@ -86,20 +97,20 @@ public abstract class JarJar extends DefaultTask {
             metadataPath.toFile().getParentFile().mkdirs();
             Files.deleteIfExists(metadataPath);
             Files.write(metadataPath, MetadataIOHandler.toLines(metadata), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new RuntimeException("Failed to write JarJar dependency metadata to disk.", e);
         }
         return metadataPath;
     }
 
-    public void configuration(Configuration jarJarConfiguration) {
+    public final void configuration(final Configuration jarJarConfiguration) {
         getInputFiles().from(jarJarConfiguration);
         getJarJarArtifacts().configuration(jarJarConfiguration);
         dependsOn(jarJarConfiguration);
     }
 
-    public void setConfigurations(Collection<? extends Configuration> configurations) {
-        var newConfig = getObjects().fileCollection();
+    public void setConfigurations(final Collection<? extends Configuration> configurations) {
+        final ConfigurableFileCollection newConfig = getObjects().fileCollection();
         newConfig.from(configurations.toArray());
         getInputFiles().setFrom(newConfig);
         getJarJarArtifacts().setConfigurations(configurations);
@@ -110,7 +121,7 @@ public abstract class JarJar extends DefaultTask {
         return getTemporaryDir().toPath().resolve("metadata.json");
     }
 
-    private Metadata createMetadata(List<ResolvedJarJarArtifact> jars) {
+    private Metadata createMetadata(final List<ResolvedJarJarArtifact> jars) {
         return new Metadata(
                 jars.stream()
                         .map(ResolvedJarJarArtifact::createContainerMetadata)

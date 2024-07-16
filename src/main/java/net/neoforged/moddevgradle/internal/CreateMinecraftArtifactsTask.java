@@ -12,8 +12,10 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Set;
 
 /**
  * The primary task for creating the Minecraft artifacts that mods will be compiled against,
@@ -61,15 +63,15 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
 
     @TaskAction
     public void createArtifacts() {
-        var args = new ArrayList<String>();
+        final ArrayList<String> args = new ArrayList<String>();
         args.add("run");
 
-        for (var accessTransformer : getAccessTransformers().getFiles()) {
+        for (final File accessTransformer : getAccessTransformers().getFiles()) {
             args.add("--access-transformer");
             args.add(accessTransformer.getAbsolutePath());
         }
 
-        for (var interfaceInjectionFile : getInterfaceInjectionData().getFiles()) {
+        for (final File interfaceInjectionFile : getInterfaceInjectionData().getFiles()) {
             args.add("--interface-injection-data");
             args.add(interfaceInjectionFile.getAbsolutePath());
         }
@@ -79,7 +81,7 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
         }
 
         if (getParchmentEnabled().get()) {
-            var parchmentData = getParchmentData().getFiles();
+            final Set<File> parchmentData = getParchmentData().getFiles();
             if (parchmentData.size() == 1) {
                 args.add("--parchment-data");
                 args.add(parchmentData.iterator().next().getAbsolutePath());
@@ -87,7 +89,7 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
                 throw new GradleException("More than one parchment data file was specified: " + parchmentData);
             }
 
-            var conflictResolutionPrefix = getParchmentConflictResolutionPrefix().getOrElse("");
+            final String conflictResolutionPrefix = getParchmentConflictResolutionPrefix().getOrElse("");
             if (getParchmentConflictResolutionPrefix().isPresent() && !conflictResolutionPrefix.isBlank()) {
                 args.add("--parchment-conflict-prefix");
                 args.add(conflictResolutionPrefix);

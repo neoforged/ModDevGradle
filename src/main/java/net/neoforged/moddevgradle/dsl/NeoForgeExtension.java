@@ -6,15 +6,18 @@ import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -33,7 +36,7 @@ public abstract class NeoForgeExtension {
     private final DataFileCollection interfaceInjectionData;
 
     @Inject
-    public NeoForgeExtension(Project project) {
+    public NeoForgeExtension(final Project project) {
         this.project = project;
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
@@ -44,19 +47,22 @@ public abstract class NeoForgeExtension {
         accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
         interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
 
-        getAccessTransformers().getFiles().convention(project.provider(() -> {
-            var collection = project.getObjects().fileCollection();
+        getAccessTransformers().getFiles().convention(project.provider(new Callable<ConfigurableFileCollection>() {
+            @Override
+            public ConfigurableFileCollection call() throws Exception {
+                final ConfigurableFileCollection collection = project.getObjects().fileCollection();
 
-            // Only return this when it actually exists
-            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
-                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
-                if (project.file(defaultPath).exists()) {
-                    return collection.from(defaultPath.getAbsolutePath());
+                // Only return this when it actually exists
+                final SourceSet mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+                for (final File resources : mainSourceSet.getResources().getSrcDirs()) {
+                    final File defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
+                    if (project.file(defaultPath).exists()) {
+                        return collection.from(defaultPath.getAbsolutePath());
+                    }
                 }
-            }
 
-            return collection;
+                return collection;
+            }
         }));
         getValidateAccessTransformers().convention(false);
     }
@@ -65,9 +71,9 @@ public abstract class NeoForgeExtension {
      * Adds the necessary dependencies to develop a Minecraft mod to the given source set.
      * The plugin automatically adds these dependencies to the main source set.
      */
-    public void addModdingDependenciesTo(SourceSet sourceSet) {
-        var configurations = project.getConfigurations();
-        var sourceSets = ExtensionUtils.getSourceSets(project);
+    public final void addModdingDependenciesTo(final SourceSet sourceSet) {
+        final ConfigurationContainer configurations = project.getConfigurations();
+        final SourceSetContainer sourceSets = ExtensionUtils.getSourceSets(project);
         if (!sourceSets.contains(sourceSet)) {
             throw new GradleException("Cannot add to the source set in another project.");
         }
@@ -98,18 +104,18 @@ public abstract class NeoForgeExtension {
      *
      * @see <a href="https://projects.neoforged.net/neoforged/accesstransformers">Access Transformer File Format</a>
      */
-    public void accessTransformers(Action<DataFileCollection> action) {
+    public void accessTransformers(final Action<DataFileCollection> action) {
         action.execute(accessTransformers);
     }
 
-    public DataFileCollection getAccessTransformers() {
+    public final DataFileCollection getAccessTransformers() {
         return accessTransformers;
     }
 
     /**
      * Replaces current access transformers.
      */
-    public void setAccessTransformers(Object... paths) {
+    public void setAccessTransformers(final Object... paths) {
         getAccessTransformers().getFiles().setFrom(paths);
     }
 
@@ -122,18 +128,18 @@ public abstract class NeoForgeExtension {
      *
      * @see <a href="https://github.com/neoforged/JavaSourceTransformer?tab=readme-ov-file#interface-injection">Interface Injection Data Format</a>
      */
-    public void interfaceInjectionData(Action<DataFileCollection> action) {
+    public void interfaceInjectionData(final Action<DataFileCollection> action) {
         action.execute(interfaceInjectionData);
     }
 
-    public DataFileCollection getInterfaceInjectionData() {
+    public final DataFileCollection getInterfaceInjectionData() {
         return interfaceInjectionData;
     }
 
     /**
      * Replaces current interface injection data files.
      */
-    public void setInterfaceInjectionData(Object... paths) {
+    public void setInterfaceInjectionData(final Object... paths) {
         getInterfaceInjectionData().getFiles().setFrom(paths);
     }
 
@@ -144,43 +150,43 @@ public abstract class NeoForgeExtension {
      */
     public abstract Property<Boolean> getValidateAccessTransformers();
 
-    public NamedDomainObjectContainer<ModModel> getMods() {
+    public final NamedDomainObjectContainer<ModModel> getMods() {
         return mods;
     }
 
-    public void mods(Action<NamedDomainObjectContainer<ModModel>> action) {
+    public void mods(final Action<NamedDomainObjectContainer<ModModel>> action) {
         action.execute(mods);
     }
 
-    public NamedDomainObjectContainer<RunModel> getRuns() {
+    public final NamedDomainObjectContainer<RunModel> getRuns() {
         return runs;
     }
 
-    public void runs(Action<NamedDomainObjectContainer<RunModel>> action) {
+    public void runs(final Action<NamedDomainObjectContainer<RunModel>> action) {
         action.execute(runs);
     }
 
-    public Parchment getParchment() {
+    public final Parchment getParchment() {
         return parchment;
     }
 
-    public void parchment(Action<Parchment> action) {
+    public void parchment(final Action<Parchment> action) {
         action.execute(parchment);
     }
 
-    public NeoFormRuntime getNeoFormRuntime() {
+    public final NeoFormRuntime getNeoFormRuntime() {
         return neoFormRuntime;
     }
 
-    public void neoFormRuntime(Action<NeoFormRuntime> action) {
+    public void neoFormRuntime(final Action<NeoFormRuntime> action) {
         action.execute(neoFormRuntime);
     }
 
-    public UnitTest getUnitTest() {
+    public final UnitTest getUnitTest() {
         return unitTest;
     }
 
-    public void unitTest(Action<UnitTest> action) {
+    public void unitTest(final Action<UnitTest> action) {
         action.execute(unitTest);
     }
 }

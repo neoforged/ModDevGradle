@@ -23,27 +23,27 @@ public final class FileUtils {
     private FileUtils() {
     }
 
-    public static void writeStringSafe(Path destination, String content, Charset charset) throws IOException {
+    public static void writeStringSafe(final Path destination, final String content, final Charset charset) throws IOException {
         if (!charset.newEncoder().canEncode(content)) {
             throw new IllegalArgumentException("The given character set " + charset
                                                + " cannot represent this string: " + content);
         }
 
-        try (var out = newSafeFileOutputStream(destination)) {
-            var encodedContent = content.getBytes(charset);
+        try (final OutputStream out = newSafeFileOutputStream(destination)) {
+            final byte[] encodedContent = content.getBytes(charset);
             out.write(encodedContent);
         }
     }
 
-    public static void writeLinesSafe(Path destination, List<String> lines, Charset charset) throws IOException {
+    public static void writeLinesSafe(final Path destination, final List<String> lines, final Charset charset) throws IOException {
         writeStringSafe(destination, String.join("\n", lines), charset);
     }
 
-    public static OutputStream newSafeFileOutputStream(Path destination) throws IOException {
-        var uniqueId = ProcessHandle.current().pid() + "." + Thread.currentThread().getId();
+    public static OutputStream newSafeFileOutputStream(final Path destination) throws IOException {
+        final String uniqueId = ProcessHandle.current().pid() + "." + Thread.currentThread().getId();
 
-        var tempFile = destination.resolveSibling(destination.getFileName().toString() + "." + uniqueId + ".tmp");
-        var closed = new boolean[1];
+        final Path tempFile = destination.resolveSibling(destination.getFileName().toString() + "." + uniqueId + ".tmp");
+        final boolean[] closed = new boolean[1];
         return new FilterOutputStream(Files.newOutputStream(tempFile)) {
             @Override
             public void close() throws IOException {
@@ -55,7 +55,7 @@ public final class FileUtils {
                 } finally {
                     try {
                         Files.deleteIfExists(tempFile);
-                    } catch (IOException ignored) {
+                    } catch (final IOException ignored) {
                     }
                     closed[0] = true;
                 }
@@ -72,14 +72,14 @@ public final class FileUtils {
      */
     @SuppressWarnings("BusyWait")
 
-    public static void atomicMove(Path source, Path destination) throws IOException {
+    public static void atomicMove(final Path source, final Path destination) throws IOException {
         if (Files.isDirectory(destination)) {
             throw new IOException("Cannot overwrite directory " + destination);
         }
 
         try {
             atomicMoveIfPossible(source, destination);
-        } catch (AccessDeniedException ex) {
+        } catch (final AccessDeniedException ex) {
             // Sometimes because of file locking this will fail... Let's just try again and hope for the best
             // Thanks Windows!
             for (int tries = 0; true; ++tries) {
@@ -111,7 +111,7 @@ public final class FileUtils {
     private static void atomicMoveIfPossible(final Path source, final Path destination) throws IOException {
         try {
             Files.move(source, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (AtomicMoveNotSupportedException ex) {
+        } catch (final AtomicMoveNotSupportedException ex) {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
     }

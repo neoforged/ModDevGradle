@@ -12,8 +12,8 @@ abstract class PrepareTest extends PrepareRunOrTest {
     }
 
     @Override
-    protected UserDevRunType resolveRunType(UserDevConfig userDevConfig) {
-        var runConfig = userDevConfig.runs().get("junit");
+    protected UserDevRunType resolveRunType(final UserDevConfig userDevConfig) {
+        final UserDevRunType runConfig = userDevConfig.runs().get("junit");
         if (runConfig == null) {
             throw new GradleException("The unit testing plugin requires a 'junit' run-type to be made available by NeoForge. Available run types: " + userDevConfig.runs().keySet());
         }
@@ -22,7 +22,7 @@ abstract class PrepareTest extends PrepareRunOrTest {
 
     @Override
     @Nullable
-    protected String resolveMainClass(UserDevRunType runConfig) {
+    protected String resolveMainClass(final UserDevRunType runConfig) {
         return null; // No main class to override
     }
 

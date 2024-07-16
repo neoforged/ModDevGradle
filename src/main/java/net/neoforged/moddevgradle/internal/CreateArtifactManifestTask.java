@@ -30,13 +30,13 @@ abstract class CreateArtifactManifestTask extends DefaultTask {
 
     @TaskAction
     public void writeManifest() throws IOException {
-        var artifactsManifest = new Properties();
+        final Properties artifactsManifest = new Properties();
 
-        for (var artifact : getNeoForgeModDevArtifacts().get()) {
+        for (final ArtifactManifestEntry artifact : getNeoForgeModDevArtifacts().get()) {
             artifactsManifest.setProperty(artifact.artifactId(), artifact.file().getAbsolutePath());
         }
 
-        try (var out = new BufferedOutputStream(new FileOutputStream(getManifestFile().get().getAsFile()))) {
+        try (final BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(getManifestFile().get().getAsFile()))) {
             artifactsManifest.store(out, "");
         }
     }

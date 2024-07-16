@@ -9,8 +9,10 @@ import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.TreeSet;
 
 abstract class WriteLegacyClasspath extends DefaultTask {
@@ -26,13 +28,13 @@ abstract class WriteLegacyClasspath extends DefaultTask {
 
     @TaskAction
     public void writeLegacyClasspath() throws IOException {
-        var legacyClasspath = new StringBuilder();
+        final StringBuilder legacyClasspath = new StringBuilder();
         // Copy the entries to a tree set to ensure deterministic order if we have to debug classpath problems...
-        for (var entry : new TreeSet<>(getEntries().getFiles())) {
+        for (final File entry : new TreeSet<>(getEntries().getFiles())) {
             legacyClasspath.append(entry.getAbsolutePath()).append(System.lineSeparator());
         }
 
-        var destination = getLegacyClasspathFile().getAsFile().get().toPath();
+        final Path destination = getLegacyClasspathFile().getAsFile().get().toPath();
         // BootStrapLauncher reads this file using UTF-8
         FileUtils.writeStringSafe(destination, legacyClasspath.toString(), StandardCharsets.UTF_8);
     }

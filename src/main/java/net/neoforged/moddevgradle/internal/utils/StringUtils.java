@@ -19,11 +19,11 @@ public final class StringUtils {
         return NativeEncodingHolder.charset;
     }
 
-    private static class NativeEncodingHolder {
+    private static final class NativeEncodingHolder {
         static final Charset charset;
 
         static {
-            var nativeEncoding = System.getProperty("native.encoding");
+            final String nativeEncoding = System.getProperty("native.encoding");
             if (nativeEncoding == null) {
                 throw new IllegalStateException("The native.encoding system property is not available, but should be since Java 17!");
             }
@@ -31,14 +31,14 @@ public final class StringUtils {
         }
     }
 
-    public static String capitalize(String input) {
+    public static String capitalize(final String input) {
         if (input.isEmpty()) {
             return "";
         }
         return input.substring(0, 1).toUpperCase(Locale.ROOT) + input.substring(1);
     }
 
-    public static String uncapitalize(String input) {
+    public static String uncapitalize(final String input) {
         if (input.isEmpty()) {
             return "";
         }

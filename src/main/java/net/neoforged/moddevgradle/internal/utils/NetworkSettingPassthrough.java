@@ -2,15 +2,17 @@ package net.neoforged.moddevgradle.internal.utils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
  * When launching other Java programs externally, we have to pass through system properties that
  * change network settings, such as proxies and TLS trust settings.
  */
-public class NetworkSettingPassthrough {
+public final class NetworkSettingPassthrough {
 
     /**
      * The list of system properties to pass through to NFRT if set.
@@ -38,18 +40,21 @@ public class NetworkSettingPassthrough {
     }
 
     public static Map<String, String> getNetworkSystemProperties() {
-        var properties = System.getProperties();
+        final Properties properties = System.getProperties();
         return properties.stringPropertyNames().stream()
-                .filter(name -> {
-                    if (PROPERTIES.contains(name)) {
-                        return true;
-                    }
-                    for (String prefix : PREFIXES) {
-                        if (name.startsWith(prefix)) {
+                .filter(new Predicate<String>() {
+                    @Override
+                    public boolean test(String name) {
+                        if (PROPERTIES.contains(name)) {
                             return true;
                         }
+                        for (final String prefix : PREFIXES) {
+                            if (name.startsWith(prefix)) {
+                                return true;
+                            }
+                        }
+                        return false;
                     }
-                    return false;
                 })
                 .collect(Collectors.toMap(Function.identity(), properties::getProperty));
 

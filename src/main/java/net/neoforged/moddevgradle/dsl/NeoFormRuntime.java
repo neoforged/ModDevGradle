@@ -14,7 +14,7 @@ public abstract class NeoFormRuntime {
     private static final String DEFAULT_NFRT_VERSION = "0.1.70";
 
     @Inject
-    public NeoFormRuntime(Project project) {
+    public NeoFormRuntime(final Project project) {
         getVersion().convention(PropertyUtils.getStringProperty(project, "neoForge.neoFormRuntime.version").orElse(DEFAULT_NFRT_VERSION));
         getUseEclipseCompiler().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.useEclipseCompiler").orElse(false));
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));

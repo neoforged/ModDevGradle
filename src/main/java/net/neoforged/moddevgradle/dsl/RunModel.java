@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
@@ -39,7 +40,7 @@ public abstract class RunModel implements Named, Dependencies {
     private List<TaskProvider<?>> tasksBefore = new ArrayList<>();
 
     @Inject
-    public RunModel(String name, Project project) {
+    public RunModel(final String name, final Project project) {
         this.name = name;
         if (!VALID_RUN_NAME.matcher(name).matches()) {
             throw new GradleException("Run name '" + name + "' is invalid! It must match " + VALID_RUN_NAME.pattern());
@@ -49,16 +50,19 @@ public abstract class RunModel implements Named, Dependencies {
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 
-        configuration = project.getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
-            configuration.setCanBeResolved(false);
-            configuration.setCanBeConsumed(false);
+        configuration = project.getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), new Action<Configuration>() {
+            @Override
+            public void execute(Configuration configuration) {
+                configuration.setCanBeResolved(false);
+                configuration.setCanBeConsumed(false);
+            }
         });
 
         getLogLevel().convention(Level.INFO);
 
         // Build a nicer name for the IDE run configuration
-        boolean isSubProject = project.getRootProject() != project;
-        var ideName = StringUtils.capitalize(name);
+        final boolean isSubProject = project.getRootProject() != project;
+        String ideName = StringUtils.capitalize(name);
         if (isSubProject) {
             ideName = project.getName() + " - " + ideName;
         }
@@ -68,7 +72,7 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
         return name;
     }
 
@@ -90,7 +94,7 @@ public abstract class RunModel implements Named, Dependencies {
     /**
      * Shorthand to set a single environment variable.
      */
-    public void environment(String key, String value) {
+    public void environment(final String key, final String value) {
         getEnvironment().put(key, value);
     }
 
@@ -102,7 +106,7 @@ public abstract class RunModel implements Named, Dependencies {
     /**
      * Shorthand to set a single system property.
      */
-    public void systemProperty(String key, String value) {
+    public void systemProperty(final String key, final String value) {
         getSystemProperties().put(key, value);
     }
 
@@ -119,7 +123,7 @@ public abstract class RunModel implements Named, Dependencies {
     /**
      * Shorthand to add a single program argument.
      */
-    public void programArgument(String arg) {
+    public void programArgument(final String arg) {
         getProgramArguments().add(arg);
     }
 
@@ -131,7 +135,7 @@ public abstract class RunModel implements Named, Dependencies {
     /**
      * Shorthand to add a single JVM argument.
      */
-    public void jvmArgument(String arg) {
+    public void jvmArgument(final String arg) {
         getJvmArguments().add(arg);
     }
 
@@ -171,7 +175,7 @@ public abstract class RunModel implements Named, Dependencies {
     /**
      * Gets the names of Gradle tasks that should be run before running this run.
      */
-    public List<TaskProvider<?>> getTasksBefore() {
+    public final List<TaskProvider<?>> getTasksBefore() {
         return tasksBefore;
     }
 
@@ -180,7 +184,7 @@ public abstract class RunModel implements Named, Dependencies {
      * This also slows down running through your IDE since it will first execute Gradle to run the requested
      * tasks, and then run the actual game.
      */
-    public void setTasksBefore(List<TaskProvider<?>> taskNames) {
+    public void setTasksBefore(final List<TaskProvider<?>> taskNames) {
         this.tasksBefore = new ArrayList<>(Objects.requireNonNull(taskNames, "taskNames"));
     }
 
@@ -189,7 +193,7 @@ public abstract class RunModel implements Named, Dependencies {
      * This also slows down running through your IDE since it will first execute Gradle to run the requested
      * tasks, and then run the actual game.
      */
-    public void taskBefore(TaskProvider<?> task) {
+    public void taskBefore(final TaskProvider<?> task) {
         this.tasksBefore.add(task);
     }
 
@@ -198,11 +202,11 @@ public abstract class RunModel implements Named, Dependencies {
      * This also slows down running through your IDE since it will first execute Gradle to run the requested
      * tasks, and then run the actual game.
      */
-    public void taskBefore(Task task) {
+    public void taskBefore(final Task task) {
         this.tasksBefore.add(task.getProject().getTasks().named(task.getName()));
     }
 
-    public Configuration getAdditionalRuntimeClasspathConfiguration() {
+    public final Configuration getAdditionalRuntimeClasspathConfiguration() {
         return configuration;
     }
 
@@ -220,7 +224,7 @@ public abstract class RunModel implements Named, Dependencies {
     public abstract Property<SourceSet> getSourceSet();
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Run[" + getName() + "]";
     }
 }

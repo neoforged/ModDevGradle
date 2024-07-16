@@ -15,11 +15,13 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
@@ -40,12 +42,16 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -53,28 +59,31 @@ final class RunUtils {
     private RunUtils() {
     }
 
-    public static String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.1";
-    public static String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
+    public static final String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.1";
+    public static final String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
 
-    public static String escapeJvmArg(String arg) {
-        var escaped = arg.replace("\\", "\\\\").replace("\"", "\\\"");
+    public static String escapeJvmArg(final String arg) {
+        final String escaped = arg.replace("\\", "\\\\").replace("\"", "\\\"");
         if (escaped.contains(" ")) {
             return "\"" + escaped + "\"";
         }
         return escaped;
     }
 
-    public static Provider<String> getRequiredType(Project project, RunModel runModel) {
-        return runModel.getType().orElse(project.getProviders().provider(() -> {
-            throw new GradleException("The run '" + runModel.getName() + "' did not specify a type property");
+    public static Provider<String> getRequiredType(final Project project, final RunModel runModel) {
+        return runModel.getType().orElse(project.getProviders().provider(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                throw new GradleException("The run '" + runModel.getName() + "' did not specify a type property");
+            }
         }));
     }
 
-    public static AssetProperties loadAssetProperties(File file) {
-        Properties assetProperties = new Properties();
-        try (var input = new BufferedInputStream(new FileInputStream(file))) {
+    public static AssetProperties loadAssetProperties(final File file) {
+        final Properties assetProperties = new Properties();
+        try (final BufferedInputStream input = new BufferedInputStream(new FileInputStream(file))) {
             assetProperties.load(input);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UncheckedIOException("Failed to load asset properties", e);
         }
         if (!assetProperties.containsKey("assets_root")) {
@@ -90,7 +99,7 @@ final class RunUtils {
         );
     }
 
-    public static void writeLog4j2Configuration(Level rootLevel, Path destination) throws IOException {
+    public static void writeLog4j2Configuration(final Level rootLevel, final Path destination) throws IOException {
         Files.writeString(destination, """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <Configuration status="warn" shutdownHook="disable">
@@ -173,7 +182,7 @@ final class RunUtils {
                 """.replace("$ROOTLEVEL$", rootLevel.name()));
     }
 
-    public static File getArgFile(Provider<Directory> modDevFolder, RunModel run, RunArgFile type) {
+    public static File getArgFile(final Provider<Directory> modDevFolder, final RunModel run, final RunArgFile type) {
         return modDevFolder.get().file(InternalModelHelper.nameOfRun(run, "", type.filename)).getAsFile();
     }
 
@@ -184,32 +193,32 @@ final class RunUtils {
 
         private final String filename;
 
-        RunArgFile(String filename) {
+        RunArgFile(final String filename) {
             this.filename = filename;
         }
     }
 
-    public static String getArgFileParameter(RegularFile argFile) {
+    public static String getArgFileParameter(final RegularFile argFile) {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
 
-    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+    public static ModFoldersProvider getGradleModFoldersProvider(final Project project, final Provider<Set<ModModel>> modsProvider, final boolean includeUnitTests) {
+        final ModFoldersProvider modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
         return modFoldersProvider;
     }
 
-    private static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
-        for (var s : ExtensionUtils.getSourceSets(someProject)) {
+    private static Project findSourceSetProject(final Project someProject, final SourceSet sourceSet) {
+        for (final SourceSet s : ExtensionUtils.getSourceSets(someProject)) {
             if (s == sourceSet) {
                 return someProject;
             }
         }
         // The code below will break with cross-project isolation, but that's expected when depending on other source sets!
-        for (var p : someProject.getRootProject().getAllprojects()) {
-            var sourceSets = ExtensionUtils.findSourceSets(p);
+        for (final Project p : someProject.getRootProject().getAllprojects()) {
+            final SourceSetContainer sourceSets = ExtensionUtils.findSourceSets(p);
             if (sourceSets != null) {
-                for (var s : sourceSets) {
+                for (final SourceSet s : sourceSets) {
                     if (s == sourceSet) {
                         return p;
                     }
@@ -219,47 +228,53 @@ final class RunUtils {
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project,
-                                                               @Nullable Function<Project, File> outputDirectory,
-                                                               Provider<Set<ModModel>> modsProvider,
-                                                               boolean includeUnitTests) {
-        Provider<Map<String, ModFolder>> folders;
+    public static ModFoldersProvider getIdeaModFoldersProvider(final Project project,
+                                                               @Nullable final Function<Project, File> outputDirectory,
+                                                               final Provider<Set<ModModel>> modsProvider,
+                                                               final boolean includeUnitTests) {
+        final Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
-            folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-                var sourceSetDir = outputDirectory.apply(findSourceSetProject(project, sourceSet)).toPath().resolve(getIdeaOutName(sourceSet));
-                output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
+            folders = buildModFolders(project, modsProvider, includeUnitTests, new BiConsumer<SourceSet, ConfigurableFileCollection>() {
+                @Override
+                public void accept(SourceSet sourceSet, ConfigurableFileCollection output) {
+                    final Path sourceSetDir = outputDirectory.apply(findSourceSetProject(project, sourceSet)).toPath().resolve(getIdeaOutName(sourceSet));
+                    output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
+                }
             });
         } else {
             folders = getModFoldersForGradle(project, modsProvider, includeUnitTests);
         }
 
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        final ModFoldersProvider modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(folders);
         return modFoldersProvider;
     }
 
-    public static void writeEclipseLaunchConfig(Project project, String name, LaunchConfig config) {
-        var file = project.file(".eclipse/configurations/" + name + ".launch");
+    public static void writeEclipseLaunchConfig(final Project project, final String name, final LaunchConfig config) {
+        final File file = project.file(".eclipse/configurations/" + name + ".launch");
         file.getParentFile().mkdirs();
-        try (var writer = new FileWriter(file, false)) {
+        try (final FileWriter writer = new FileWriter(file, false)) {
             config.write(writer);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UncheckedIOException("Failed to write launch file: " + file, e);
-        } catch (XMLStreamException e) {
+        } catch (final XMLStreamException e) {
             throw new RuntimeException("Failed to write launch file: " + file, e);
         }
     }
 
-    public static ModFoldersProvider getEclipseModFoldersProvider(Project project,
-                                                                  Provider<Set<ModModel>> modsProvider,
-                                                                  boolean includeUnitTests) {
-        var folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-            output.from(findSourceSetProject(project, sourceSet).getProjectDir().toPath()
-                    .resolve("bin")
-                    .resolve(sourceSet.getName()));
+    public static ModFoldersProvider getEclipseModFoldersProvider(final Project project,
+                                                                  final Provider<Set<ModModel>> modsProvider,
+                                                                  final boolean includeUnitTests) {
+        final Provider<Map<String, ModFolder>> folders = buildModFolders(project, modsProvider, includeUnitTests, new BiConsumer<SourceSet, ConfigurableFileCollection>() {
+            @Override
+            public void accept(SourceSet sourceSet, ConfigurableFileCollection output) {
+                output.from(findSourceSetProject(project, sourceSet).getProjectDir().toPath()
+                        .resolve("bin")
+                        .resolve(sourceSet.getName()));
+            }
         });
 
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        final ModFoldersProvider modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(folders);
         return modFoldersProvider;
     }
@@ -268,40 +283,56 @@ final class RunUtils {
         return sourceSet.getName().equals(SourceSet.MAIN_SOURCE_SET_NAME) ? "production" : sourceSet.getName();
     }
 
-    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        return buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-            output.from(sourceSet.getOutput());
+    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(final Project project, final Provider<Set<ModModel>> modsProvider, final boolean includeUnitTests) {
+        return buildModFolders(project, modsProvider, includeUnitTests, new BiConsumer<SourceSet, ConfigurableFileCollection>() {
+            @Override
+            public void accept(SourceSet sourceSet, ConfigurableFileCollection output) {
+                output.from(sourceSet.getOutput());
+            }
         });
     }
 
-    private static Provider<Map<String, ModFolder>> buildModFolders(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests, BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
-        var extension = ExtensionUtils.findExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
-        var testedModProvider = extension.getUnitTest().getTestedMod()
-                .filter(m -> includeUnitTests)
+    private static Provider<Map<String, ModFolder>> buildModFolders(final Project project, final Provider<Set<ModModel>> modsProvider, final boolean includeUnitTests, final BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
+        final NeoForgeExtension extension = ExtensionUtils.findExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
+        final Provider<Optional<ModModel>> testedModProvider = extension.getUnitTest().getTestedMod()
+                .filter(new Spec<ModModel>() {
+                    @Override
+                    public boolean isSatisfiedBy(ModModel m) {
+                        return includeUnitTests;
+                    }
+                })
                 .map(Optional::of)
                 .orElse(Optional.empty());
 
-        return modsProvider.zip(testedModProvider, ((mods, testedMod) -> mods.stream()
-                .collect(Collectors.toMap(ModModel::getName, mod -> {
-                    var modFolder = project.getObjects().newInstance(ModFolder.class);
-                    modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
+        return modsProvider.zip(testedModProvider, (new BiFunction<Set<ModModel>, Optional<ModModel>, Map<String, ModFolder>>() {
+            @Override
+            public Map<String, ModFolder> apply(Set<ModModel> mods, Optional<ModModel> testedMod) {
+                return mods.stream()
+                        .collect(Collectors.toMap(ModModel::getName, new Function<ModModel, ModFolder>() {
+                            @Override
+                            public ModFolder apply(ModModel mod) {
+                                final ModFolder modFolder = project.getObjects().newInstance(ModFolder.class);
+                                modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
 
-                    var sourceSets = mod.getModSourceSets().get();
+                                final List<SourceSet> sourceSets = mod.getModSourceSets().get();
 
-                    for (var sourceSet : sourceSets) {
-                        outputFolderResolver.accept(sourceSet, modFolder.getFolders());
-                    }
+                                for (final SourceSet sourceSet : sourceSets) {
+                                    outputFolderResolver.accept(sourceSet, modFolder.getFolders());
+                                }
 
-                    // Add the test source set to the mod under test and if unit tests are enabled
-                    if (testedMod.isPresent() && testedMod.get() == mod) {
-                        var testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
-                        if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
-                            outputFolderResolver.accept(testSourceSet, modFolder.getFolders());
-                        }
-                    }
+                                // Add the test source set to the mod under test and if unit tests are enabled
+                                if (testedMod.isPresent() && testedMod.get() == mod) {
+                                    final SourceSet testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
+                                    if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
+                                        outputFolderResolver.accept(testSourceSet, modFolder.getFolders());
+                                    }
+                                }
 
-                    return modFolder;
-                }))));
+                                return modFolder;
+                            }
+                        }));
+            }
+        }));
     }
 
     // TODO: Loom has unit tests for this... Probably a good idea!
@@ -316,21 +347,21 @@ final class RunUtils {
      * In other cases, returns {@code null}.
      */
     @Nullable
-    static Function<Project, File> getIntellijOutputDirectory(Project someProject) {
-        var ideaDir = IdeDetection.getIntellijProjectDir(someProject);
+    static Function<Project, File> getIntellijOutputDirectory(final Project someProject) {
+        final File ideaDir = IdeDetection.getIntellijProjectDir(someProject);
         if (ideaDir == null) {
             return null;
         }
 
         // Check if IntelliJ is configured to build with Gradle.
-        var gradleXml = new File(ideaDir, "gradle.xml");
-        var delegatedBuild = evaluateXPath(gradleXml, IDEA_DELEGATED_BUILD_XPATH);
+        final File gradleXml = new File(ideaDir, "gradle.xml");
+        final String delegatedBuild = evaluateXPath(gradleXml, IDEA_DELEGATED_BUILD_XPATH);
         if (!"false".equals(delegatedBuild)) {
             return null;
         }
 
         // Find configured output path
-        var miscXml = new File(ideaDir, "misc.xml");
+        final File miscXml = new File(ideaDir, "misc.xml");
         String outputDirUrl = evaluateXPath(miscXml, IDEA_OUTPUT_XPATH);
         if (outputDirUrl == null) {
             // Apparently IntelliJ defaults to out/ now?
@@ -340,18 +371,23 @@ final class RunUtils {
         // The output dir can start with something like "//C:\"; File can handle it.
         outputDirUrl = outputDirUrl.replaceAll("^file:", "");
 
-        var outputDirTemplate = outputDirUrl;
-        return p -> new File(outputDirTemplate.replace("$PROJECT_DIR$", p.getProjectDir().getAbsolutePath()));
+        final String outputDirTemplate = outputDirUrl;
+        return new Function<Project, File>() {
+            @Override
+            public File apply(Project p) {
+                return new File(outputDirTemplate.replace("$PROJECT_DIR$", p.getProjectDir().getAbsolutePath()));
+            }
+        };
     }
 
     @Nullable
-    private static String evaluateXPath(File file, @Language("xpath") String expression) {
-        try (var fis = new FileInputStream(file)) {
-            String result = XPathFactory.newInstance().newXPath().evaluate(expression, new InputSource(fis));
+    private static String evaluateXPath(final File file, @Language("xpath") final String expression) {
+        try (final FileInputStream fis = new FileInputStream(file)) {
+            final String result = XPathFactory.newInstance().newXPath().evaluate(expression, new InputSource(fis));
             return result.isBlank() ? null : result;
-        } catch (FileNotFoundException | XPathExpressionException ignored) {
+        } catch (final FileNotFoundException | XPathExpressionException ignored) {
             return null;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new UncheckedIOException("Failed to evaluate xpath " + expression + " on file " + file, e);
         }
     }
@@ -360,8 +396,8 @@ final class RunUtils {
      * Convert a project and source set to an IntelliJ module name.
      * Do not use {@link ModuleRef} as it does not correctly handle projects with a space in their name!
      */
-    public static String getIntellijModuleName(Project project, SourceSet sourceSet) {
-        var moduleName = new StringBuilder();
+    public static String getIntellijModuleName(final Project project, final SourceSet sourceSet) {
+        final StringBuilder moduleName = new StringBuilder();
         // The `replace` call here is our bug fix compared to ModuleRef!
         // The actual IDEA logic is more complicated, but this should cover the majority of use cases.
         // See https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java#L205
@@ -388,21 +424,24 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     abstract MapProperty<String, ModFolder> getModFolders();
 
     @Internal
-    public String getArgument() {
-        var stringModFolderMap = getModFolders().get();
+    public final String getArgument() {
+        final Map<String, ModFolder> stringModFolderMap = getModFolders().get();
         return "-Dfml.modFolders=%s".formatted(
                 stringModFolderMap.entrySet().stream()
-                        .<String>mapMulti((entry, output) -> {
-                            for (var directory : entry.getValue().getFolders()) {
-                                // Resources
-                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                        .<String>mapMulti(new BiConsumer<Map.Entry<String, ModFolder>, Consumer<String>>() {
+                            @Override
+                            public void accept(Map.Entry<String, ModFolder> entry, Consumer<String> output) {
+                                for (final File directory : entry.getValue().getFolders()) {
+                                    // Resources
+                                    output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                                }
                             }
                         })
                         .collect(Collectors.joining(File.pathSeparator)));
     }
 
     @Override
-    public Iterable<String> asArguments() {
+    public final Iterable<String> asArguments() {
         return List.of(getArgument());
     }
 }

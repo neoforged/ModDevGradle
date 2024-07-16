@@ -8,7 +8,7 @@ public enum OperatingSystem {
     WINDOWS;
 
     public static OperatingSystem current() {
-        var osName = System.getProperty("os.name");
+        final String osName = System.getProperty("os.name");
         // The following matches the logic in Apache Commons Lang 3 SystemUtils
         if (osName.startsWith("Linux") || osName.startsWith("LINUX")) {
             return LINUX;

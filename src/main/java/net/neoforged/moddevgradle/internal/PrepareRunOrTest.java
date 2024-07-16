@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -84,7 +85,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     private final ProgramArgsFormat programArgsFormat;
 
-    protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
+    protected PrepareRunOrTest(final ProgramArgsFormat programArgsFormat) {
         this.programArgsFormat = programArgsFormat;
     }
 
@@ -96,9 +97,9 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Internal
     protected abstract boolean isClientDistribution();
 
-    private List<String> getInterpolatedJvmArgs(UserDevRunType runConfig) {
-        var result = new ArrayList<String>();
-        for (var jvmArg : runConfig.jvmArgs()) {
+    private List<String> getInterpolatedJvmArgs(final UserDevRunType runConfig) {
+        final ArrayList<String> result = new ArrayList<String>();
+        for (final String jvmArg : runConfig.jvmArgs()) {
             String arg = jvmArg;
             if (arg.equals("{modules}")) {
                 arg = getModules().getFiles().stream()
@@ -118,15 +119,15 @@ abstract class PrepareRunOrTest extends DefaultTask {
     public void prepareRun() throws IOException {
         // Make sure the run directory exists
         // IntelliJ refuses to start a run configuration whose working directory does not exist
-        var runDir = getGameDirectory().get().getAsFile();
+        final File runDir = getGameDirectory().get().getAsFile();
         Files.createDirectories(runDir.toPath());
 
         // If no NeoForge userdev config is set, we only support Vanilla run types
-        UserDevRunType runConfig;
+        final UserDevRunType runConfig;
         if (getNeoForgeModDevConfig().isEmpty()) {
             runConfig = resolveRunType(getSimulatedUserDevConfigForVanilla());
         } else {
-            var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
+            final UserDevConfig userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
             runConfig = resolveRunType(userDevConfig);
         }
 
@@ -135,8 +136,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
     }
 
     private UserDevConfig getSimulatedUserDevConfigForVanilla() {
-        var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
-        var commonArgs = List.<String>of();
+        final List<String> clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
+        final List<String> commonArgs = List.<String>of();
 
         return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
                 "client", new UserDevRunType(
@@ -151,29 +152,29 @@ abstract class PrepareRunOrTest extends DefaultTask {
         ));
     }
 
-    private void writeJvmArguments(UserDevRunType runConfig) throws IOException {
-        var lines = new ArrayList<String>();
+    private void writeJvmArguments(final UserDevRunType runConfig) throws IOException {
+        final ArrayList<String> lines = new ArrayList<String>();
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
 
-        var userJvmArgs = getJvmArguments().get();
+        final List<String> userJvmArgs = getJvmArguments().get();
         if (!userJvmArgs.isEmpty()) {
             lines.add("");
             lines.add("# User JVM Arguments");
-            for (var userJvmArg : userJvmArgs) {
+            for (final String userJvmArg : userJvmArgs) {
                 lines.add(RunUtils.escapeJvmArg(userJvmArg));
             }
             lines.add("");
         }
 
         if (getLog4jConfigFile().isPresent()) {
-            var log4jConfigFile = getLog4jConfigFile().get().getAsFile();
+            final File log4jConfigFile = getLog4jConfigFile().get().getAsFile();
             RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), log4jConfigFile.toPath());
             lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4jConfigFile.getAbsolutePath()));
         }
 
-        for (var prop : runConfig.props().entrySet()) {
-            var propValue = prop.getValue();
+        for (final Map.Entry<String, String> prop : runConfig.props().entrySet()) {
+            String propValue = prop.getValue();
             if (propValue.equals("{minecraft_classpath_file}")) {
                 propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
             }
@@ -181,7 +182,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
             addSystemProp(prop.getKey(), propValue, lines);
         }
 
-        for (var entry : getSystemProperties().get().entrySet()) {
+        for (final Map.Entry<String, String> entry : getSystemProperties().get().entrySet()) {
             addSystemProp(entry.getKey(), entry.getValue(), lines);
         }
 
@@ -193,10 +194,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
         );
     }
 
-    private void writeProgramArguments(UserDevRunType runConfig) throws IOException {
-        var lines = new ArrayList<String>();
+    private void writeProgramArguments(final UserDevRunType runConfig) throws IOException {
+        final ArrayList<String> lines = new ArrayList<String>();
 
-        var mainClass = resolveMainClass(runConfig);
+        final String mainClass = resolveMainClass(runConfig);
         if (mainClass != null) {
             lines.add("# Main Class");
             lines.add(mainClass);
@@ -204,8 +205,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
         }
 
         lines.add("# NeoForge Run-Type Program Arguments");
-        var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
-        List<String> args = runConfig.args();
+        final AssetProperties assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
+        final List<String> args = runConfig.args();
         for (String arg : args) {
             switch (arg) {
                 case "{assets_root}" -> arg = Objects.requireNonNull(assetProperties.assetsRoot(), "assets_root");
@@ -222,7 +223,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
         lines.add("");
 
         lines.add("# User Supplied Program Arguments");
-        for (var arg : getProgramArguments().get()) {
+        for (final String arg : getProgramArguments().get()) {
             // FML JUnit simply expects one line per argument
             if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
                 lines.add(arg);
@@ -233,9 +234,12 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         // For FML JUnit, we need to drop comments + empty lines
         if (programArgsFormat == ProgramArgsFormat.FML_JUNIT) {
-            lines.removeIf(line -> {
-                line = line.strip();
-                return line.isEmpty() || line.startsWith("#");
+            lines.removeIf(new Predicate<String>() {
+                @Override
+                public boolean test(String line) {
+                    line = line.strip();
+                    return line.isEmpty() || line.startsWith("#");
+                }
             });
         }
 
@@ -247,7 +251,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
         );
     }
 
-    private static void addSystemProp(String name, String value, List<String> lines) {
+    private static void addSystemProp(final String name, final String value, final List<String> lines) {
         lines.add(RunUtils.escapeJvmArg("-D" + name + "=" + value));
     }
 

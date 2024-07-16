@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -35,11 +36,14 @@ public abstract class ModModel implements Named {
     @Override
     public abstract String getName();
 
-    Configuration getConfiguration() {
+    final Configuration getConfiguration() {
         if (configuration == null) {
-            configuration = getProject().getConfigurations().create("neoForgeModContent" + StringUtils.capitalize(getName()), configuration -> {
-                configuration.setCanBeConsumed(false);
-                configuration.setCanBeResolved(true);
+            configuration = getProject().getConfigurations().create("neoForgeModContent" + StringUtils.capitalize(getName()), new Action<Configuration>() {
+                @Override
+                public void execute(Configuration configuration) {
+                    configuration.setCanBeConsumed(false);
+                    configuration.setCanBeResolved(true);
+                }
             });
         }
         return configuration;
@@ -47,19 +51,19 @@ public abstract class ModModel implements Named {
 
     // Do not name getSourceSets or it will conflict with project.sourceSets in scripts.
     public abstract ListProperty<SourceSet> getModSourceSets();
-    public void dependency(CharSequence dependencyNotation) {
+    public void dependency(final CharSequence dependencyNotation) {
         getConfiguration().getDependencies().add(getProject().getDependencyFactory().create(dependencyNotation));
     }
 
-    public void dependency(Project projectRef) {
+    public void dependency(final Project projectRef) {
         getConfiguration().getDependencies().add(getProject().getDependencyFactory().create(projectRef));
     }
 
-    public void extendsFrom(Configuration configuration) {
+    public void extendsFrom(final Configuration configuration) {
         getConfiguration().extendsFrom(configuration);
     }
 
-    public void sourceSet(SourceSet sourceSet) {
+    public void sourceSet(final SourceSet sourceSet) {
         getModSourceSets().add(sourceSet);
     }
 }

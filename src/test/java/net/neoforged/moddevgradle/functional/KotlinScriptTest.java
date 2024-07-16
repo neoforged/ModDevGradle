@@ -32,14 +32,14 @@ public class KotlinScriptTest {
         writeFile(settingsFile, """
                 rootProject.name = "hello-world";
                 """);
-        String buildFileContent = """
+        final String buildFileContent = """
                 plugins {
                     id("net.neoforged.moddev")
                 }
                 """;
         writeFile(buildFile, buildFileContent);
 
-        BuildResult result = GradleRunner.create()
+        final BuildResult result = GradleRunner.create()
                 .withPluginClasspath()
                 .withProjectDir(testProjectDir)
                 .withArguments("tasks", "--all")
@@ -49,7 +49,7 @@ public class KotlinScriptTest {
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
     }
 
-    private void writeFile(File destination, String content) throws IOException {
+    private void writeFile(final File destination, final String content) throws IOException {
         BufferedWriter output = null;
         try {
             output = new BufferedWriter(new FileWriter(destination));

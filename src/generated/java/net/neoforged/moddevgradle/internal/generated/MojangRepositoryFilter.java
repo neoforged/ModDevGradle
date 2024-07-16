@@ -1,8 +1,8 @@
 
 package net.neoforged.moddevgradle.internal.generated;
 
-public class MojangRepositoryFilter {
-    public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
+public final class MojangRepositoryFilter {
+    public static void filter(final org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
         filter.includeModule("argo", "argo");
         filter.includeModule("ca.weblite", "java-objc-bridge");
         filter.includeModule("com.github.oshi", "oshi-core");

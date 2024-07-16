@@ -13,7 +13,7 @@ public abstract class UnitTest {
     private final Project project;
 
     @Inject
-    public UnitTest(Project project) {
+    public UnitTest(final Project project) {
         this.project = project;
     }
 

@@ -1,8 +1,10 @@
 package net.neoforged.moddevgradle.internal;
 
 import org.gradle.api.GradleException;
+import org.gradle.api.Task;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
@@ -19,7 +21,12 @@ import java.util.List;
 abstract public class NeoFormRuntimeEngineTask extends NeoFormRuntimeTask {
     public NeoFormRuntimeEngineTask() {
         // When cache is disabled, the task is NEVER up-to-date to aid with debugging problems
-        getOutputs().upToDateWhen(task -> ((NeoFormRuntimeEngineTask) task).getEnableCache().get());
+        getOutputs().upToDateWhen(new Spec<Task>() {
+            @Override
+            public boolean isSatisfiedBy(Task task) {
+                return ((NeoFormRuntimeEngineTask) task).getEnableCache().get();
+            }
+        });
         getEnableCache().convention(false);
         getUseEclipseCompiler().convention(false);
         getAnalyzeCacheMisses().convention(false);
@@ -65,7 +72,7 @@ abstract public class NeoFormRuntimeEngineTask extends NeoFormRuntimeTask {
     abstract Property<Boolean> getUseEclipseCompiler();
 
     @Override
-    protected void run(List<String> args) {
+    protected final void run(List<String> args) {
         args = new ArrayList<>(args);
 
         if (getVerbose().get()) {

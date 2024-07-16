@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal.utils;
 
 import org.gradle.api.Project;
+import org.gradle.api.invocation.Gradle;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -39,9 +40,9 @@ public final class IdeDetection {
      * Gradle builds to IntelliJ projects in a completely different directory.
      */
     @Nullable
-    public static File getIntellijProjectDir(Project project) {
+    public static File getIntellijProjectDir(final Project project) {
         // Always try the root of a composite build first, since it has the highest chance
-        var root = project.getGradle().getParent();
+        Gradle root = project.getGradle().getParent();
         if (root != null) {
             while (root.getParent() != null) {
                 root = root.getParent();
@@ -55,8 +56,8 @@ public final class IdeDetection {
     }
 
     @Nullable
-    private static File getIntellijProjectDir(File gradleProjectDir) {
-        var ideaDir = new File(gradleProjectDir, ".idea");
+    private static File getIntellijProjectDir(final File gradleProjectDir) {
+        final File ideaDir = new File(gradleProjectDir, ".idea");
         return ideaDir.exists() ? ideaDir : null;
     }
 

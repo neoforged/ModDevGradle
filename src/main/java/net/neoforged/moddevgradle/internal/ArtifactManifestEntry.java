@@ -18,7 +18,7 @@ final class ArtifactManifestEntry implements Serializable {
     @InputFile
     private final File file;
 
-    ArtifactManifestEntry(String artifactId, File file) {
+    ArtifactManifestEntry(final String artifactId, final File file) {
         this.artifactId = artifactId;
         this.file = file;
     }
@@ -34,10 +34,10 @@ final class ArtifactManifestEntry implements Serializable {
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public boolean equals(final Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (ArtifactManifestEntry) obj;
+        final ArtifactManifestEntry that = (ArtifactManifestEntry) obj;
         return Objects.equals(this.artifactId, that.artifactId) &&
                Objects.equals(this.file, that.file);
     }

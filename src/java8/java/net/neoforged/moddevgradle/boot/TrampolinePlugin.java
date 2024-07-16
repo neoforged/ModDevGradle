@@ -17,14 +17,14 @@ public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<
 
     private final String pluginClassName;
 
-    TrampolinePlugin(String pluginClassName) {
+    TrampolinePlugin(final String pluginClassName) {
         this.pluginClassName = pluginClassName;
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public final void apply(T target) {
-        int javaMajorVersion = getJavaMajorVersion();
+    public final void apply(final T target) {
+        final int javaMajorVersion = getJavaMajorVersion();
 
         if (javaMajorVersion < MIN_JAVA_VERSION) {
             throw new GradleException("To use the NeoForge plugin, please run Gradle with Java " + MIN_JAVA_VERSION + " or newer. You are currently running on Java " + javaMajorVersion + " (" + System.getProperty("java.specification.version") + ").");
@@ -36,21 +36,21 @@ public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<
         }
 
         try {
-            Class<? extends Plugin<?>> pluginClass = (Class<? extends Plugin<?>>) Class.forName(pluginClassName);
+            final Class<? extends Plugin<?>> pluginClass = (Class<? extends Plugin<?>>) Class.forName(pluginClassName);
             target.getPlugins().apply(pluginClass);
-        } catch (ClassNotFoundException e) {
+        } catch (final ClassNotFoundException e) {
             throw new GradleException("Failed to find main plugin class.", e);
         }
     }
 
     private int getJavaMajorVersion() {
-        String specVersion = System.getProperty("java.specification.version");
+        final String specVersion = System.getProperty("java.specification.version");
         if (specVersion == null) {
             return 0;
         }
 
-        Pattern firstNumber = Pattern.compile("^(\\d+)\\D*");
-        Matcher matcher = firstNumber.matcher(specVersion);
+        final Pattern firstNumber = Pattern.compile("^(\\d+)\\D*");
+        final Matcher matcher = firstNumber.matcher(specVersion);
         if (!matcher.find()) {
             return 0;
         }
@@ -59,7 +59,7 @@ public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return "Trampoline for " + pluginClassName;
     }
 }

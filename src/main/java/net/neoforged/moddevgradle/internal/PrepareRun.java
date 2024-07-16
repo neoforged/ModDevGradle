@@ -25,11 +25,11 @@ abstract class PrepareRun extends PrepareRunOrTest {
     }
 
     @Override
-    protected UserDevRunType resolveRunType(UserDevConfig userDevConfig) {
+    protected UserDevRunType resolveRunType(final UserDevConfig userDevConfig) {
         if (getRunType().get().equals("junit")) {
             throw new GradleException("The junit run type cannot be used for normal NeoForge runs. Available run types: " + userDevConfig.runs().keySet());
         }
-        var runConfig = userDevConfig.runs().get(getRunType().get());
+        final UserDevRunType runConfig = userDevConfig.runs().get(getRunType().get());
         if (runConfig == null) {
             throw new GradleException("Trying to prepare unknown run: " + getRunType().get() + ". Available run types: " + userDevConfig.runs().keySet());
         }
@@ -38,7 +38,7 @@ abstract class PrepareRun extends PrepareRunOrTest {
 
     @Override
     @Nullable
-    protected String resolveMainClass(UserDevRunType runConfig) {
+    protected String resolveMainClass(final UserDevRunType runConfig) {
         return getMainClass().getOrElse(runConfig.main());
     }
 

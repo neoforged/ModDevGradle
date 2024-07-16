@@ -360,7 +360,7 @@ With this dependency, you can annotate your test class as follows:
 @ExtendWith(EphemeralTestServerProvider.class)
 public class TestClass {
     @Test
-    public void testMethod(MinecraftServer server) {
+    public void testMethod(final MinecraftServer server) {
         // Use server...
     }
 }

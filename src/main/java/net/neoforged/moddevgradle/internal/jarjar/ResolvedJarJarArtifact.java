@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-public class ResolvedJarJarArtifact {
+public final class ResolvedJarJarArtifact {
 
     private final File file;
     private final String embeddedFilename;
@@ -26,7 +26,7 @@ public class ResolvedJarJarArtifact {
     private final String group;
     private final String artifact;
 
-    public ResolvedJarJarArtifact(File file, String embeddedFilename, String version, String versionRange, String group, String artifact) {
+    public ResolvedJarJarArtifact(final File file, final String embeddedFilename, final String version, final String versionRange, final String group, final String artifact) {
         this.file = file;
         this.embeddedFilename = embeddedFilename;
         this.version = version;
@@ -35,22 +35,22 @@ public class ResolvedJarJarArtifact {
         this.artifact = artifact;
     }
 
-    public ContainedJarIdentifier createContainedJarIdentifier() {
+    public final ContainedJarIdentifier createContainedJarIdentifier() {
         return new ContainedJarIdentifier(group, artifact);
     }
 
-    public ContainedVersion createContainedVersion() {
+    public final ContainedVersion createContainedVersion() {
         try {
             return new ContainedVersion(
                     VersionRange.createFromVersionSpec(versionRange),
                     new DefaultArtifactVersion(version)
             );
-        } catch (InvalidVersionSpecificationException e) {
+        } catch (final InvalidVersionSpecificationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public ContainedJarMetadata createContainerMetadata() {
+    public final ContainedJarMetadata createContainerMetadata() {
         return new ContainedJarMetadata(createContainedJarIdentifier(), createContainedVersion(), "META-INF/jarjar/"+embeddedFilename, isObfuscated(file));
     }
 
@@ -89,7 +89,7 @@ public class ResolvedJarJarArtifact {
         try(final JarFile jarFile = new JarFile(dependency)) {
             final Manifest manifest = jarFile.getManifest();
             return manifest.getMainAttributes().containsKey("Obfuscated-By");
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new RuntimeException("Could not read jar file for dependency", e);
         }
     }

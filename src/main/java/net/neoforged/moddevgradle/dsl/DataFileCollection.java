@@ -11,7 +11,7 @@ public abstract class DataFileCollection {
      * <p>
      * Using this method replaces any previously present default value.
      */
-    public void from(Object... paths) {
+    public void from(final Object... paths) {
         getFiles().from(paths);
     }
 
@@ -20,7 +20,7 @@ public abstract class DataFileCollection {
      * <p>
      * Using this method replaces any previously present default value.
      */
-    public void publish(Object... paths) {
+    public void publish(final Object... paths) {
         getPublished().from(paths);
     }
 

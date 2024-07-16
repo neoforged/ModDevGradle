@@ -41,7 +41,7 @@ public class ValidationTests {
                 }
                 """);
 
-        BuildResult result = GradleRunner.create()
+        final BuildResult result = GradleRunner.create()
                 .withPluginClasspath()
                 .withProjectDir(testProjectDir)
                 .withArguments("tasks")
