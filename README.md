@@ -162,7 +162,7 @@ neoForge {
             
             // Allows advanced users to run additional Gradle tasks before each launch of this run
             // Please note that using this feature will significantly slow down launching the game
-            tasksBefore = ["generateSomeCodeTask"]
+            taskBefore tasks.named("generateSomeCodeTask")
         }
     }
 }
