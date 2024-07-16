@@ -396,10 +396,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArguments().set(run.getProgramArguments());
                 task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
-
-                for (var beforeTask : run.getTasksBefore()) {
-                    task.dependsOn(project.getTasks().named(beforeTask));
-                }
+                task.dependsOn(run.getTasksBefore());
             });
             prepareRunTasks.put(run, prepareRunTask);
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
@@ -796,7 +793,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 public Map<String, ?> toMap() {
                     var result = (Map<String, Object>) super.toMap();
                     result.put("projectPath", project.getProjectDir().getAbsolutePath().replaceAll("\\\\", "/"));
-                    result.put("taskName", String.join(" ", run.getTasksBefore()));
+                    var tasks = run.getTasksBefore().stream().map(TaskProvider::getName).collect(Collectors.joining(" "));
+                    result.put("taskName", tasks);
                     return result;
                 }
             }
@@ -936,7 +934,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             // Creates a launch config to run the preparation tasks
             var prepareRunConfig = GradleLaunchConfig.builder(eclipseProjectName)
-                    .tasks(run.getTasksBefore().toArray(String[]::new))
+                    .tasks(run.getTasksBefore().stream().map(TaskProvider::getName).toArray(String[]::new))
                     .build();
             var prepareRunLaunchName = "Prepare " + runIdeName;
             RunUtils.writeEclipseLaunchConfig(project, prepareRunLaunchName, prepareRunConfig);
