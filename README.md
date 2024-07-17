@@ -36,13 +36,13 @@ In `build.gradle`:
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://projects.neoforged.net/neoforged/ModDevGradle
-    id 'net.neoforged.moddev' version '0.1.100'
+    id 'net.neoforged.moddev' version '1.0.11'
 }
 
 neoForge {
     // We currently only support NeoForge versions later than 21.0.x
     // See https://projects.neoforged.net/neoforged/neoforge for the latest updates
-    version = "21.0.42-beta"
+    version = "21.0.103-beta"
     
     // Validate AT files and raise errors when they have invalid targets
     // This option is false by default, but turning it on is recommended
