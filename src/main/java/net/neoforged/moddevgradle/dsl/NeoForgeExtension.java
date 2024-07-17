@@ -6,15 +6,17 @@ import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
-import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.Task;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -182,5 +184,25 @@ public abstract class NeoForgeExtension {
 
     public void unitTest(Action<UnitTest> action) {
         action.execute(unitTest);
+    }
+
+
+    /**
+     * The tasks to be run when the IDE reloads the Gradle project.
+     */
+    public abstract ListProperty<TaskProvider<?>> getIdeSyncTasks();
+
+    /**
+     * Configures the given task to be run when the IDE reloads the Gradle project.
+     */
+    public void ideSyncTask(TaskProvider<?> task) {
+        this.getIdeSyncTasks().add(task);
+    }
+
+    /**
+     * Configures the given task to be run when the IDE reloads the Gradle project.
+     */
+    public void ideSyncTask(Task task) {
+        this.getIdeSyncTasks().add(task.getProject().getTasks().named(task.getName()));
     }
 }
