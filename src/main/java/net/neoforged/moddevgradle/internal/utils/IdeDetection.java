@@ -34,6 +34,13 @@ public final class IdeDetection {
     }
 
     /**
+     * @return true if running under VsCode
+     */
+    public static boolean isVsCode() {
+        return isEclipse() && System.getProperty("eclipse.home.location", "").contains("redhat.java");
+    }
+
+    /**
      * Try to find the IntelliJ project directory that belongs to this Gradle project.
      * There are scenarios where this is impossible, since IntelliJ allows adding
      * Gradle builds to IntelliJ projects in a completely different directory.
