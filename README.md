@@ -118,7 +118,7 @@ The run type can be set as follows:
 ```groovy
 neoForge {
     runs {
-        < run name > {
+        <run name> {
             // This is the standard syntax:
             type = "gameTestServer"
             // Client, data and server runs can use a shorthand instead:
@@ -490,5 +490,16 @@ neoForge {
         // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
         analyzeCacheMisses = true
     }
+}
+```
+
+### Running Tasks on IDE Project Synchronization
+
+You can add tasks to be run when the IDE reloads your Gradle project. 
+Advanced users might find this useful to run code generation tasks whenever the IDE syncs the project.
+
+```
+neoForge {
+    ideSyncTask tasks.named("generateSomeCodeTask")
 }
 ```
