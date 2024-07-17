@@ -169,14 +169,14 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     /**
-     * Gets the names of Gradle tasks that should be run before running this run.
+     * Gets the Gradle tasks that should be run before running this run.
      */
     public List<TaskProvider<?>> getTasksBefore() {
         return tasksBefore;
     }
 
     /**
-     * Sets the names of Gradle tasks that should be run before running this run.
+     * Sets the Gradle tasks that should be run before running this run.
      * This also slows down running through your IDE since it will first execute Gradle to run the requested
      * tasks, and then run the actual game.
      */

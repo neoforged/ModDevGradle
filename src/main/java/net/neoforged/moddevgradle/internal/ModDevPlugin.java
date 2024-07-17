@@ -318,6 +318,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
             task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
             task.dependsOn(createArtifacts);
+            task.dependsOn(extension.getIdeSyncTasks());
         });
 
         var additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
