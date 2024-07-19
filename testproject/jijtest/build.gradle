@@ -2,10 +2,24 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+repositories {
+    maven {
+        url = file("testrepo").toURI()
+        metadataSources {
+            gradleMetadata()
+        }
+    }
+}
+
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     jarJar(project(":coremod"))
+    jarJar("testgroup:testartifact1:1.0") {
+        version {
+            strictly '[0.1, 2.0)'
+        }
+    }
 
     jarJar("org.commonmark:commonmark") {
         version {

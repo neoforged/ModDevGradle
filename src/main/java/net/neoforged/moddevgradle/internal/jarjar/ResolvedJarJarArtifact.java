@@ -10,12 +10,10 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
-import org.gradle.api.tasks.SourceSet;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.jar.JarFile;
-import java.util.jar.Manifest;
 
 public class ResolvedJarJarArtifact {
 
@@ -85,12 +83,12 @@ public class ResolvedJarJarArtifact {
         return artifact;
     }
 
-    private static boolean isObfuscated(final File dependency) {
-        try(final JarFile jarFile = new JarFile(dependency)) {
-            final Manifest manifest = jarFile.getManifest();
+    private static boolean isObfuscated(File dependency) {
+        try (var jarFile = new JarFile(dependency)) {
+            var manifest = jarFile.getManifest();
             return manifest.getMainAttributes().containsKey("Obfuscated-By");
         } catch (IOException e) {
-            throw new RuntimeException("Could not read jar file for dependency", e);
+            throw new RuntimeException("Could not read jar file for dependency " + dependency.getAbsolutePath(), e);
         }
     }
 }

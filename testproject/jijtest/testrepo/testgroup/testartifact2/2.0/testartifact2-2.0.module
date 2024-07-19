@@ -1,0 +1,28 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "testgroup",
+    "module": "testartifact2",
+    "version": "2.0"
+  },
+  "variants": [
+    {
+      "name": "jvmRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "testartifact.jar",
+          "url": "testartifact.jar",
+          "size": 345,
+          "sha512": "cf705b6ee729c6ab323bf74769ceda48ce1a659036520ea5d97fd5363b58fefd7bb5dd471a97f0ed49916cbf4eff32e2c5cd17515bcfd3b738ebad8c1147516c",
+          "sha256": "198c69401c647ba1832e0bba967c57d4b7a1bc00da975edd9d6eb9535c0d1ef8",
+          "sha1": "1bae6077c6b90db373117e4670a4f640f8153c13",
+          "md5": "19687752b8aae36437b7e22e26b0db2f"
+        }
+      ]
+    }
+  ]
+}

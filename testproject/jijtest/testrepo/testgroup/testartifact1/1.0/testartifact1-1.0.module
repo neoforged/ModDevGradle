@@ -1,0 +1,23 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "testgroup",
+    "module": "testartifact1",
+    "version": "1.0"
+  },
+  "variants": [
+    {
+      "name": "jvmRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.usage": "java-runtime"
+      },
+      "available-at": {
+        "url": "../../testartifact2/2.0/testartifact2-2.0.module",
+        "group": "testgroup",
+        "module": "testartifact2",
+        "version": "2.0"
+      }
+    }
+  ]
+}

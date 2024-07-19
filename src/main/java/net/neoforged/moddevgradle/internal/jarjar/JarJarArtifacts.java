@@ -5,6 +5,7 @@ import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.gradle.api.GradleException;
+import org.gradle.api.artifacts.ArtifactIdentifier;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.component.ComponentSelector;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
@@ -143,13 +144,22 @@ public abstract class JarJarArtifacts {
             ComponentSelector requested = resolvedResult.getRequested();
             ResolvedVariantResult variant = resolvedResult.getResolvedVariant();
 
-            ArtifactIdentifier artifactIdentifier = capabilityOrModule(variant);
-            if (artifactIdentifier == null) {
-                continue;
-            }
+            // We do this to account for any available-at usage in module metadata -- the actual artifact will only have
+            // the module ID of the final target of available-at, but the resolved dependency lets us get the whole
+            // hierarchy.
+            List<ContainedJarIdentifier> identifiers = new ArrayList<>();
+            ResolvedVariantResult currentVariant = variant;
+            while (currentVariant != null) {
+                var artifactIdentifier = capabilityOrModule(currentVariant);
+                currentVariant = currentVariant.getExternalVariant().orElse(null);
+                if (artifactIdentifier == null) {
+                    continue;
+                }
 
-            ContainedJarIdentifier jarIdentifier = new ContainedJarIdentifier(artifactIdentifier.group(), artifactIdentifier.name());
-            knownIdentifiers.add(jarIdentifier);
+                var jarIdentifier = new ContainedJarIdentifier(artifactIdentifier.group, artifactIdentifier.name);
+                knownIdentifiers.add(jarIdentifier);
+                identifiers.add(jarIdentifier);
+            }
 
             String versionRange = null;
             if (requested instanceof ModuleComponentSelector requestedModule) {
@@ -182,10 +192,14 @@ public abstract class JarJarArtifacts {
             String version = getVersionFrom(variant);
 
             if (version != null) {
-                versions.put(jarIdentifier, version);
+                for (var jarIdentifier : identifiers) {
+                    versions.put(jarIdentifier, version);
+                }
             }
             if (versionRange != null) {
-                versionRanges.put(jarIdentifier, versionRange);
+                for (var jarIdentifier : identifiers) {
+                    versionRanges.put(jarIdentifier, versionRange);
+                }
             }
         }
     }
