@@ -6,6 +6,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -20,9 +21,14 @@ import java.util.Collections;
  * using the NFRT CLI.
  */
 @DisableCachingByDefault(because = "Implements its own caching")
-abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
+abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     @Inject
     public CreateMinecraftArtifactsTask() {
+        // When cache is disabled, the task is NEVER up-to-date to aid with debugging problems
+        getOutputs().upToDateWhen(task -> ((CreateMinecraftArtifactsTask) task).getEnableCache().get());
+        getEnableCache().convention(false);
+        getUseEclipseCompiler().convention(false);
+        getAnalyzeCacheMisses().convention(false);
     }
 
     @InputFiles
@@ -59,6 +65,34 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
     @OutputFile
     abstract RegularFileProperty getResourcesArtifact();
 
+    /**
+     * Gradle dependency notation for the NeoForge userdev artifact.
+     * Either this or {@link #getNeoFormArtifact()} must be specified.
+     */
+    @Input
+    @Optional
+    abstract Property<String> getNeoForgeArtifact();
+
+    /**
+     * Gradle dependency notation for the NeoForm data artifact.
+     * Either this or {@link #getNeoForgeArtifact()} must be specified.
+     */
+    @Input
+    @Optional
+    abstract Property<String> getNeoFormArtifact();
+
+    /**
+     * Enables use of the cache.
+     */
+    @Internal
+    abstract Property<Boolean> getEnableCache();
+
+    @Internal
+    abstract Property<Boolean> getAnalyzeCacheMisses();
+
+    @Input
+    abstract Property<Boolean> getUseEclipseCompiler();
+
     @TaskAction
     public void createArtifacts() {
         var args = new ArrayList<String>();
@@ -92,6 +126,29 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeEngineTask {
                 args.add("--parchment-conflict-prefix");
                 args.add(conflictResolutionPrefix);
             }
+        }
+
+        if (!getEnableCache().get()) {
+            args.add("--disable-cache");
+        }
+
+        if (getAnalyzeCacheMisses().get()) {
+            args.add("--analyze-cache-misses");
+        }
+
+        if (getUseEclipseCompiler().get()) {
+            args.add("--use-eclipse-compiler");
+        }
+
+        // Note that it is possible to specify both
+        if (getNeoForgeArtifact().isPresent()) {
+            Collections.addAll(args, "--neoforge", getNeoForgeArtifact().get());
+        }
+        if (getNeoFormArtifact().isPresent()) {
+            Collections.addAll(args, "--neoform", getNeoFormArtifact().get());
+        }
+        if (!getNeoFormArtifact().isPresent() && !getNeoForgeArtifact().isPresent()) {
+            throw new GradleException("You need to specify at least 'version' or 'neoFormVersion' in the 'neoForge' block of your build script.");
         }
 
         Collections.addAll(

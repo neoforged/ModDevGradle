@@ -199,15 +199,10 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // Configure common properties of NeoFormRuntimeEngineTask
-        Consumer<NeoFormRuntimeEngineTask> configureEngineTask = task -> {
+        Consumer<NeoFormRuntimeTask> configureNfrtTask = task -> {
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
-            task.getEnableCache().set(nfrtSettings.getEnableCache());
-            task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
-            task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
-            task.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.neoforged:neoforge:" + version));
-            task.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip"));
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
 
@@ -235,7 +230,14 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
             task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
 
-            configureEngineTask.accept(task);
+            var nfrtSettings = extension.getNeoFormRuntime();
+            task.getEnableCache().set(nfrtSettings.getEnableCache());
+            task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
+            task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
+            task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
+            task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
+
+            configureNfrtTask.accept(task);
         });
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
@@ -243,7 +245,9 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
-            configureEngineTask.accept(task);
+            task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
+            task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
+            configureNfrtTask.accept(task);
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
@@ -440,6 +444,14 @@ public class ModDevPlugin implements Plugin<Project> {
         configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
 
         configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
+    }
+
+    private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
+        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip");
+    }
+
+    private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
+        return extension.getVersion().map(version -> "net.neoforged:neoforge:" + version + ":userdev");
     }
 
     /**
