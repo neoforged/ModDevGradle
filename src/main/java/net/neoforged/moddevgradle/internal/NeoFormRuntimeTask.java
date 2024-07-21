@@ -5,10 +5,13 @@ import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -24,9 +27,24 @@ import java.util.List;
  */
 abstract public class NeoFormRuntimeTask extends DefaultTask {
 
+    /**
+     * Enable verbose output for the NFRT engine.
+     */
+    @Internal
+    abstract Property<Boolean> getVerbose();
+
     @Classpath
     @InputFiles
     abstract ConfigurableFileCollection getNeoFormRuntime();
+
+    /**
+     * To help NFRT avoid unnecessary downloads of artifacts that Gradle has already cached, and to allow
+     * overriding dependencies, this property can specify a properties file mapping G:A:V to the on-disk path
+     * of those artifacts, which NFRT will use to avoid downloads if those artifacts are requested.
+     */
+    @InputFile
+    @Optional
+    abstract RegularFileProperty getArtifactManifestFile();
 
     /**
      * Launcher for the java version used by NFRT itself.
@@ -55,6 +73,8 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
     public NeoFormRuntimeTask() {
         var project = getProject();
 
+        getVerbose().convention(false);
+
         // When running NeoForm as part of a Gradle build, we store our caches under Gradles
         // home directory for user convenience (they will be picked up by Gradle cache actions in CI, etc.)
         var gradleHome = project.getGradle().getGradleUserHomeDir();
@@ -76,17 +96,27 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         realArgs.add(2, "--work-dir");
         realArgs.add(3, getWorkDirectory().get().getAsFile().getAbsolutePath());
 
+        if (getVerbose().get()) {
+            realArgs.add("--verbose");
+        }
+
+        if (getArtifactManifestFile().isPresent()) {
+            realArgs.add("--artifact-manifest");
+            realArgs.add(getArtifactManifestFile().get().getAsFile().getAbsolutePath());
+            realArgs.add("--warn-on-artifact-manifest-miss");
+        }
+
+        // When running through IJ or Eclipse, always enable emojis
+        if (IdeDetection.isIntelliJ() || IdeDetection.isEclipse()) {
+            realArgs.add("--emojis");
+        }
+
         getExecOperations().javaexec(execSpec -> {
             // Pass through network properties
             execSpec.systemProperties(NetworkSettingPassthrough.getNetworkSystemProperties());
 
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
-
-            // When running through IJ or Eclipse, always enable emojis
-            if (IdeDetection.isIntelliJ() || IdeDetection.isEclipse()) {
-                execSpec.args("--emojis");
-            }
 
             execSpec.executable(getNeoFormRuntimeLauncher().get().getExecutablePath().getAsFile());
             execSpec.classpath(getNeoFormRuntime());
