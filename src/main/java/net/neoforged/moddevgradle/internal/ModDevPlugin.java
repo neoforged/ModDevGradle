@@ -18,16 +18,15 @@ import net.neoforged.vsclc.attribute.ConsoleType;
 import net.neoforged.vsclc.attribute.PathLike;
 import net.neoforged.vsclc.attribute.ShortCmdBehaviour;
 import net.neoforged.vsclc.writer.WritingMode;
-import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
@@ -75,7 +74,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -131,7 +129,42 @@ public class ModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
 
-        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
+        // Create an access transformer configuration
+        var accessTransformers = dataFileConfiguration(
+                project,
+                "accessTransformers",
+                "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
+                "accesstransformer"
+        );
+        accessTransformers.extension.getFiles().convention(project.provider(() -> {
+            var collection = project.getObjects().fileCollection();
+
+            // Only return this when it actually exists
+            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
+                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
+                if (project.file(defaultPath).exists()) {
+                    return collection.from(defaultPath.getAbsolutePath());
+                }
+            }
+
+            return collection;
+        }));
+
+        // Create a configuration for grabbing interface injection data
+        var interfaceInjectionData = dataFileConfiguration(
+                project,
+                "interfaceInjectionData",
+                "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
+                "interfaceinjection"
+        );
+
+        var extension = project.getExtensions().create(
+                NeoForgeExtension.NAME,
+                NeoForgeExtension.class,
+                accessTransformers.extension,
+                interfaceInjectionData.extension
+        );
         var dependencyFactory = project.getDependencyFactory();
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
@@ -183,14 +216,6 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        // Create an access transformer configuration
-        var accessTransformers = dataFileConfiguration(project, "accessTransformers", "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
-                "accesstransformer", extension.getAccessTransformers());
-
-        // Create a configuration for grabbing interface injection data
-        var interfaceInjectionData = dataFileConfiguration(project, "interfaceInjectionData", "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
-                "interfaceinjection", extension.getInterfaceInjectionData());
-
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
@@ -216,8 +241,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
-            task.getAccessTransformers().from(accessTransformers);
-            task.getInterfaceInjectionData().from(interfaceInjectionData);
+            task.getAccessTransformers().from(accessTransformers.configuration);
+            task.getInterfaceInjectionData().from(interfaceInjectionData.configuration);
             task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
@@ -1051,41 +1076,61 @@ public class ModDevPlugin implements Plugin<Project> {
                 .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
     }
 
-    private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
-        var depFactory = project.getDependencyFactory();
-        Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
+    record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
+    }
 
+    private static DataFileCollectionWrapper dataFileConfiguration(Project project, String name, String description, String category) {
         var configuration = project.getConfigurations().create(name, spec -> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getFiles())));
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
+
         var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
             spec.setDescription("Published data files for " + name);
             spec.setCanBeConsumed(true);
             spec.setCanBeResolved(false);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getPublished())));
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
 
-        // Set up the publishing conditionally
-        AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+        // Set up the variant publishing conditionally
+        var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+        java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+            // This should be invoked lazily, so checking if the artifacts are empty is fine:
+            // "The details object used to determine what to do with a configuration variant **when publishing**."
+            if (variant.getConfigurationVariant().getArtifacts().isEmpty()) {
+                variant.skip();
+            }
+        });
 
-        AtomicBoolean configured = new AtomicBoolean();
-        Runnable configurePublishing = () -> {
-            if (configured.compareAndSet(false, true)) {
-                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+        var depFactory = project.getDependencyFactory();
+        Consumer<Object> publishCallback = new Consumer<>() {
+            ConfigurablePublishArtifact firstArtifact;
+            int artifactCount;
+
+            @Override
+            public void accept(Object artifactNotation) {
+                elementsConfiguration.getDependencies().add(depFactory.create(project.files(artifactNotation)));
+                project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation, artifact -> {
+                    if (firstArtifact == null) {
+                        firstArtifact = artifact;
+                        artifact.setClassifier(category);
+                        artifactCount = 1;
+                    } else {
+                        if (artifactCount == 1) {
+                            firstArtifact.setClassifier(category + artifactCount);
+                        }
+                        artifact.setClassifier(category + (++artifactCount));
+                    }
                 });
             }
         };
 
-        elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
-        elementsConfiguration.getArtifacts().configureEach(artifact -> configurePublishing.run());
+        var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
+        configuration.getDependencies().add(depFactory.create(extension.getFiles()));
 
-        configuration.attributes(attributeAction);
-        elementsConfiguration.attributes(attributeAction);
-
-        return configuration;
+        return new DataFileCollectionWrapper(extension, configuration);
     }
 }
 
