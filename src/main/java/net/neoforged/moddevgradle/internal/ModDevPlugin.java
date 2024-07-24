@@ -1003,10 +1003,13 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Publish the data files as artifacts whose classifiers match the name of the file to avoid conflicts
         // Unfortunately, ArtifactHandler does not have lazy methods, so afterEval it is
-        project.afterEvaluate(proj -> collection.getPublished()
-                .forEach(file -> proj.getArtifacts().add(elementsConfiguration.getName(), file, configurablePublishArtifact -> {
+        project.afterEvaluate(proj -> {
+            for (var file : collection.getPublished()) {
+                proj.getArtifacts().add(elementsConfiguration.getName(), file, configurablePublishArtifact -> {
                     configurablePublishArtifact.setClassifier(FileUtils.stripExtension(file.getName()));
-                })));
+                });
+            }
+        });
 
         // Set up the variant publishing conditionally
         AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");

@@ -23,7 +23,7 @@ neoForge {
 
 publishing {
     publications {
-        yes(MavenPublication) {
+        maven(MavenPublication) {
             from components.java
         }
     }
