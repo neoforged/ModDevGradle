@@ -1001,9 +1001,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getPublished())));
         });
 
-        // Set up the publishing conditionally
-        AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+        // Publish the data files as artifacts whose classifiers match the name of the file to avoid conflicts
+        // Unfortunately, ArtifactHandler does not have lazy methods, so afterEval it is
+        project.afterEvaluate(proj -> collection.getPublished()
+                .forEach(file -> proj.getArtifacts().add(elementsConfiguration.getName(), file, configurablePublishArtifact -> {
+                    configurablePublishArtifact.setClassifier(FileUtils.stripExtension(file.getName()));
+                })));
 
+        // Set up the variant publishing conditionally
+        AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         AtomicBoolean configured = new AtomicBoolean();
         Runnable configurePublishing = () -> {
             if (configured.compareAndSet(false, true)) {
@@ -1013,7 +1019,7 @@ public class ModDevPlugin implements Plugin<Project> {
         };
 
         elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
-        elementsConfiguration.getArtifacts().configureEach(artifact -> configurePublishing.run());
+        elementsConfiguration.getAllDependencies().configureEach(dep -> configurePublishing.run());
 
         configuration.attributes(attributeAction);
         elementsConfiguration.attributes(attributeAction);

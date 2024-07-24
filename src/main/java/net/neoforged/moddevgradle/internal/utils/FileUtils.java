@@ -115,4 +115,15 @@ public final class FileUtils {
             Files.move(source, destination, StandardCopyOption.REPLACE_EXISTING);
         }
     }
+
+    /**
+     * Strips the extension of the given file name.
+     */
+    public static String stripExtension(String name) {
+        int extensionIndex = name.lastIndexOf(".");
+        if (extensionIndex == -1) {
+            return name;
+        }
+        return name.substring(0, extensionIndex);
+    }
 }
