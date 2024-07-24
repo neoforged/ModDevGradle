@@ -3,16 +3,19 @@ package net.neoforged.moddevgradle.internal;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.OutputFiles;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -64,6 +67,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
      */
     @OutputFile
     abstract RegularFileProperty getResourcesArtifact();
+
+    @OutputFiles
+    abstract MapProperty<String, File> getAdditionalResults();
 
     /**
      * Gradle dependency notation for the NeoForge userdev artifact.
@@ -156,6 +162,9 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
                 "--dist", "joined",
                 "--write-result", "clientResources:" + getResourcesArtifact().get().getAsFile().getAbsolutePath()
         );
+
+        getAdditionalResults().get().forEach((name, file) ->
+                Collections.addAll(args, "--write-result", name + ":" + file.getAbsolutePath()));
 
         // NOTE: When we use NeoForm standalone, the result-ids also change
         if (getNeoForgeArtifact().isPresent()) {
