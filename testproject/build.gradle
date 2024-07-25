@@ -64,6 +64,8 @@ neoForge {
         useEclipseCompiler = true
         // enableCache = false
         // verbose = true
+
+        additionalResults.put('vanillaDeobfuscated', project.file('build/vanilla.jar'))
     }
 
     parchment {

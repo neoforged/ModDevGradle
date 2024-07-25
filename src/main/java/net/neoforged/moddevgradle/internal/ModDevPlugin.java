@@ -236,6 +236,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
+            task.getAdditionalResults().set(nfrtSettings.getAdditionalResults());
 
             configureNfrtTask.accept(task);
         });

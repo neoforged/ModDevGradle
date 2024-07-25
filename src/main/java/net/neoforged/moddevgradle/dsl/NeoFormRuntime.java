@@ -2,9 +2,11 @@ package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
 import org.gradle.api.Project;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 
 import javax.inject.Inject;
+import java.io.File;
 
 /**
  * Configures aspects of the NeoForm Runtime (NFRT), which is used by this plugin to produce
@@ -65,4 +67,11 @@ public abstract class NeoFormRuntime {
      * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.analyzeCacheMisses}.
      */
     public abstract Property<Boolean> getAnalyzeCacheMisses();
+
+    /**
+     * Used to request additional results from NFRT.
+     * <p>
+     * Maps a result name to the file it should be written to.
+     */
+    public abstract MapProperty<String, File> getAdditionalResults();
 }

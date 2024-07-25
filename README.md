@@ -489,6 +489,9 @@ neoForge {
         // Print more information when NFRT cannot use a cached result
         // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
         analyzeCacheMisses = true
+        
+        // Allows pulling additional NFRT results
+        // additionalResults.put('vanillaDeobfuscated', project.file('vanilla.jar'))
     }
 }
 ```
