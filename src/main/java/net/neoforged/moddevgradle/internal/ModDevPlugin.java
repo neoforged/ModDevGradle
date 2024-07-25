@@ -20,6 +20,7 @@ import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
+import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
@@ -1022,7 +1023,13 @@ public class ModDevPlugin implements Plugin<Project> {
         };
 
         elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
-        elementsConfiguration.getAllDependencies().configureEach(dep -> configurePublishing.run());
+        elementsConfiguration.getAllDependencies().configureEach(dep -> {
+            // We always add a dependency containing the project's published data files
+            // Make sure that doesn't cause an empty variant
+            if (dep instanceof FileCollectionDependency fc && fc.getFiles().isEmpty()) return;
+
+            configurePublishing.run();
+        });
 
         configuration.attributes(attributeAction);
         elementsConfiguration.attributes(attributeAction);
