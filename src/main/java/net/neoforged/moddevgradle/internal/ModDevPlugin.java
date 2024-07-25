@@ -1015,20 +1015,16 @@ public class ModDevPlugin implements Plugin<Project> {
         // Set up the variant publishing conditionally
         AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         AtomicBoolean configured = new AtomicBoolean();
-        Runnable configurePublishing = () -> {
-            if (configured.compareAndSet(false, true)) {
-                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
-                });
-            }
-        };
 
-        elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
         elementsConfiguration.getAllDependencies().configureEach(dep -> {
             // We always add a dependency containing the project's published data files
             // Make sure that doesn't cause an empty variant
             if (dep instanceof FileCollectionDependency fc && fc.getFiles().isEmpty()) return;
 
-            configurePublishing.run();
+            if (configured.compareAndSet(false, true)) {
+                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+                });
+            }
         });
 
         configuration.attributes(attributeAction);
