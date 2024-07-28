@@ -35,16 +35,15 @@ public abstract class NeoForgeExtension {
     private final DataFileCollection interfaceInjectionData;
 
     @Inject
-    public NeoForgeExtension(Project project) {
+    public NeoForgeExtension(Project project, DataFileCollection accessTransformers, DataFileCollection interfaceInjectionData) {
         this.project = project;
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
         neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
-
-        accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
-        interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
+        this.accessTransformers = accessTransformers;
+        this.interfaceInjectionData = interfaceInjectionData;
 
         getAccessTransformers().getFiles().convention(project.provider(() -> {
             var collection = project.getObjects().fileCollection();

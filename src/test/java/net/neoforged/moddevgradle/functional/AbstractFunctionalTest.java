@@ -34,6 +34,12 @@ abstract class AbstractFunctionalTest {
         Files.writeString(destination.toPath(), content);
     }
 
+    protected final void writeProjectFile(String relativePath, String content) throws IOException {
+        var destination = testProjectDir.toPath().resolve(relativePath);
+        Files.createDirectories(destination.getParent());
+        Files.writeString(destination, content);
+    }
+
     void writeGroovySettingsScript(@Language("gradle") String text, Object... args) throws IOException {
         writeFile(settingsFile, interpolateTemplate(text, args));
     }
@@ -64,5 +70,21 @@ abstract class AbstractFunctionalTest {
             return Matcher.quoteReplacement(arg.toString());
         });
         return body;
+    }
+
+    protected final void clearProjectDir() {
+        clearContent(testProjectDir);
+    }
+
+    private void clearContent(File file) {
+        var content = file.listFiles();
+        if (content != null) {
+            for (var child : content) {
+                if (child.isDirectory()) {
+                    clearContent(child);
+                }
+                child.delete();
+            }
+        }
     }
 }

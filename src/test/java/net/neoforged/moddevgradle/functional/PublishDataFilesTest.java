@@ -65,6 +65,8 @@ public class PublishDataFilesTest extends AbstractFunctionalTest {
 
     @Test
     public void testPublishInterfaceInjectionFile() throws IOException {
+        writeProjectFile("interfaces.json", "[]");
+        writeProjectFile("subfolder/interfaces.json", "[]");
         Files.writeString(testProjectDir.toPath().resolve("interfaces.json"), "[]");
 
         writeGroovySettingsScript("""
@@ -83,8 +85,9 @@ public class PublishDataFilesTest extends AbstractFunctionalTest {
                 neoForge {
                     version = "{DEFAULT_NEOFORGE_VERSION}"
                     interfaceInjectionData {
-                         publish(project.file('interfaces.json'))
-                     }
+                         publish(file('interfaces.json'))
+                         publish(file('subfolder/interfaces.json'))
+                    }
                 }
                 publishing {
                     publications {
@@ -94,10 +97,17 @@ public class PublishDataFilesTest extends AbstractFunctionalTest {
                     }
                     repositories {
                         maven {
-                            url rootProject.file("{0}")
+                            url file("{0}")
                         }
                     }
                 }
+                def generatedDataFile = tasks.register("generateDataFile") {
+                    outputs.file("build/generatedDataFile.json")
+                    doFirst {
+                        outputs.files.singleFile.text = '{}'
+                    }
+                }
+                neoForge.interfaceInjectionData.publish(generatedDataFile)
                 """, publicationTarget);
 
         var result = GradleRunner.create()
@@ -108,6 +118,42 @@ public class PublishDataFilesTest extends AbstractFunctionalTest {
                 .build();
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":publish").getOutcome());
+
+        clearProjectDir();
+
+        // Now try to consume it
+        writeGroovySettingsScript("""
+                plugins {
+                    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+                }
+                rootProject.name = "consume-if"
+                """);
+        writeGroovyBuildScript("""
+                plugins {
+                    id "net.neoforged.moddev"
+                }
+                dependencies {
+                    interfaceInjectionData "test:publish-if:1.0"
+                }
+                repositories {
+                    maven { url = file("{0}") }
+                }
+                task printFileList {
+                    doFirst {
+                        println(configurations.interfaceInjectionData.files)
+                    }
+                }
+                """, publicationTarget);
+
+        var consumeResult = GradleRunner.create()
+                .withPluginClasspath()
+                .withProjectDir(testProjectDir)
+                .withArguments("printFileList")
+                .withDebug(true)
+                .build();
+
+        System.out.println(consumeResult.getOutput());
+
     }
 
 }

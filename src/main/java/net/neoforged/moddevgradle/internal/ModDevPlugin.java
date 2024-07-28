@@ -13,17 +13,15 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
-import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
-import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
@@ -71,7 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -127,7 +124,28 @@ public class ModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
 
-        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
+        // Create an access transformer configuration
+        var accessTransformers = dataFileConfiguration(
+                project,
+                "accessTransformers",
+                "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
+                "accesstransformer"
+        );
+
+        // Create a configuration for grabbing interface injection data
+        var interfaceInjectionData = dataFileConfiguration(
+                project,
+                "interfaceInjectionData",
+                "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
+                "interfaceinjection"
+        );
+
+        var extension = project.getExtensions().create(
+                NeoForgeExtension.NAME,
+                NeoForgeExtension.class,
+                accessTransformers.extension,
+                interfaceInjectionData.extension
+        );
         var dependencyFactory = project.getDependencyFactory();
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
@@ -179,14 +197,6 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        // Create an access transformer configuration
-        var accessTransformers = dataFileConfiguration(project, "accessTransformers", "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
-                "accesstransformer", extension.getAccessTransformers());
-
-        // Create a configuration for grabbing interface injection data
-        var interfaceInjectionData = dataFileConfiguration(project, "interfaceInjectionData", "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
-                "interfaceinjection", extension.getInterfaceInjectionData());
-
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
@@ -212,8 +222,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
-            task.getAccessTransformers().from(accessTransformers);
-            task.getInterfaceInjectionData().from(interfaceInjectionData);
+            task.getAccessTransformers().from(accessTransformers.configuration);
+            task.getInterfaceInjectionData().from(interfaceInjectionData.configuration);
             task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
@@ -985,31 +995,22 @@ public class ModDevPlugin implements Plugin<Project> {
 
     }
 
-    private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
-        var depFactory = project.getDependencyFactory();
-        Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
+    record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
+    }
 
+    private static DataFileCollectionWrapper dataFileConfiguration(Project project, String name, String description, String category) {
         var configuration = project.getConfigurations().create(name, spec -> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getFiles())));
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
+
         var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
             spec.setDescription("Published data files for " + name);
             spec.setCanBeConsumed(true);
             spec.setCanBeResolved(false);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getPublished())));
-        });
-
-        // Publish the data files as artifacts whose classifiers match the name of the file to avoid conflicts
-        // Unfortunately, ArtifactHandler does not have lazy methods, so afterEval it is
-        project.afterEvaluate(proj -> {
-            for (var file : collection.getPublished()) {
-                proj.getArtifacts().add(elementsConfiguration.getName(), file, configurablePublishArtifact -> {
-                    configurablePublishArtifact.setClassifier(FileUtils.stripExtension(file.getName()));
-                });
-            }
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
 
         // Set up the variant publishing conditionally
@@ -1020,10 +1021,32 @@ public class ModDevPlugin implements Plugin<Project> {
             }
         });
 
-        configuration.attributes(attributeAction);
-        elementsConfiguration.attributes(attributeAction);
+        var depFactory = project.getDependencyFactory();
+        Consumer<Object> publishCallback = new Consumer<>() {
+            ConfigurablePublishArtifact firstArtifact;
+            int artifactCount;
 
-        return configuration;
+            @Override
+            public void accept(Object artifactNotation) {
+                elementsConfiguration.getDependencies().add(depFactory.create(project.files(artifactNotation)));
+                project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation, artifact -> {
+                    if (firstArtifact == null) {
+                        firstArtifact = artifact;
+                        artifact.setClassifier(category);
+                        artifactCount = 1;
+                    } else if (artifactCount == 1) {
+                        firstArtifact.setClassifier(category);
+                        artifactCount = 2;
+                    } else {
+                        artifact.setClassifier(category + (++artifactCount));
+                    }
+                });
+            }
+        };
+
+        var extension = project.getObjects().newInstance(DataFileCollection.class, configuration, publishCallback);
+
+        return new DataFileCollectionWrapper(extension, configuration);
     }
 
 }
