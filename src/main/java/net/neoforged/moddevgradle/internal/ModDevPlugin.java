@@ -129,9 +129,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
         var dependencyFactory = project.getDependencyFactory();
 
-        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyMetadataTransform.class, actionConfiguration -> {
-            actionConfiguration.params(project.getProjectDir());
-        });
+        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
+        project.getDependencies().getComponents().withModule("de.oceanlabs.mcp:mcp_config", McpMetadataTransform.class);
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
@@ -142,6 +141,11 @@ public class ModDevPlugin implements Plugin<Project> {
                     });
         }).orElse(extension.getNeoFormVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoform:" + version)
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform-dependencies");
+                    });
+        })).orElse(extension.getMcpMinecraftVersion().map(version -> {
+            return dependencyFactory.create("de.oceanlabs.mcp:mcp_config:" + version)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
@@ -226,7 +230,9 @@ public class ModDevPlugin implements Plugin<Project> {
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getVersion().map(v -> "neoforge-" + v).orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v)),
+                        extension.getVersion().map(v -> "neoforge-" + v)
+                                .orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v))
+                                .orElse(extension.getMcpMinecraftVersion().map(v -> "vanilla-" + v)),
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
@@ -453,7 +459,8 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
-        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip");
+        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip")
+                .orElse(extension.getMcpMinecraftVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version + "@zip"));
     }
 
     private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
@@ -470,7 +477,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var configurationPrefix = "neoFormRuntimeDependencies";
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
-        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
+        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version))
+                .orElse(extension.getMcpMinecraftVersion().map(version -> dependencyFactory.create("de.oceanlabs.mcp:mcp_config:" + version)));
         Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.

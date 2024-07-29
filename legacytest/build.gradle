@@ -6,6 +6,12 @@ repositories {
     mavenLocal()
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
 neoForge {
-    version = '1.20.1-47.1.54'
+    mcpMinecraftVersion = '1.19.2'
 }

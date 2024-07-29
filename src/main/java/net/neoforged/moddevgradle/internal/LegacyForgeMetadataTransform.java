@@ -14,23 +14,17 @@ import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
 import java.io.BufferedInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.jar.JarInputStream;
 
 // @CacheableTransform
-public class LegacyMetadataTransform implements ComponentMetadataRule {
-    private final File temporaryArtifactsDir;
+public class LegacyForgeMetadataTransform implements ComponentMetadataRule {
     private final ObjectFactory objects;
     private final RepositoryResourceAccessor repositoryResourceAccessor;
 
     @Inject
-    public LegacyMetadataTransform(File temporaryArtifactsDir,
-                                   ObjectFactory objects,
-                                   RepositoryResourceAccessor repositoryResourceAccessor) {
-        this.temporaryArtifactsDir = temporaryArtifactsDir;
+    public LegacyForgeMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {
         this.objects = objects;
         this.repositoryResourceAccessor = repositoryResourceAccessor;
     }
@@ -59,12 +53,6 @@ public class LegacyMetadataTransform implements ComponentMetadataRule {
 
         if (configRootHolder[0] == null) {
             throw new GradleException("Couldn't find userdev config json in " + userdevJarPath);
-        }
-        var configJsonFile = new File(temporaryArtifactsDir, id.getName() + "-" + id.getVersion() + "-config.json").toPath();
-        try {
-            Files.writeString(configJsonFile, new Gson().toJson(configRootHolder[0]));
-        } catch (IOException e) {
-            throw new GradleException("Failed to write userdev config json", e);
         }
 
         details.addVariant("modDevConfig", variantMetadata -> {

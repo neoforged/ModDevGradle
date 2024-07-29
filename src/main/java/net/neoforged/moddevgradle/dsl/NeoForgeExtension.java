@@ -14,9 +14,6 @@ import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -88,7 +85,8 @@ public abstract class NeoForgeExtension {
     }
 
     /**
-     * NeoForge version number. You have to set either this or {@link #getNeoFormVersion()}.
+     * NeoForge version number. You have to set either this, {@link #getNeoFormVersion()}
+     * or {@link #getMcpMinecraftVersion()}.
      */
     public abstract Property<String> getVersion();
 
@@ -96,8 +94,19 @@ public abstract class NeoForgeExtension {
      * You can set this property to a version of <a href="https://projects.neoforged.net/neoforged/neoform">NeoForm</a>
      * to either override the version used in the version of NeoForge you set, or to compile against
      * Vanilla artifacts that have no NeoForge code added.
+     * <p>
+     * This property is mutually exclusive with {@link #getMcpMinecraftVersion()}.
      */
     public abstract Property<String> getNeoFormVersion();
+
+    /**
+     * When running in Vanilla-Mode for old versions of Minecraft, specify the Minecraft version here to use
+     * the Minecraft Coder Pack data for getting Minecraft artifacts to compile against.
+     * This is usable up to version 1.20.1.
+     * <p>
+     * This property is mutually exclusive with {@link #getNeoFormVersion()}.
+     */
+    public abstract Property<String> getMcpMinecraftVersion();
 
     /**
      * Is derived automatically from {@link #getVersion()}.
