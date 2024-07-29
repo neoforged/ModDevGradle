@@ -131,6 +131,20 @@ public class ModDevPlugin implements Plugin<Project> {
                 "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
                 "accesstransformer"
         );
+        accessTransformers.extension.getFiles().convention(project.provider(() -> {
+            var collection = project.getObjects().fileCollection();
+
+            // Only return this when it actually exists
+            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
+                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
+                if (project.file(defaultPath).exists()) {
+                    return collection.from(defaultPath.getAbsolutePath());
+                }
+            }
+
+            return collection;
+        }));
 
         // Create a configuration for grabbing interface injection data
         var interfaceInjectionData = dataFileConfiguration(
@@ -1034,17 +1048,18 @@ public class ModDevPlugin implements Plugin<Project> {
                         firstArtifact = artifact;
                         artifact.setClassifier(category);
                         artifactCount = 1;
-                    } else if (artifactCount == 1) {
-                        firstArtifact.setClassifier(category);
-                        artifactCount = 2;
                     } else {
+                        if (artifactCount == 1) {
+                            firstArtifact.setClassifier(category + artifactCount);
+                        }
                         artifact.setClassifier(category + (++artifactCount));
                     }
                 });
             }
         };
 
-        var extension = project.getObjects().newInstance(DataFileCollection.class, configuration, publishCallback);
+        var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
+        configuration.getDependencies().add(depFactory.create(extension.getFiles()));
 
         return new DataFileCollectionWrapper(extension, configuration);
     }

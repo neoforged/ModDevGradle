@@ -13,10 +13,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -44,21 +40,6 @@ public abstract class NeoForgeExtension {
         unitTest = project.getObjects().newInstance(UnitTest.class);
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
-
-        getAccessTransformers().getFiles().convention(project.provider(() -> {
-            var collection = project.getObjects().fileCollection();
-
-            // Only return this when it actually exists
-            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
-                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
-                if (project.file(defaultPath).exists()) {
-                    return collection.from(defaultPath.getAbsolutePath());
-                }
-            }
-
-            return collection;
-        }));
         getValidateAccessTransformers().convention(false);
     }
 
