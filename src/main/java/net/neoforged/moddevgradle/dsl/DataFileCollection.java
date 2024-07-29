@@ -20,7 +20,7 @@ public abstract class DataFileCollection {
      * Add the given paths to the {@linkplain #getFiles() file collection}.
      * <p/>
      * Please note that {@code src/main/resources/META-INF/accesstransformer.cfg} is automatically
-     * included if it exists.
+     * included for access transformers, if it exists.
      */
     public void from(Object... paths) {
         getFiles().from(paths);
