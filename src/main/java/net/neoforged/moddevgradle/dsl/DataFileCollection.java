@@ -18,7 +18,7 @@ public abstract class DataFileCollection {
 
     /**
      * Add the given paths to the {@linkplain #getFiles() file collection}.
-     * <p/>
+     * <p>
      * Please note that {@code src/main/resources/META-INF/accesstransformer.cfg} is automatically
      * included for access transformers, if it exists.
      */
