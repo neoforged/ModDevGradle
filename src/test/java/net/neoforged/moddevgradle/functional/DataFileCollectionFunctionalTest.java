@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.functional;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.intellij.lang.annotations.Language;
@@ -67,6 +69,19 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                 entry("publish-if-1.0-interfaceinjection2.json", "[]"),
                 entry("publish-if-1.0-interfaceinjection3.json", "{}")
         );
+    }
+
+    @Test
+    public void testNoEmptyVariantsArePublished() throws IOException {
+        publishDataFiles("test", "publish-empty", "1.0", "");
+
+        // Load the Gradle modules file
+        var modulePath = publicationTarget.toPath().resolve("test/publish-empty/1.0/publish-empty-1.0.module");
+        var moduleContent = new Gson().fromJson(Files.readString(modulePath), JsonObject.class);
+        var variants = moduleContent.getAsJsonArray("variants");
+        assertThat(variants.asList())
+                .extracting(e -> ((JsonObject) e).getAsJsonPrimitive("name").getAsString())
+                .containsOnly("apiElements", "runtimeElements");
     }
 
     private Map<String, String> consumeDataFilePublication(String configurationName, String gav) throws IOException {
