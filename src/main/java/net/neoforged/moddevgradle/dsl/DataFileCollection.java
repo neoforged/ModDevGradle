@@ -27,6 +27,8 @@ public abstract class DataFileCollection {
 
     /**
      * Configures the given files to be published alongside this project.
+     * This can include files that are also passed to {@link #from}, but is not required to.
+     * For allowed parameters, see {@link org.gradle.api.artifacts.dsl.ArtifactHandler}.
      */
     public void publish(Object artifactNotation) {
         publishArtifactCallback.accept(artifactNotation);
