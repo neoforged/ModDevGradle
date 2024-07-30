@@ -11,7 +11,8 @@ def serviceJar = tasks.register("serviceJar", Jar) {
     archiveClassifier = "service"
     manifest {
         attributes(
-            'FMLModType': "LIBRARY"
+            'FMLModType': 'LIBRARY',
+            'Automatic-Module-Name': 'jij.service'
         )
     }
 }
