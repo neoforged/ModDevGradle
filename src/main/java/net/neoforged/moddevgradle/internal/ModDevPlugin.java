@@ -1030,6 +1030,8 @@ public class ModDevPlugin implements Plugin<Project> {
         // Set up the variant publishing conditionally
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+            // This should be invoked lazily, so checking if the artifacts are empty is fine:
+            // "The details object used to determine what to do with a configuration variant **when publishing**."
             if (variant.getConfigurationVariant().getArtifacts().isEmpty()) {
                 variant.skip();
             }
