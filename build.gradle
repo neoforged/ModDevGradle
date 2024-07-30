@@ -15,12 +15,16 @@ base {
     archivesName = "moddev-gradle"
 }
 gradleutils.version {
+    tags {
+        label = "beta"
+        cleanMarkerLabel = "stable"
+    }
     branches.suffixBranch()
 }
 project.version = gradleutils.version
 
 changelog {
-    from '0.1'
+    from '2.0'
     // For fine-grained changelog publication control
     disableAutomaticPublicationRegistration()
 }
