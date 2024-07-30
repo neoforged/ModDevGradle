@@ -22,6 +22,7 @@ gradleutils.version {
     branches.suffixBranch()
 }
 project.version = gradleutils.version
+logger.lifecycle("ModDevGradle version ${gradleutils.version}")
 
 changelog {
     from '2.0'
