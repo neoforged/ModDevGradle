@@ -110,6 +110,10 @@ neoForge {
 ### Task `idePostSync` not found (IntelliJ IDEA)
 This error typically happens when switching to ModDevGradle from another plugin with an `idePostSync` task.
 This can be fixed by unregistering the task in IntelliJ IDEA, as follows:
+
+<details>
+<summary>Click to expand</summary>
+
 1. Open the Gradle tool window on the right, and right-click the Gradle project.
 ![](docs/idePostSync1.png)
 2. Click on `Tasks Activation`.
@@ -117,6 +121,8 @@ This can be fixed by unregistering the task in IntelliJ IDEA, as follows:
 3. Select the `idePostSync` task and delete it using the `-` button.
 ![](docs/idePostSync3.png)
 4. Sync the Gradle project again.
+
+</details>
 
 ## More Configuration
 
