@@ -15,9 +15,13 @@ base {
     archivesName = "moddev-gradle"
 }
 gradleutils.version {
-    branches.suffixBranch()
+    branches {
+        suffixBranch()
+        suffixExemptedBranches = ["main", "1.x"]
+    }
 }
 project.version = gradleutils.version
+logger.lifecycle("ModDevGradle version ${gradleutils.version}")
 
 changelog {
     from '0.1'
