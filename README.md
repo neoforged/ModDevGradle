@@ -107,6 +107,13 @@ neoForge {
 ```
 
 ## Common Issues
+
+### Clicking "Attach Sources" does nothing when viewing a Minecraft class (IntelliJ IDEA)
+Sometimes IntelliJ gets into a state where clicking "Attach Sources" while viewing a decompiled Minecraft class 
+will not work.
+
+Reloading the Gradle Project and then clicking "Attach Sources" again will usually fix this problem.
+
 ### Task `idePostSync` not found (IntelliJ IDEA)
 This error typically happens when switching to ModDevGradle from another plugin with an `idePostSync` task.
 This can be fixed by unregistering the task in IntelliJ IDEA, as follows:
