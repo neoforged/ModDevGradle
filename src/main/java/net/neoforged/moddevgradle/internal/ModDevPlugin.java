@@ -845,7 +845,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     var entry = new AttachIntelliJArtifactsTask.Entry(project.getObjects());
                     entry.getSourcesLocation().set(createArtifacts.flatMap(CreateMinecraftArtifactsTask::getSourcesArtifact));
                     entry.getClassesLocation().set(createArtifacts.flatMap(shouldUseCombinedSourcesAndClassesArtifact() ? CreateMinecraftArtifactsTask::getCompiledWithSourcesArtifact : CreateMinecraftArtifactsTask::getCompiledArtifact));
-                    var path = project.getPath();
+                    var path = project.getPath().equals(":") ? project.getName() : project.getPath();
                     entry.getSourceSets().set(extension.getSourceSetsWithDependency()
                             .map(l -> l.stream().map(s -> path + ":" + s.getName()).toList()));
                     task.getEntries().add(entry);
