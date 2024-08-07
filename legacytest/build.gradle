@@ -1,0 +1,17 @@
+plugins {
+    id 'net.neoforged.moddev'
+}
+
+repositories {
+    mavenLocal()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+neoForge {
+    mcpMinecraftVersion = '1.19.2'
+}
