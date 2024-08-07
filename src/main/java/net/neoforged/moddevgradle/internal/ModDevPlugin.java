@@ -1004,6 +1004,38 @@ public class ModDevPlugin implements Plugin<Project> {
 
     }
 
+    private static void addVscodeLaunchConfiguration(Project project,
+                                                     RunModel run,
+                                                     PrepareRun prepareTask,
+                                                     BatchedLaunchWriter launchWriter) {
+        if (!prepareTask.getEnabled()) {
+            project.getLogger().lifecycle("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
+
+        var model = project.getExtensions().getByType(EclipseModel.class);
+        var runIdeName = run.getIdeName().get();
+        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
+
+        // If the user wants to run tasks before the actual execution, we attach them to autoBuildTasks
+        // Missing proper support - https://github.com/microsoft/vscode-java-debug/issues/1106
+        if (!run.getTasksBefore().isEmpty()) {
+            model.autoBuildTasks(run.getTasksBefore().toArray());
+        }
+
+        launchWriter.createGroup("Mod Development - " + project.getName(), WritingMode.REMOVE_EXISTING)
+                .createLaunchConfiguration()
+                .withName(runIdeName)
+                .withProjectName(eclipseProjectName)
+                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
+                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
+                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
+                .withShortenCommandLine(ShortCmdBehaviour.NONE)
+                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
+                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
+    }
+
     private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
         var depFactory = project.getDependencyFactory();
         Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
@@ -1039,63 +1071,6 @@ public class ModDevPlugin implements Plugin<Project> {
         elementsConfiguration.attributes(attributeAction);
 
         return configuration;
-    }
-
-    private static void addVscodeLaunchConfiguration(Project project,
-                                                     RunModel run,
-                                                     PrepareRun prepareTask,
-                                                     BatchedLaunchWriter launchWriter) {
-        if (!prepareTask.getEnabled()) {
-            project.getLogger().lifecycle("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
-            return;
-        }
-
-        var model = project.getExtensions().getByType(EclipseModel.class);
-        var runIdeName = run.getIdeName().get();
-        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
-
-        // If the user wants to run tasks before the actual execution, we attach them to autoBuildTasks
-        // Missing proper support - https://github.com/microsoft/vscode-java-debug/issues/1106
-        if (!run.getTasksBefore().isEmpty()) {
-            model.autoBuildTasks(run.getTasksBefore().toArray());
-        }
-
-        // MODE 1: use internal console (effectively overrides user choice), might also allow for emojis? but doesn't support process stdin
-        launchWriter.createGroup("MDG - " + project.getName(), WritingMode.REMOVE_EXISTING)
-                .createLaunchConfiguration()
-                .withName(runIdeName)
-                .withProjectName(eclipseProjectName)
-                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
-                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
-                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
-                .withShortenCommandLine(ShortCmdBehaviour.NONE)
-                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
-                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
-        if (true) {
-            return;
-        }
-
-        // MODE 2: read arg files and don't care
-        try {
-            List<String> vmArgs = readArgsForVscode(prepareTask.getVmArgsFile().get());
-            vmArgs.add(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument());
-
-            launchWriter.createGroup("MDG - " + project.getName(), WritingMode.REMOVE_EXISTING)
-                    .createLaunchConfiguration()
-                    .withName(runIdeName)
-                    .withProjectName(eclipseProjectName)
-                    .withArguments(readArgsForVscode(prepareTask.getProgramArgsFile().get()))
-                    .withAdditionalJvmArgs(vmArgs)
-                    .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
-                    .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
-        } catch (IOException e) {
-            throw new RuntimeException("Cannot create launch configuration for: " + run.getName(), e);
-        }
-    }
-
-    private static List<String> readArgsForVscode(RegularFile file) throws IOException {
-        return Files.readAllLines(file.getAsFile().toPath()).stream().map(s -> s.split("#")[0]).filter(s -> !s.isBlank()).collect(Collectors.toList());
     }
 }
 
