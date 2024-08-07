@@ -14,9 +14,6 @@ import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -33,6 +30,7 @@ public abstract class NeoForgeExtension {
 
     private final DataFileCollection accessTransformers;
     private final DataFileCollection interfaceInjectionData;
+    private final ListProperty<SourceSet> sourceSetsWithDependency;
 
     @Inject
     public NeoForgeExtension(Project project) {
@@ -45,6 +43,8 @@ public abstract class NeoForgeExtension {
 
         accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
         interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
+
+        sourceSetsWithDependency = project.getObjects().listProperty(SourceSet.class);
 
         getAccessTransformers().getFiles().convention(project.provider(() -> {
             var collection = project.getObjects().fileCollection();
@@ -78,6 +78,12 @@ public abstract class NeoForgeExtension {
                 .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
         configurations.getByName(sourceSet.getCompileClasspathConfigurationName())
                 .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_COMPILE_DEPENDENCIES));
+
+        this.sourceSetsWithDependency.add(sourceSet);
+    }
+
+    public ListProperty<SourceSet> getSourceSetsWithDependency() {
+        return sourceSetsWithDependency;
     }
 
     /**
