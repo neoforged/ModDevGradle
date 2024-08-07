@@ -90,6 +90,15 @@ configurations {
             attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "not-wanted-publication"))
         }
     }
+    changelog {
+        canBeResolved = false
+        canBeConsumed = true
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
+            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, "changelog"))
+        }
+        project.components.findByName("java").addVariantsFromConfiguration(it) { }
+    }
 }
 
 dependencies {
@@ -188,6 +197,16 @@ gradlePlugin {
 
 test {
     useJUnitPlatform()
+}
+
+afterEvaluate {
+    artifacts {
+        changelog(createChangelog.outputFile) {
+            builtBy(createChangelog)
+            setClassifier("changelog")
+            setExtension("txt")
+        }
+    }
 }
 
 publishing {
