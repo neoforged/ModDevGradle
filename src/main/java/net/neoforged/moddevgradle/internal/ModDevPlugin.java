@@ -925,27 +925,19 @@ public class ModDevPlugin implements Plugin<Project> {
 
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating VsCode run {} since its prepare task {} is disabled", run, prepareTask);
-                        continue;
-                    }
                     addVscodeLaunchConfiguration(project, run, prepareTask, launchWriter);
                 }
 
                 try {
                     launchWriter.writeToLatestJson(project.getRootDir().toPath());
                 } catch (final IOException e) {
-                    throw new RuntimeException("Failed to write launch files", e);
+                    throw new RuntimeException("Failed to write VSCode launch files", e);
                 }
             });
         } else if (IdeDetection.isEclipse()) {
             project.afterEvaluate(ignored -> {
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
-                        continue;
-                    }
                     addEclipseLaunchConfiguration(project, run, prepareTask);
                 }
             });
@@ -955,6 +947,10 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
+        if (!prepareTask.getEnabled()) {
+            project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
 
         // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         // And so that post sync tasks are only run once for all subprojects.
@@ -1049,6 +1045,11 @@ public class ModDevPlugin implements Plugin<Project> {
                                                      RunModel run,
                                                      PrepareRun prepareTask,
                                                      BatchedLaunchWriter launchWriter) {
+        if (!prepareTask.getEnabled()) {
+            project.getLogger().lifecycle("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
+
         var model = project.getExtensions().getByType(EclipseModel.class);
         var runIdeName = run.getIdeName().get();
         var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
