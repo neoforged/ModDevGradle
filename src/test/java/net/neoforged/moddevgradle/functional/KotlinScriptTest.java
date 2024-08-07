@@ -15,18 +15,7 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class KotlinScriptTest {
-    @TempDir
-    File testProjectDir;
-    private File settingsFile;
-    private File buildFile;
-
-    @BeforeEach
-    public void setup() {
-        settingsFile = new File(testProjectDir, "settings.gradle.kts");
-        buildFile = new File(testProjectDir, "build.gradle.kts");
-    }
-
+public class KotlinScriptTest extends AbstractFunctionalTest {
     @Test
     public void testApplyInEmptyProject() throws IOException {
         writeFile(settingsFile, """
@@ -47,19 +36,5 @@ public class KotlinScriptTest {
 
         assertThat(result.getOutput()).contains("createMinecraftArtifacts");
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
-    }
-
-    private void writeFile(File destination, String content) throws IOException {
-        BufferedWriter output = null;
-        try {
-            output = new BufferedWriter(new FileWriter(destination));
-            output.write(content);
-        } finally {
-            if (output != null) {
-                output.close();
-            }
-        }
-
-
     }
 }

@@ -1,5 +1,6 @@
 plugins {
     id 'net.neoforged.moddev'
+    id 'maven-publish'
 }
 
 neoForge {
@@ -16,6 +17,19 @@ neoForge {
         }
         server {
             server()
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url rootProject.file('repo')
         }
     }
 }

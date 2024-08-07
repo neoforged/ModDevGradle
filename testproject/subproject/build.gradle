@@ -1,6 +1,7 @@
 
 plugins {
     id 'net.neoforged.moddev'
+    id 'maven-publish'
 }
 
 neoForge {
@@ -19,4 +20,17 @@ neoForge {
 dependencies {
     implementation(accessTransformers(project(':common')))
     accessTransformersElements(project(':common'))
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url rootProject.file('repo')
+        }
+    }
 }
