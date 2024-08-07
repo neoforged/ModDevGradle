@@ -13,6 +13,11 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
+import net.neoforged.vsclc.BatchedLaunchWriter;
+import net.neoforged.vsclc.attribute.ConsoleType;
+import net.neoforged.vsclc.attribute.PathLike;
+import net.neoforged.vsclc.attribute.ShortCmdBehaviour;
+import net.neoforged.vsclc.writer.WritingMode;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -913,16 +918,26 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         }
 
-        // Set up runs if running under buildship
-        // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
-        if (IdeDetection.isEclipse()) {
+        // Set up runs if running under buildship and in VS Code
+        if (IdeDetection.isEclipse() && IdeDetection.isVsCode()) {
+            project.afterEvaluate(ignored -> {
+                var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
+
+                for (var run : extension.getRuns()) {
+                    var prepareTask = prepareRunTasks.get(run).get();
+                    addVscodeLaunchConfiguration(project, run, prepareTask, launchWriter);
+                }
+
+                try {
+                    launchWriter.writeToLatestJson(project.getRootDir().toPath());
+                } catch (final IOException e) {
+                    throw new RuntimeException("Failed to write VSCode launch files", e);
+                }
+            });
+        } else if (IdeDetection.isEclipse()) {
             project.afterEvaluate(ignored -> {
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
-                        continue;
-                    }
                     addEclipseLaunchConfiguration(project, run, prepareTask);
                 }
             });
@@ -932,6 +947,10 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
+        if (!prepareTask.getEnabled()) {
+            project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
 
         // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         // And so that post sync tasks are only run once for all subprojects.
@@ -985,6 +1004,38 @@ public class ModDevPlugin implements Plugin<Project> {
 
     }
 
+    private static void addVscodeLaunchConfiguration(Project project,
+                                                     RunModel run,
+                                                     PrepareRun prepareTask,
+                                                     BatchedLaunchWriter launchWriter) {
+        if (!prepareTask.getEnabled()) {
+            project.getLogger().lifecycle("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
+
+        var model = project.getExtensions().getByType(EclipseModel.class);
+        var runIdeName = run.getIdeName().get();
+        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
+
+        // If the user wants to run tasks before the actual execution, we attach them to autoBuildTasks
+        // Missing proper support - https://github.com/microsoft/vscode-java-debug/issues/1106
+        if (!run.getTasksBefore().isEmpty()) {
+            model.autoBuildTasks(run.getTasksBefore().toArray());
+        }
+
+        launchWriter.createGroup("Mod Development - " + project.getName(), WritingMode.REMOVE_EXISTING)
+                .createLaunchConfiguration()
+                .withName(runIdeName)
+                .withProjectName(eclipseProjectName)
+                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
+                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
+                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
+                .withShortenCommandLine(ShortCmdBehaviour.NONE)
+                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
+                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
+    }
+
     private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
         var depFactory = project.getDependencyFactory();
         Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
@@ -1021,6 +1072,5 @@ public class ModDevPlugin implements Plugin<Project> {
 
         return configuration;
     }
-
 }
 

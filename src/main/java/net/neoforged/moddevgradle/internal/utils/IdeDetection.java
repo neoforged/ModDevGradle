@@ -34,6 +34,37 @@ public final class IdeDetection {
     }
 
     /**
+     * @return true if running under Visual Studio Code (Applies to task execution and sync)
+     */
+    public static boolean isVsCode() {
+        var vsCodePidString = System.getenv("VSCODE_PID");
+        if (vsCodePidString == null) {
+            return false;
+        }
+
+        long vsCodePid;
+        try {
+            vsCodePid = Long.parseUnsignedLong(vsCodePidString);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+
+        // One of our parent processes should be the same process mentioned in VSCODE_PID environment variable.
+        var ourProcess = ProcessHandle.current();
+        var maybeParent = ourProcess.parent();
+        while (maybeParent.isPresent()) {
+            var parent = maybeParent.get();
+            if (parent.pid() == vsCodePid) {
+                return true;
+            }
+
+            maybeParent = parent.parent();
+        }
+
+        return false;
+    }
+
+    /**
      * Try to find the IntelliJ project directory that belongs to this Gradle project.
      * There are scenarios where this is impossible, since IntelliJ allows adding
      * Gradle builds to IntelliJ projects in a completely different directory.
