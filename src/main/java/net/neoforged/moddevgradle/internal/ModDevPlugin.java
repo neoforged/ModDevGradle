@@ -918,17 +918,14 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         }
 
-        // Set up runs if running under buildship
-        // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
-        if (IdeDetection.isVsCode()) {
+        // Set up runs if running under buildship and in VS Code
+        if (IdeDetection.isEclipse() && IdeDetection.isVsCode()) {
             project.afterEvaluate(ignored -> {
-                final BatchedLaunchWriter launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
+                var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
 
-                for (var run : extension.getRuns())
-                {
+                for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled())
-                    {
+                    if (!prepareTask.getEnabled()) {
                         project.getLogger().lifecycle("Not creating VsCode run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
                     }
@@ -941,9 +938,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     throw new RuntimeException("Failed to write launch files", e);
                 }
             });
-        }
-        else if (IdeDetection.isEclipse()) {
-            project.afterEvaluate(ignored -> {   
+        } else if (IdeDetection.isEclipse()) {
+            project.afterEvaluate(ignored -> {
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
                     if (!prepareTask.getEnabled()) {
@@ -1050,10 +1046,9 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static void addVscodeLaunchConfiguration(Project project,
-        RunModel run,
-        PrepareRun prepareTask,
-        BatchedLaunchWriter launchWriter)
-    {
+                                                     RunModel run,
+                                                     PrepareRun prepareTask,
+                                                     BatchedLaunchWriter launchWriter) {
         var model = project.getExtensions().getByType(EclipseModel.class);
         var runIdeName = run.getIdeName().get();
         var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
@@ -1066,44 +1061,39 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // MODE 1: use internal console (effectively overrides user choice), might also allow for emojis? but doesn't support process stdin
         launchWriter.createGroup("MDG - " + project.getName(), WritingMode.REMOVE_EXISTING)
-            .createLaunchConfiguration()
-            .withName(runIdeName)
-            .withProjectName(eclipseProjectName)
-            .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-            .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
-                RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
-            .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
-            .withShortenCommandLine(ShortCmdBehaviour.NONE)
-            .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
-            .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
-        if (true)
-        {
+                .createLaunchConfiguration()
+                .withName(runIdeName)
+                .withProjectName(eclipseProjectName)
+                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
+                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
+                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
+                .withShortenCommandLine(ShortCmdBehaviour.NONE)
+                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
+                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
+        if (true) {
             return;
         }
 
         // MODE 2: read arg files and don't care
-        try
-        {
+        try {
             List<String> vmArgs = readArgsForVscode(prepareTask.getVmArgsFile().get());
             vmArgs.add(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument());
 
             launchWriter.createGroup("MDG - " + project.getName(), WritingMode.REMOVE_EXISTING)
-                .createLaunchConfiguration()
-                .withName(runIdeName)
-                .withProjectName(eclipseProjectName)
-                .withArguments(readArgsForVscode(prepareTask.getProgramArgsFile().get()))
-                .withAdditionalJvmArgs(vmArgs)
-                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
-                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
-        }
-        catch (IOException e)
-        {
+                    .createLaunchConfiguration()
+                    .withName(runIdeName)
+                    .withProjectName(eclipseProjectName)
+                    .withArguments(readArgsForVscode(prepareTask.getProgramArgsFile().get()))
+                    .withAdditionalJvmArgs(vmArgs)
+                    .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
+                    .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
+        } catch (IOException e) {
             throw new RuntimeException("Cannot create launch configuration for: " + run.getName(), e);
         }
     }
 
-    private static List<String> readArgsForVscode(RegularFile file) throws IOException
-    {
+    private static List<String> readArgsForVscode(RegularFile file) throws IOException {
         return Files.readAllLines(file.getAsFile().toPath()).stream().map(s -> s.split("#")[0]).filter(s -> !s.isBlank()).collect(Collectors.toList());
     }
 }
