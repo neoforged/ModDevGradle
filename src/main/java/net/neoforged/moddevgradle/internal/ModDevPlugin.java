@@ -61,6 +61,8 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
@@ -82,6 +84,8 @@ import java.util.stream.Collectors;
  * The main plugin class.
  */
 public class ModDevPlugin implements Plugin<Project> {
+    private static final Logger LOG = LoggerFactory.getLogger(ModDevPlugin.class);
+
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
 
@@ -113,12 +117,13 @@ public class ModDevPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
         if (!project.getGradle().getPlugins().hasPlugin(RepositoriesPlugin.class)) {
             project.getPlugins().apply(RepositoriesPlugin.class);
         } else {
-            project.getLogger().info("Not enabling NeoForged repositories since they were applied at the settings level");
+            LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
         }
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
@@ -886,14 +891,14 @@ public class ModDevPlugin implements Plugin<Project> {
             var runConfigurations = getIntelliJRunConfigurations(rootProject); // TODO: Consider making this a value source
 
             if (runConfigurations == null) {
-                project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
+                LOG.debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
             } else {
                 var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
 
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
                     if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
+                        LOG.info("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
                     }
                     addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
@@ -935,11 +940,25 @@ public class ModDevPlugin implements Plugin<Project> {
                                               NeoForgeExtension extension,
                                               Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
 
+        AtomicBoolean configured = new AtomicBoolean(false);
+
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
         if (eclipseModel == null) {
+            LOG.info("No Eclipse project model found. Skipping Eclipse/VSCode configuration until the 'eclipse' plugin is applied.");
+            // Configure it later if the eclipse plugin is added
+            project.getPlugins().withId("eclipse", ignored -> {
+                LOG.info("Performing delayed configuration of Eclipse model after 'eclipse' plugin was applied.");
+                configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
+            });
             return;
         }
+
+        if (!configured.compareAndSet(false, true)) {
+            return;
+        }
+
+        LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
 
         // Make sure our post-sync task runs on Eclipse
         eclipseModel.synchronizationTasks(ideSyncTask);
@@ -989,7 +1008,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
         if (!prepareTask.getEnabled()) {
-            project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+            LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
             return;
         }
 
@@ -1050,7 +1069,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                                      PrepareRun prepareTask,
                                                      BatchedLaunchWriter launchWriter) {
         if (!prepareTask.getEnabled()) {
-            project.getLogger().lifecycle("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
+            LOG.info("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
             return;
         }
 
