@@ -341,8 +341,8 @@ public class ModDevPlugin implements Plugin<Project> {
         extension.getRuns().all(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
-            var runtimeClasspathConfig = run.getSourceSet().map(sourceSet -> sourceSet.getRuntimeClasspathConfigurationName())
-                    .map(name -> configurations.getByName(name));
+            var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
+                    .map(configurations::getByName);
 
             var neoForgeModDevModules = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
                 spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
@@ -411,6 +411,22 @@ public class ModDevPlugin implements Plugin<Project> {
             });
             prepareRunTasks.put(run, prepareRunTask);
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+
+            var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+                task.setGroup(INTERNAL_TASK_GROUP);
+                task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
+
+                task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
+                task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
+                task.getLaunchScript().set(RunUtils.getLaunchScript(modDevBuildDir, run));
+                task.getClasspathArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.CLASSPATH));
+                task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+                task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+                task.getEnvironment().set(run.getEnvironment());
+                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
+                task.dependsOn(run.getTasksBefore());
+            });
+            ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
