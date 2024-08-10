@@ -26,7 +26,8 @@ logger.lifecycle("ModDevGradle version ${gradleutils.version}")
 
 changelog {
     from '2.0'
-    // For fine-grained changelog publication control
+    // For fine-grained changelog publication control.
+    // Otherwise, the changelog would get published alongside the "xxx.gradle.plugin" artifact too which we don't want.
     disableAutomaticPublicationRegistration()
 }
 
@@ -199,13 +200,11 @@ test {
     useJUnitPlatform()
 }
 
-afterEvaluate {
-    artifacts {
-        changelog(createChangelog.outputFile) {
-            builtBy(createChangelog)
-            setClassifier("changelog")
-            setExtension("txt")
-        }
+artifacts {
+    changelog(createChangelog.outputFile) {
+        builtBy(createChangelog)
+        setClassifier("changelog")
+        setExtension("txt")
     }
 }
 
