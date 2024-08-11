@@ -2,6 +2,8 @@ package net.neoforged.moddevgradle.internal.utils;
 
 import org.gradle.api.Project;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
@@ -9,6 +11,8 @@ import java.io.File;
  * Utilities for trying to detect in which IDE Gradle is running.
  */
 public final class IdeDetection {
+    private static final Logger LOG = LoggerFactory.getLogger(IdeDetection.class);
+
     private IdeDetection() {
     }
 
@@ -16,21 +20,37 @@ public final class IdeDetection {
      * @return true if IntelliJ is running Gradle. This is true both during sync and execution of other Gradle tasks.
      */
     public static boolean isIntelliJ() {
-        return Boolean.getBoolean("idea.active");
+        if (Boolean.getBoolean("idea.active")) {
+            LOG.debug("idea.active system property is set. Running under IntelliJ.");
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
      * @return true if IntelliJ is syncing its project model with Gradle.
      */
     public static boolean isIntelliJSync() {
-        return Boolean.getBoolean("idea.sync.active");
+        if (Boolean.getBoolean("idea.sync.active")) {
+            LOG.debug("idea.sync.active system property is set. Running IntelliJ Gradle import.");
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
      * @return true if running under Eclipse (either Task execution or otherwise)
      */
     public static boolean isEclipse() {
-        return System.getProperty("eclipse.application") != null;
+        if (System.getProperty("eclipse.application") != null) {
+            LOG.debug("eclipse.application system property is set. Running from Eclipse (or VSCode).");
+            return true;
+        } else {
+            LOG.debug("eclipse.application system property is not set. Not running under Eclipse (or VSCode).");
+            return false;
+        }
     }
 
     /**
@@ -39,6 +59,7 @@ public final class IdeDetection {
     public static boolean isVsCode() {
         var vsCodePidString = System.getenv("VSCODE_PID");
         if (vsCodePidString == null) {
+            LOG.debug("VSCODE_PID is not set. Not running under VSCode");
             return false;
         }
 
@@ -46,6 +67,7 @@ public final class IdeDetection {
         try {
             vsCodePid = Long.parseUnsignedLong(vsCodePidString);
         } catch (NumberFormatException e) {
+            LOG.debug("VSCODE_PID does not contain a numeric PID: '{}'", vsCodePidString);
             return false;
         }
 
@@ -55,12 +77,15 @@ public final class IdeDetection {
         while (maybeParent.isPresent()) {
             var parent = maybeParent.get();
             if (parent.pid() == vsCodePid) {
+                LOG.debug("VSCODE_PID is set to {}, and we are a child process of it. Running under VSCode", vsCodePid);
                 return true;
             }
 
             maybeParent = parent.parent();
         }
 
+        LOG.debug("VSCODE_PID is set to {}, but we ({}) are not running as a child of that process.",
+                vsCodePid, ourProcess.pid());
         return false;
     }
 
