@@ -940,21 +940,19 @@ public class ModDevPlugin implements Plugin<Project> {
                                               NeoForgeExtension extension,
                                               Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
 
-        AtomicBoolean configured = new AtomicBoolean(false);
-
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
         if (eclipseModel == null) {
             LOG.info("No Eclipse project model found. Skipping Eclipse/VSCode configuration until the 'eclipse' plugin is applied.");
-            // Configure it later if the eclipse plugin is added
+            // Configure it later if the eclipse plugin is added, but ensure it's only done once
+            var configured = new AtomicBoolean(false);
             project.getPlugins().withId("eclipse", ignored -> {
+                if (!configured.compareAndSet(false, true)) {
+                    return;
+                }
                 LOG.info("Performing delayed configuration of Eclipse model after 'eclipse' plugin was applied.");
                 configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
             });
-            return;
-        }
-
-        if (!configured.compareAndSet(false, true)) {
             return;
         }
 
