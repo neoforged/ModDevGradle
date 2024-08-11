@@ -60,6 +60,7 @@ import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.BeforeRunTask;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
+import org.jetbrains.gradle.ext.LayoutFileBuildService;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.event.Level;
@@ -463,7 +464,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 minecraftClassesArtifact
         );
 
-        configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
+        configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks, createArtifacts);
 
         configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
     }
@@ -573,7 +574,7 @@ public class ModDevPlugin implements Plugin<Project> {
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
         // Only IntelliJ needs the combined artifact
         // For Eclipse, we can attach the sources via the Eclipse project model.
-        return IdeDetection.isIntelliJ();
+        return false;
     }
 
     public void setupTesting() {
@@ -838,19 +839,47 @@ public class ModDevPlugin implements Plugin<Project> {
         runConfigurations.add(appRun);
     }
 
-    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
+    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, TaskProvider<CreateMinecraftArtifactsTask> createArtifacts) {
         var rootProject = project.getRootProject();
+
+        var startParameter = project.getGradle().getStartParameter();
+        if (startParameter.getTaskNames().contains("processIdeaSettings")) {
+            var attachArtifactsTask = rootProject.getTasks().register("attachIntellijArtifacts", AttachIntelliJArtifactsTask.class, task -> {
+                task.getLayoutFile().set(rootProject.getLayout().file(rootProject.getGradle().getSharedServices().getRegistrations().named("layoutFile")
+                        .flatMap(s -> ((LayoutFileBuildService.Params)s.getParameters()).getLayoutFile())));
+            });
+
+            var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
+
+            taskRequests.removeIf(te -> te.getArgs().contains("processIdeaSettings"));
+            taskRequests.add(new DefaultTaskExecutionRequest(List.of(attachArtifactsTask.getName())));
+            startParameter.setTaskRequests(taskRequests);
+        }
 
         if (!rootProject.getPlugins().hasPlugin(IdeaExtPlugin.class)) {
             rootProject.getPlugins().apply(IdeaExtPlugin.class);
         }
 
+        rootProject.getTasks().withType(AttachIntelliJArtifactsTask.class)
+                .configureEach(task -> {
+                    var entry = new AttachIntelliJArtifactsTask.Entry(project.getObjects());
+                    entry.getSourcesLocation().set(createArtifacts.flatMap(CreateMinecraftArtifactsTask::getSourcesArtifact));
+                    entry.getClassesLocation().set(createArtifacts.flatMap(shouldUseCombinedSourcesAndClassesArtifact() ? CreateMinecraftArtifactsTask::getCompiledWithSourcesArtifact : CreateMinecraftArtifactsTask::getCompiledArtifact));
+                    var path = project.getPath().equals(":") ? project.getName() : project.getPath();
+                    entry.getSourceSets().set(extension.getSourceSetsWithDependency()
+                            .map(l -> l.stream().map(s -> path + ":" + s.getName()).toList()));
+                    task.getEntries().add(entry);
+                });
+
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
             var settings = getIntelliJProjectSettings(rootProject);
+            // Force IJ into thinking we need the layout file to do things
+            settings.withIDEADir(dir -> {});
+            settings.setGenerateImlFiles(true);
+
             if (settings != null && IdeDetection.isIntelliJSync()) {
                 // Also run the sync task directly as part of the sync. (Thanks Loom).
-                var startParameter = project.getGradle().getStartParameter();
                 var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
 
                 taskRequests.add(new DefaultTaskExecutionRequest(List.of(ideSyncTask.getName())));
