@@ -15,11 +15,8 @@ import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
-import org.gradle.api.tasks.Internal;
-import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
-import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 
 import javax.inject.Inject;
@@ -78,10 +75,10 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
     abstract MapProperty<String, String> getEnvironment();
 
     /**
-     * Launcher for the java version used in the launch shell-scripts.
+     * The Java executable to run the game with.
      */
     @Input
-    abstract Property<JavaLauncher> getLaunchScriptJavaLauncher();
+    abstract Property<String> getJavaExecutable();
 
     @Inject
     protected abstract JavaToolchainService getJavaToolchainService();
@@ -90,7 +87,10 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
     public CreateLaunchScriptTask() {
         // Get the projects java launcher to use for the shell script
         var java = ExtensionUtils.getExtension(getProject(), "java", JavaPluginExtension.class);
-        getLaunchScriptJavaLauncher().convention(getJavaToolchainService().launcherFor(java.getToolchain()));
+        getJavaExecutable().convention(getJavaToolchainService()
+                .launcherFor(java.getToolchain())
+                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
+        );
     }
 
     @TaskAction
@@ -100,10 +100,8 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
             return;
         }
 
-        var javaExecutable = getLaunchScriptJavaLauncher().get().getExecutablePath().getAsFile().getAbsolutePath();
-
         var javaCommand = new ArrayList<String>();
-        javaCommand.add(javaExecutable);
+        javaCommand.add(getJavaExecutable().get());
         javaCommand.add("@" + getClasspathArgsFile().get().getAsFile().getAbsolutePath());
         javaCommand.add("@" + getVmArgsFile().get());
         javaCommand.add(getModFolders().get().getArgument());
