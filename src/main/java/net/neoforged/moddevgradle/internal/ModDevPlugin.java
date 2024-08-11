@@ -945,7 +945,7 @@ public class ModDevPlugin implements Plugin<Project> {
         if (eclipseModel == null) {
             LOG.info("No Eclipse project model found. Skipping Eclipse/VSCode configuration until the 'eclipse' plugin is applied.");
             // Configure it later if the eclipse plugin is added, but ensure it's only done once
-            var configured = new AtomicBoolean(false);
+            var configured = new AtomicBoolean();
             project.getPlugins().withId("eclipse", ignored -> {
                 if (!configured.compareAndSet(false, true)) {
                     return;
