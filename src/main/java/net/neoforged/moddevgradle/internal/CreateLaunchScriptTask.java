@@ -81,7 +81,7 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
     abstract Property<String> getJavaExecutable();
 
     @Inject
-    protected abstract JavaToolchainService getJavaToolchainService();
+    abstract JavaToolchainService getJavaToolchainService();
 
     @Inject
     public CreateLaunchScriptTask() {
