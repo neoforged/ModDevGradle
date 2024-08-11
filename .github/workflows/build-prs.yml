@@ -46,7 +46,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run build
-        run: ./gradlew build
+        run: ./gradlew build neoForgeIdeSync
         working-directory: ./testproject
 
       - name: Ensure clean, build and test work in the same run
