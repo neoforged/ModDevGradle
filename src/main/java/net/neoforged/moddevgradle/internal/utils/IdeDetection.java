@@ -48,7 +48,7 @@ public final class IdeDetection {
             LOG.debug("eclipse.application system property is set. Running from Eclipse (or VSCode).");
             return true;
         } else {
-            LOG.debug("Assuming not being run by Eclipse (or VSCode) since the eclipse.application system property is not set.");
+            LOG.debug("eclipse.application system property is not set. Not running under Eclipse (or VSCode).");
             return false;
         }
     }
