@@ -424,7 +424,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
                 task.getEnvironment().set(run.getEnvironment());
                 task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
-                task.dependsOn(run.getTasksBefore());
             });
             ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
 

@@ -53,14 +53,12 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
      * This argument file is only used by the launch shell-scripts.
      */
     @OutputFile
-    @Optional
     abstract RegularFileProperty getClasspathArgsFile();
 
     /**
      * A platform-specific script to launch this run configuration with directly from outside the IDE / Gradle.
      */
     @OutputFile
-    @Optional
     abstract RegularFileProperty getLaunchScript();
 
     /**
@@ -82,7 +80,7 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
     /**
      * Launcher for the java version used in the launch shell-scripts.
      */
-    @Internal
+    @Input
     abstract Property<JavaLauncher> getLaunchScriptJavaLauncher();
 
     @Inject
