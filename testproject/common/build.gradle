@@ -1,6 +1,9 @@
 plugins {
     id 'net.neoforged.moddev'
     id 'maven-publish'
+    // Applying these two here allows us to test ide post-sync from the workflow
+    id 'eclipse'
+    id 'idea'
 }
 
 neoForge {
