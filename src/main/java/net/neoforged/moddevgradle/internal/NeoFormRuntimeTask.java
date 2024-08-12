@@ -109,8 +109,8 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
             realArgs.add("--warn-on-artifact-manifest-miss");
         }
 
-        // When running through IJ or Eclipse, always enable emojis
-        if (IdeDetection.isIntelliJ() || IdeDetection.isEclipse()) {
+        // When running through IJ always enable emojis
+        if (IdeDetection.isIntelliJ()) {
             realArgs.add("--emojis");
         }
 
