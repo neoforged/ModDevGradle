@@ -1,7 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
-import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserDataException;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -22,9 +22,9 @@ public abstract class Parchment {
                         getMinecraftVersion().orElse("")
                                 .zip(getMappingsVersion().orElse(""), (minecraftVersion, mappingVersion) -> {
                                     if (!minecraftVersion.isEmpty() && mappingVersion.isEmpty()) {
-                                        throw new GradleException("If you set neoForge.parchment.minecraftVersion, you also must set mappingVersion");
+                                        throw new InvalidUserDataException("If you set neoForge.parchment.minecraftVersion, you also must set mappingVersion");
                                     } else if (minecraftVersion.isEmpty() && !mappingVersion.isEmpty()) {
-                                        throw new GradleException("If you set neoForge.parchment.mappingVersion, you also must set minecraftVersion");
+                                        throw new InvalidUserDataException("If you set neoForge.parchment.mappingVersion, you also must set minecraftVersion");
                                     } else if (minecraftVersion.isEmpty() && mappingVersion.isEmpty()) {
                                         return null;
                                     }
