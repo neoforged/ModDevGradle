@@ -430,8 +430,7 @@ Access Transformers are an advanced feature allowing mods to relax the access mo
 To use this feature, you can place an access transformer data file at `src/resources/META-INF/accesstransformer.cfg`,
 adhering to the [access transformer format](https://docs.neoforged.net/docs/advanced/accesstransformers/).
 
-> [!TIP]
-> When you use the default file location, you do not need to configure anything.
+**When you use the default file location, you do not need to configure anything.**
 
 If you'd like to use additional or different access transformer files, you can modify the paths MDG reads them from
 by setting the `accessTransformers` property.
