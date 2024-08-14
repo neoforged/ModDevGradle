@@ -324,13 +324,6 @@ public class ModDevPlugin implements Plugin<Project> {
         var sourceSets = ExtensionUtils.getSourceSets(project);
         extension.addModdingDependenciesTo(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
 
-        configurations.named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
-        });
-
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
             var toolchainSpec = javaExtension.getToolchain();
