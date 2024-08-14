@@ -427,7 +427,7 @@ even if dependency management has been overridden.
 Access Transformers are an advanced feature allowing mods to relax the access modifiers on Minecraft classes,
  fields, and methods.
 
-To use this feature, you can place an access transformer data file at `src/resources/META-INF/accesstransformer.cfg`,
+To use this feature, you can place an access transformer data file at `src/main/resources/META-INF/accesstransformer.cfg`,
 adhering to the [access transformer format](https://docs.neoforged.net/docs/advanced/accesstransformers/).
 
 **When you use the default file location, you do not need to configure anything.**
