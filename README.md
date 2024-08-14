@@ -430,7 +430,8 @@ Access Transformers are an advanced feature allowing mods to relax the access mo
 To use this feature, you can place an access transformer data file at `src/resources/META-INF/accesstransformer.cfg`,
 adhering to the [access transformer format](https://docs.neoforged.net/docs/advanced/accesstransformers/).
 
-When you use the default file location, you do not need to configure anything.
+> [!TIP]
+> When you use the default file location, you do not need to configure anything.
 
 If you'd like to use additional or different access transformer files, you can modify the paths MDG reads them from
 by setting the `accessTransformers` property.
@@ -444,9 +445,10 @@ The elements are in the same format that `project.files(...)` expects.
 ```groovy
 neoForge {
     // Pulling in an access transformer from the parent project
-    accessTransformers {
-        from "../src/main/resources/META-INF/accesstransformer.cfg"
-    }
+    // (Option 1) Add a single access transformer, and keep the default:
+    accessTransformers.from "../src/main/resources/META-INF/accesstransformer.cfg"
+    // (Option 2) Overwrite the whole list of access transformers, removing the default:
+    accessTransformers = ["../src/main/resources/META-INF/accesstransformer.cfg"]
 }
 ```
 
@@ -468,10 +470,11 @@ If there is a single access transformer, it will be published under the `accesst
 If there are multiple, they will be published under the `accesstransformer1`, `accesstransformer2`, etc... classifiers.
 
 To consume an access transformer, add it as an `accessTransformer` dependency.
+This will find all the published access transformers regardless of their file names.
 For example:
 ```groovy
 dependencies {
-    accessTransformer "<group>:<artifact>:<version>:accesstransformer@cfg"
+    accessTransformer "<group>:<artifact>:<version>"
 }
 ```
 
@@ -489,9 +492,7 @@ Since this feature only applies at development time, you do not need to include 
 `build.gradle`
 ```groovy
 neoForge {
-    interfaceInjectionData {
-        from "interfaces.json"
-    }
+    interfaceInjectionData.from "interfaces.json"
 }
 ```
 
@@ -522,7 +523,7 @@ neoForge {
 }
 // Consume it:
 dependencies {
-    interfaceInjectionData "<group>:<artifact>:<version>:interfaceinjection@json"
+    interfaceInjectionData "<group>:<artifact>:<version>"
 }
 ```
 
