@@ -510,8 +510,8 @@ Project dependency syntax in your dependencies block.
 #### Publication of Interface Injection Data
 The publication of interface injection data follows the same principles as the publication of access transformers.
 
-The published file name is `interfaceinjection.json` for a single file,
-or `interfaceinjection1.json` and so on for multiple files.
+If there is a data file, it will be published under the `interfaceinjection` classifier.
+If there are multiple, they will be published under the `interfaceinjection1`, `interfaceinjection2`, etc... classifiers.
 
 ```groovy
 // Publish a file:
