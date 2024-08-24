@@ -276,7 +276,8 @@ public class MojangRepositoryFilter {
     public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
 ${artifactList.collect { "        filter.includeModule(\"${it.group}\", \"${it.module}\");" }.join('\n')}
     }
-}"""
+}
+"""
         output.get().asFile.write(clazz)
     }
 }
