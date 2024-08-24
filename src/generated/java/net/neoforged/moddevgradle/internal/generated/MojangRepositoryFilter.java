@@ -5,12 +5,17 @@ public class MojangRepositoryFilter {
     public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
         filter.includeModule("argo", "argo");
         filter.includeModule("ca.weblite", "java-objc-bridge");
+        filter.includeModule("com.fasterxml.jackson.core", "jackson-annotations");
+        filter.includeModule("com.fasterxml.jackson.core", "jackson-core");
+        filter.includeModule("com.fasterxml.jackson.core", "jackson-databind");
         filter.includeModule("com.github.oshi", "oshi-core");
+        filter.includeModule("com.github.stephenc.jcip", "jcip-annotations");
         filter.includeModule("com.google.code.gson", "gson");
         filter.includeModule("com.google.guava", "failureaccess");
         filter.includeModule("com.google.guava", "guava");
         filter.includeModule("com.ibm.icu", "icu4j");
         filter.includeModule("com.ibm.icu", "icu4j-core-mojang");
+        filter.includeModule("com.microsoft.azure", "msal4j");
         filter.includeModule("com.mojang", "authlib");
         filter.includeModule("com.mojang", "blocklist");
         filter.includeModule("com.mojang", "brigadier");
@@ -21,6 +26,10 @@ public class MojangRepositoryFilter {
         filter.includeModule("com.mojang", "patchy");
         filter.includeModule("com.mojang", "realms");
         filter.includeModule("com.mojang", "text2speech");
+        filter.includeModule("com.nimbusds", "content-type");
+        filter.includeModule("com.nimbusds", "lang-tag");
+        filter.includeModule("com.nimbusds", "nimbus-jose-jwt");
+        filter.includeModule("com.nimbusds", "oauth2-oidc-sdk");
         filter.includeModule("com.paulscode", "codecjorbis");
         filter.includeModule("com.paulscode", "codecwav");
         filter.includeModule("com.paulscode", "libraryjavasound");
@@ -48,6 +57,8 @@ public class MojangRepositoryFilter {
         filter.includeModule("net.java.jinput", "jinput-platform");
         filter.includeModule("net.java.jutils", "jutils");
         filter.includeModule("net.minecraft", "launchwrapper");
+        filter.includeModule("net.minidev", "accessors-smart");
+        filter.includeModule("net.minidev", "json-smart");
         filter.includeModule("net.sf.jopt-simple", "jopt-simple");
         filter.includeModule("net.sf.trove4j", "trove4j");
         filter.includeModule("org.apache.commons", "commons-compress");
@@ -73,6 +84,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("org.lwjgl.lwjgl", "lwjgl-platform");
         filter.includeModule("org.lwjgl.lwjgl", "lwjgl_util");
         filter.includeModule("org.lz4", "lz4-java");
+        filter.includeModule("org.ow2.asm", "asm");
         filter.includeModule("org.ow2.asm", "asm-all");
         filter.includeModule("org.slf4j", "slf4j-api");
         filter.includeModule("oshi-project", "oshi-core");
