@@ -427,10 +427,10 @@ even if dependency management has been overridden.
 Access Transformers are an advanced feature allowing mods to relax the access modifiers on Minecraft classes,
  fields, and methods.
 
-To use this feature, you can place an access transformer data file at `src/resources/META-INF/accesstransformer.cfg`,
+To use this feature, you can place an access transformer data file at `src/main/resources/META-INF/accesstransformer.cfg`,
 adhering to the [access transformer format](https://docs.neoforged.net/docs/advanced/accesstransformers/).
 
-When you use the default file location, you do not need to configure anything.
+**When you use the default file location, you do not need to configure anything.**
 
 If you'd like to use additional or different access transformer files, you can modify the paths MDG reads them from
 by setting the `accessTransformers` property.
@@ -441,15 +441,41 @@ by setting the `accessTransformers` property.
 
 The elements are in the same format that `project.files(...)` expects.
 
-```
+```groovy
 neoForge {
     // Pulling in an access transformer from the parent project
+    // (Option 1) Add a single access transformer, and keep the default:
+    accessTransformers.from "../src/main/resources/META-INF/accesstransformer.cfg"
+    // (Option 2) Overwrite the whole list of access transformers, removing the default:
     accessTransformers = ["../src/main/resources/META-INF/accesstransformer.cfg"]
 }
 ```
 
 In addition, you can add additional access transformers to the `accessTransformers` configuration using normal
 Project dependency syntax in your dependencies block.
+
+#### Publication of Access Transformers
+Optionally, access transformers can be published to a Maven repository so they are usable by other mods.
+To publish an access transformer, add a `publish` declaration as follows:
+```groovy
+neoForge {
+    accessTransformers {
+        publish file("src/main/resources/META-INF/accesstransformer.cfg")
+    }
+}
+```
+
+If there is a single access transformer, it will be published under the `accesstransformer` classifier.
+If there are multiple, they will be published under the `accesstransformer1`, `accesstransformer2`, etc... classifiers.
+
+To consume an access transformer, add it as an `accessTransformer` dependency.
+This will find all the published access transformers regardless of their file names.
+For example:
+```groovy
+dependencies {
+    accessTransformer "<group>:<artifact>:<version>"
+}
+```
 
 ### Interface Injection
 
@@ -465,7 +491,7 @@ Since this feature only applies at development time, you do not need to include 
 `build.gradle`
 ```groovy
 neoForge {
-    interfaceInjectionData = files("interfaces.json")
+    interfaceInjectionData.from "interfaces.json"
 }
 ```
 
@@ -480,6 +506,25 @@ neoForge {
 
 In addition, you can add additional data-files to the `interfaceInjectionData` configuration using normal
 Project dependency syntax in your dependencies block.
+
+#### Publication of Interface Injection Data
+The publication of interface injection data follows the same principles as the publication of access transformers.
+
+If there is a data file, it will be published under the `interfaceinjection` classifier.
+If there are multiple, they will be published under the `interfaceinjection1`, `interfaceinjection2`, etc... classifiers.
+
+```groovy
+// Publish a file:
+neoForge {
+    interfaceInjectionData {
+        publish file("interfaces.json")
+    }
+}
+// Consume it:
+dependencies {
+    interfaceInjectionData "<group>:<artifact>:<version>"
+}
+```
 
 ## Advanced Tips & Tricks
 
