@@ -50,6 +50,7 @@ import org.gradle.api.tasks.testing.Test;
 import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.eclipse.model.Library;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -76,7 +77,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -937,17 +937,18 @@ public class ModDevPlugin implements Plugin<Project> {
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
         if (eclipseModel == null) {
-            LOG.info("No Eclipse project model found. Skipping Eclipse/VSCode configuration until the 'eclipse' plugin is applied.");
-            // Configure it later if the eclipse plugin is added, but ensure it's only done once
-            var configured = new AtomicBoolean();
-            project.getPlugins().withId("eclipse", ignored -> {
-                if (!configured.compareAndSet(false, true)) {
-                    return;
-                }
-                LOG.info("Performing delayed configuration of Eclipse model after 'eclipse' plugin was applied.");
-                configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
-            });
-            return;
+            // If we detect running under Eclipse or VSCode, we apply the Eclipse plugin
+            if (!IdeDetection.isEclipse() && !IdeDetection.isVsCode()) {
+                LOG.info("No Eclipse project model found, and not running under Eclipse or VSCode. Skipping Eclipse model configuration.");
+                return;
+            }
+
+            project.getPlugins().apply(EclipsePlugin.class);
+            eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
+            if (eclipseModel == null) {
+                LOG.error("Even after applying the Eclipse plugin, no 'eclipse' extension was present!");
+                return;
+            }
         }
 
         LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
@@ -971,7 +972,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }
 
         // Set up runs if running under buildship and in VS Code
-        if (IdeDetection.isEclipse() && IdeDetection.isVsCode()) {
+        if (IdeDetection.isVsCode()) {
             project.afterEvaluate(ignored -> {
                 var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
 
