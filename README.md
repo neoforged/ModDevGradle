@@ -4,6 +4,8 @@
 
 Check the NeoForged Project Listing for [latest releases](https://projects.neoforged.net/neoforged/ModDevGradle).
 
+If you are updating to a new major version of the plugin, refer to the [list of breaking changes](BREAKING_CHANGES.md).
+
 ## Features
 
 - Uses the latest Gradle best practices and is compatible with Gradle 8.8
