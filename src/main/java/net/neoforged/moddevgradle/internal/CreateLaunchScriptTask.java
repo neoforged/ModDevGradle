@@ -63,7 +63,7 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
      * Set to the desired Java runtime classpath.
      */
     @InputFiles
-    @PathSensitive(PathSensitivity.NAME_ONLY)
+    @PathSensitive(PathSensitivity.ABSOLUTE)
     abstract ConfigurableFileCollection getRuntimeClasspath();
 
     @Input
