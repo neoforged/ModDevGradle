@@ -442,7 +442,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
                 task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-                task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
+                // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
+                // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
+                // We don't want to do that on IDE sync!
+                task.getRuntimeClasspath().setFrom(project.provider(() -> runtimeClasspathConfig.get().getFiles()));
                 task.getLaunchScript().set(RunUtils.getLaunchScript(modDevBuildDir, run));
                 task.getClasspathArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.CLASSPATH));
                 task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
