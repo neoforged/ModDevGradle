@@ -3,7 +3,7 @@ For a full list of changes, and in which versions they were introduced,
 please refer to the changelog, which can be found on the [project page](https://projects.neoforged.net/neoforged/moddevgradle).
 
 ## ModDevGradle 2
-MDG 2 received a few breaking changes that should not affect most users.
+The breaking changes in this major version should not affect most projects.
 Nonetheless, every single breaking change is documented here, along with a suggested fix.
 
 - Changes to access transformer and interface injection data publishing.
