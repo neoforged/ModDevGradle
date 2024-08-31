@@ -294,7 +294,6 @@ final class RunUtils {
         return modsProvider.zip(testedModProvider, ((mods, testedMod) -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
-                    modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
 
                     var sourceSets = mod.getModSourceSets().get();
 
