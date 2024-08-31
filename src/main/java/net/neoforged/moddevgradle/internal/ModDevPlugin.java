@@ -237,6 +237,9 @@ public class ModDevPlugin implements Plugin<Project> {
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
+            for (var configuration : createManifestConfigurations) {
+                task.getArtifacts().from(configuration);
+            }
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
 

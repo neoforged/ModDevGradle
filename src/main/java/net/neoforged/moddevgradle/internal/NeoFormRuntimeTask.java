@@ -47,6 +47,14 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
     abstract RegularFileProperty getArtifactManifestFile();
 
     /**
+     * Should contain the files that are in the artifact manifest.
+     * This is used to make sure that updates to the content of these files force a task re-run,
+     * even if the path did not change. (For example, when updating a mavenLocal file).
+     */
+    @InputFiles
+    abstract ConfigurableFileCollection getArtifacts();
+
+    /**
      * Path to the Java executable to launch NFRT with.
      */
     @Input
