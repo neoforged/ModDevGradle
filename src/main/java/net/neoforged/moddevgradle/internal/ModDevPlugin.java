@@ -442,7 +442,19 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
                 task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-                task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
+                // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
+                // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
+                // We don't want to do that on IDE sync!
+                // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
+                //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
+                //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
+                //   depending on what order the tasks are executed.
+                // So we pass the absolute paths directly...
+                task.getRuntimeClasspath().set(project.provider(() -> {
+                    return runtimeClasspathConfig.get().getFiles().stream()
+                            .map(File::getAbsolutePath)
+                            .toList();
+                }));
                 task.getLaunchScript().set(RunUtils.getLaunchScript(modDevBuildDir, run));
                 task.getClasspathArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.CLASSPATH));
                 task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
