@@ -229,9 +229,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false); // Expect a single result
-            spec.withDependencies(dependencies -> {
-                dependencies.addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
-            });
+            spec.getDependencies().addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
         });
 
         // Configure common properties of NeoFormRuntimeEngineTask
@@ -300,25 +298,21 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
 
-                // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
-                // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-                dependencies.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-            });
+            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
+            // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
+            config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            config.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
             config.setDescription("The compile-time dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
+            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         var sourceSets = ExtensionUtils.getSourceSets(project);
@@ -341,12 +335,12 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(extension.getVersion().map(version -> {
+            spec.getDependencies().addLater(extension.getVersion().map(version -> {
                 return dependencyFactory.create("net.neoforged:neoforge:" + version)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
-            })));
+            }));
         });
 
         var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
@@ -375,17 +369,15 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 // NOTE: When running in vanilla mode, this configuration is simply empty
-                spec.withDependencies(set -> {
-                    set.addLater(extension.getVersion().map(version -> {
-                        return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                                .capabilities(caps -> {
-                                    caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                                })
-                                // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                                .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                    }));
-                    set.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-                });
+                spec.getDependencies().addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                            })
+                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+                }));
+                spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
             });
 
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
@@ -397,9 +389,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") || t.equals("data") ? "client" : "server"));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
-                spec.withDependencies(set -> {
-                    set.addLater(neoForgeModDevLibrariesDependency);
-                });
+                spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
                 spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration(), additionalClasspath);
             });
 
@@ -532,16 +522,16 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
-                    }))));
+                    })));
 
             // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform");
-                    }))));
+                    })));
         });
 
         // This configuration is empty when running in Vanilla-mode.
@@ -549,7 +539,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency));
+            spec.getDependencies().addLater(neoForgeDependency);
             spec.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
                 attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
@@ -562,15 +552,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
-                    }))));
+                    })));
             // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
-                    }))));
+                    })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
@@ -582,13 +572,11 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> {
-                depSpec.addLater(neoForgeDependency); // Universal Jar
-                depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
-                        .capabilities(caps -> {
-                            caps.requireCapability("net.neoforged:neoforge-dependencies");
-                        })));
-            });
+            spec.getDependencies().addLater(neoForgeDependency); // Universal Jar
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-dependencies");
+                    })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
@@ -599,9 +587,9 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("The external tools used by the NeoForm runtime");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> dependencies.addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
+            spec.getDependencies().addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
                 caps.requireCapability("net.neoforged:neoform-runtime-external-tools");
-            }))));
+            })));
         });
 
         return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath, tools);
@@ -639,24 +627,20 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
         configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
+            configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
             config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
-                            });
-                }));
-            });
+            config.getDependencies().addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
+                        });
+            }));
         });
 
         var testRuntimeClasspathConfig = configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
@@ -670,17 +654,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
             // NOTE: When running in vanilla mode, this configuration is simply empty
-            spec.withDependencies(set -> {
-                set.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                            })
-                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                }));
-                set.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-            });
+            spec.getDependencies().addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                        })
+                        // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                        .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+            }));
+            spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
@@ -692,9 +674,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
             });
-            spec.withDependencies(set -> {
-                set.addLater(neoForgeModDevLibrariesDependency);
-            });
+            spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
