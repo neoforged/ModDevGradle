@@ -422,7 +422,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArguments().set(run.getProgramArguments());
                 task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
-                task.dependsOn(run.getTasksBefore());
             });
             prepareRunTasks.put(run, prepareRunTask);
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
@@ -472,6 +471,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
                 // Of course we need the arg files to be up-to-date ;)
                 task.dependsOn(prepareRunTask);
+                task.dependsOn(run.getTasksBefore());
 
                 task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
             });
