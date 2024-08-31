@@ -13,5 +13,5 @@ Nonetheless, every single breaking change is documented here, along with a sugge
   - To fix: Refer to the [README](README.md#publication-of-access-transformers) for documentation of the new syntax.
 - Parchment: Specifying only the Minecraft version or only the mapping version will now fail.
   - This is meant to catch usage mistakes.
-- `beforeRun` tasks do not run on IDE project sync anymore.
-  - To run a task on sync, use `neoForge.ideSyncTask <task>` 
+- Run `beforeTask`s do not run on IDE project sync anymore.
+  - To run a task on sync, use `neoForge.ideSyncTask <task>`.
