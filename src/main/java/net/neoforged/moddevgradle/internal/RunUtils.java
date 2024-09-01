@@ -9,6 +9,7 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -297,7 +298,11 @@ final class RunUtils {
 
                     var sourceSets = mod.getModSourceSets().get();
 
-                    for (var sourceSet : sourceSets) {
+                    for (int i = 0; i < sourceSets.size(); ++i) {
+                        var sourceSet = sourceSets.get(i);
+                        if (sourceSets.subList(0, i).contains(sourceSet)) {
+                            throw new InvalidUserCodeException("Duplicate source set '%s' in mod '%s'".formatted(sourceSet.getName(), mod.getName()));
+                        }
                         outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                     }
 

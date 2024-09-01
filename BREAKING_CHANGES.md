@@ -18,3 +18,5 @@ Nonetheless, every single breaking change is documented here, along with a sugge
 - Removal of `dependency` and `extendsFrom` inside the `neoForge.mods {}` block.
   - These functions generally do not work, and were removed to reduce confusion.
   - `sourceSet <sourceSet>` should be used instead. If this is not sufficient, please open an issue.
+- `mods` cannot contain the same source set multiple times.
+  - This is meant to catch usage mistakes.
