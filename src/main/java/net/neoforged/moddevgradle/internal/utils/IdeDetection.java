@@ -45,10 +45,10 @@ public final class IdeDetection {
      */
     public static boolean isEclipse() {
         if (System.getProperty("eclipse.application") != null) {
-            LOG.debug("eclipse.application system property is set. Running from Eclipse (or VSCode).");
+            LOG.debug("eclipse.application system property is set. Running from Eclipse.");
             return true;
         } else {
-            LOG.debug("eclipse.application system property is not set. Not running under Eclipse (or VSCode).");
+            LOG.debug("eclipse.application system property is not set. Not running under Eclipse.");
             return false;
         }
     }
