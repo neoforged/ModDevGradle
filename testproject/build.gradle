@@ -2,10 +2,6 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
-repositories {
-    mavenLocal()
-}
-
 sourceSets {
     api
 }

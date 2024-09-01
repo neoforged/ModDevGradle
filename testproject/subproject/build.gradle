@@ -4,10 +4,6 @@ plugins {
     id 'maven-publish'
 }
 
-repositories {
-    mavenLocal()
-}
-
 neoForge {
     version = project.neoforge_version
 
