@@ -580,6 +580,11 @@ public class ModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     })));
+            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform-dependencies");
+                    })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
