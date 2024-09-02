@@ -287,7 +287,6 @@ neoForge {
 
 def serviceJar = tasks.register("serviceJar", Jar) {
     from(sourceSets.service.output)
-    manifest.attributes["FMLModType"] = "LIBRARY"
     archiveClassifier = "service"
     manifest {
         attributes(
