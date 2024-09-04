@@ -13,7 +13,7 @@ import java.io.File;
  * the Minecraft artifacts for compiling and mods.
  */
 public abstract class NeoFormRuntime {
-    private static final String DEFAULT_NFRT_VERSION = "1.0.5";
+    private static final String DEFAULT_NFRT_VERSION = "1.0.6";
 
     @Inject
     public NeoFormRuntime(Project project) {
