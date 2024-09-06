@@ -173,9 +173,6 @@ public class ModDevPlugin implements Plugin<Project> {
         );
         var dependencyFactory = project.getDependencyFactory();
 
-        project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
-        project.getDependencies().getComponents().withModule("de.oceanlabs.mcp:mcp_config", McpMetadataTransform.class);
-
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
         var neoForgeModDevLibrariesDependency = extension.getNeoForgeArtifact().map(artifactId -> {
@@ -183,13 +180,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
-        }).orElse(extension.getNeoFormVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoform:" + version)
-                    .capabilities(caps -> {
-                        caps.requireCapability("net.neoforged:neoform-dependencies");
-                    });
-        })).orElse(extension.getMcpMinecraftVersion().map(version -> {
-            return dependencyFactory.create("de.oceanlabs.mcp:mcp_config:" + version)
+        }).orElse(extension.getNeoFormArtifact().map(artifact -> {
+            return dependencyFactory.create(artifact)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
@@ -268,8 +260,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
                         extension.getVersion().map(v -> "neoforge-" + v)
-                                .orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v))
-                                .orElse(extension.getMcpMinecraftVersion().map(v -> "vanilla-" + v)),
+                                .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
@@ -509,8 +500,7 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
-        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip")
-                .orElse(extension.getMcpMinecraftVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version + "@zip"));
+        return extension.getNeoFormArtifact().map(art -> art + "@zip");
     }
 
     private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
@@ -527,8 +517,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var configurationPrefix = "neoFormRuntimeDependencies";
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
-        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version))
-                .orElse(extension.getMcpMinecraftVersion().map(version -> dependencyFactory.create("de.oceanlabs.mcp:mcp_config:" + version)));
+        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormArtifact().map(dependencyFactory::create);
         Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
