@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.jar.JarInputStream;
 
 // @CacheableTransform
-public class LegacyForgeMetadataTransform implements ComponentMetadataRule {
+class LegacyForgeMetadataTransform implements ComponentMetadataRule {
     private final ObjectFactory objects;
     private final RepositoryResourceAccessor repositoryResourceAccessor;
 

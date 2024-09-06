@@ -26,7 +26,7 @@ import java.util.jar.JarInputStream;
  * https://maven.neoforged.net/releases/net/neoforged/neoform/1.21-20240613.152323/neoform-1.21-20240613.152323.module
  */
 // @CacheableTransform
-public class McpMetadataTransform implements ComponentMetadataRule {
+class McpMetadataTransform implements ComponentMetadataRule {
     private static final Attribute<String> JVM_VERSION = Attribute.of("org.gradle.jvm.version", String.class);
     private final ObjectFactory objects;
     private final RepositoryResourceAccessor repositoryResourceAccessor;

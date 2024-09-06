@@ -1,6 +1,10 @@
 plugins {
-    id 'net.neoforged.moddev'
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacy'
 }
+
+group = 'com.example.legacy'
+version = '1.0.0'
 
 repositories {
     mavenLocal()
@@ -13,5 +17,18 @@ java {
 }
 
 neoForge {
-    mcpMinecraftVersion = '1.19.2'
+    neoFormVersion = '1.19.2'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url file('local')
+        }
+    }
 }
