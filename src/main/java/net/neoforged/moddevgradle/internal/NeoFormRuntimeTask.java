@@ -8,12 +8,12 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Optional;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
-import org.gradle.jvm.toolchain.JavaLauncher;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.process.ExecOperations;
 
@@ -47,10 +47,18 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
     abstract RegularFileProperty getArtifactManifestFile();
 
     /**
-     * Launcher for the java version used by NFRT itself.
+     * Should contain the files that are in the artifact manifest.
+     * This is used to make sure that updates to the content of these files force a task re-run,
+     * even if the path did not change. (For example, when updating a mavenLocal file).
      */
-    @Internal
-    abstract Property<JavaLauncher> getNeoFormRuntimeLauncher();
+    @InputFiles
+    abstract ConfigurableFileCollection getArtifacts();
+
+    /**
+     * Path to the Java executable to launch NFRT with.
+     */
+    @Input
+    abstract Property<String> getJavaExecutable();
 
     @Inject
     protected abstract JavaToolchainService getJavaToolchainService();
@@ -85,7 +93,10 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
         getWorkDirectory().set(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
 
         // Default to J21 for NFRT
-        getNeoFormRuntimeLauncher().convention(getJavaToolchainService().launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21))));
+        getJavaExecutable().convention(getJavaToolchainService()
+                .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)))
+                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
+        );
     }
 
     protected void run(List<String> args) {
@@ -106,8 +117,8 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
             realArgs.add("--warn-on-artifact-manifest-miss");
         }
 
-        // When running through IJ or Eclipse, always enable emojis
-        if (IdeDetection.isIntelliJ() || IdeDetection.isEclipse()) {
+        // When running through IJ always enable emojis
+        if (IdeDetection.isIntelliJ()) {
             realArgs.add("--emojis");
         }
 
@@ -118,7 +129,7 @@ abstract public class NeoFormRuntimeTask extends DefaultTask {
             // See https://github.com/gradle/gradle/issues/28959
             execSpec.jvmArgs("-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8");
 
-            execSpec.executable(getNeoFormRuntimeLauncher().get().getExecutablePath().getAsFile());
+            execSpec.executable(getJavaExecutable().get());
             execSpec.classpath(getNeoFormRuntime());
             execSpec.args(realArgs);
         });

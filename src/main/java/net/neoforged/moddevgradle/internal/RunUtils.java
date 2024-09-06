@@ -1,6 +1,5 @@
 package net.neoforged.moddevgradle.internal;
 
-import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.elc.configs.LaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
@@ -8,7 +7,9 @@ import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
+import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -173,13 +174,23 @@ final class RunUtils {
                 """.replace("$ROOTLEVEL$", rootLevel.name()));
     }
 
-    public static File getArgFile(Provider<Directory> modDevFolder, RunModel run, RunArgFile type) {
-        return modDevFolder.get().file(InternalModelHelper.nameOfRun(run, "", type.filename)).getAsFile();
+    public static Provider<RegularFile> getArgFile(Provider<Directory> modDevFolder, RunModel run, RunArgFile type) {
+        return modDevFolder.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", type.filename)));
+    }
+
+    public static Provider<RegularFile> getLaunchScript(Provider<Directory> modDevFolder, RunModel run) {
+        var scriptExtension = switch (OperatingSystem.current()) {
+            case LINUX, MACOS -> ".sh";
+            case WINDOWS -> ".cmd";
+        };
+
+        return modDevFolder.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "run", scriptExtension)));
     }
 
     public enum RunArgFile {
         VMARGS("runVmArgs.txt"),
         PROGRAMARGS("runProgramArgs.txt"),
+        CLASSPATH("runClasspath.txt"),
         LOG4J_CONFIG("log4j2.xml");
 
         private final String filename;
@@ -284,11 +295,14 @@ final class RunUtils {
         return modsProvider.zip(testedModProvider, ((mods, testedMod) -> mods.stream()
                 .collect(Collectors.toMap(ModModel::getName, mod -> {
                     var modFolder = project.getObjects().newInstance(ModFolder.class);
-                    modFolder.getFolders().from(InternalModelHelper.getModConfiguration(mod));
 
                     var sourceSets = mod.getModSourceSets().get();
 
-                    for (var sourceSet : sourceSets) {
+                    for (int i = 0; i < sourceSets.size(); ++i) {
+                        var sourceSet = sourceSets.get(i);
+                        if (sourceSets.subList(0, i).contains(sourceSet)) {
+                            throw new InvalidUserCodeException("Duplicate source set '%s' in mod '%s'".formatted(sourceSet.getName(), mod.getName()));
+                        }
                         outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                     }
 

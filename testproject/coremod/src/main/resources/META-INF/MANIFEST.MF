@@ -1,0 +1,2 @@
+FMLModType: LIBRARY
+Automatic-Module-Name: testproject.coremod

@@ -13,16 +13,20 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
-import org.gradle.api.Action;
+import net.neoforged.vsclc.BatchedLaunchWriter;
+import net.neoforged.vsclc.attribute.ConsoleType;
+import net.neoforged.vsclc.attribute.PathLike;
+import net.neoforged.vsclc.attribute.ShortCmdBehaviour;
+import net.neoforged.vsclc.writer.WritingMode;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
@@ -46,6 +50,7 @@ import org.gradle.api.tasks.testing.Test;
 import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.plugins.ide.eclipse.model.Library;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
@@ -57,6 +62,8 @@ import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
@@ -70,7 +77,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -79,6 +85,8 @@ import java.util.stream.Collectors;
  * The main plugin class.
  */
 public class ModDevPlugin implements Plugin<Project> {
+    private static final Logger LOG = LoggerFactory.getLogger(ModDevPlugin.class);
+
     private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
     private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
 
@@ -110,12 +118,13 @@ public class ModDevPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
         if (!project.getGradle().getPlugins().hasPlugin(RepositoriesPlugin.class)) {
             project.getPlugins().apply(RepositoriesPlugin.class);
         } else {
-            project.getLogger().info("Not enabling NeoForged repositories since they were applied at the settings level");
+            LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
         }
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
@@ -126,7 +135,42 @@ public class ModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
 
-        var extension = project.getExtensions().create(NeoForgeExtension.NAME, NeoForgeExtension.class);
+        // Create an access transformer configuration
+        var accessTransformers = dataFileConfiguration(
+                project,
+                "accessTransformers",
+                "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
+                "accesstransformer"
+        );
+        accessTransformers.extension.getFiles().convention(project.provider(() -> {
+            var collection = project.getObjects().fileCollection();
+
+            // Only return this when it actually exists
+            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
+                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
+                if (project.file(defaultPath).exists()) {
+                    return collection.from(defaultPath.getAbsolutePath());
+                }
+            }
+
+            return collection;
+        }));
+
+        // Create a configuration for grabbing interface injection data
+        var interfaceInjectionData = dataFileConfiguration(
+                project,
+                "interfaceInjectionData",
+                "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
+                "interfaceinjection"
+        );
+
+        var extension = project.getExtensions().create(
+                NeoForgeExtension.NAME,
+                NeoForgeExtension.class,
+                accessTransformers.extension,
+                interfaceInjectionData.extension
+        );
         var dependencyFactory = project.getDependencyFactory();
 
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
@@ -186,14 +230,6 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        // Create an access transformer configuration
-        var accessTransformers = dataFileConfiguration(project, "accessTransformers", "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
-                "accesstransformer", extension.getAccessTransformers());
-
-        // Create a configuration for grabbing interface injection data
-        var interfaceInjectionData = dataFileConfiguration(project, "interfaceInjectionData", "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
-                "interfaceinjection", extension.getInterfaceInjectionData());
-
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
@@ -201,9 +237,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false); // Expect a single result
-            spec.withDependencies(dependencies -> {
-                dependencies.addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
-            });
+            spec.getDependencies().addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
         });
 
         // Configure common properties of NeoFormRuntimeEngineTask
@@ -211,6 +245,9 @@ public class ModDevPlugin implements Plugin<Project> {
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
             task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
+            for (var configuration : createManifestConfigurations) {
+                task.getArtifacts().from(configuration);
+            }
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
 
@@ -219,8 +256,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
-            task.getAccessTransformers().from(accessTransformers);
-            task.getInterfaceInjectionData().from(interfaceInjectionData);
+            task.getAccessTransformers().from(accessTransformers.configuration);
+            task.getInterfaceInjectionData().from(interfaceInjectionData.configuration);
             task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
@@ -274,36 +311,25 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
 
-                // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
-                // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-                dependencies.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-            });
+            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
+            // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
+            config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            config.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
             config.setDescription("The compile-time dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
+            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         var sourceSets = ExtensionUtils.getSourceSets(project);
         extension.addModdingDependenciesTo(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
-
-        configurations.named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
-        });
 
         // Try to give people at least a fighting chance to run on the correct java version
         project.afterEvaluate(ignored -> {
@@ -322,15 +348,16 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.withDependencies(set -> set.addLater(extension.getNeoForgeArtifact().map(artifact -> {
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
                 return dependencyFactory.create(artifact)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
-            })));
+            }));
         });
 
         var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
             task.dependsOn(createArtifacts);
             task.dependsOn(extension.getIdeSyncTasks());
@@ -346,8 +373,8 @@ public class ModDevPlugin implements Plugin<Project> {
         extension.getRuns().all(run -> {
             var type = RunUtils.getRequiredType(project, run);
 
-            var runtimeClasspathConfig = run.getSourceSet().map(sourceSet -> sourceSet.getRuntimeClasspathConfigurationName())
-                    .map(name -> configurations.getByName(name));
+            var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
+                    .map(configurations::getByName);
 
             var neoForgeModDevModules = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
                 spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
@@ -355,17 +382,15 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 // NOTE: When running in vanilla mode, this configuration is simply empty
-                spec.withDependencies(set -> {
-                    set.addLater(extension.getNeoForgeArtifact().map(artifact -> {
-                        return dependencyFactory.create(artifact)
-                                .capabilities(caps -> {
-                                    caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                                })
-                                // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                                .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                    }));
-                    set.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-                });
+                spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                    return dependencyFactory.create(artifact)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                            })
+                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+                }));
+                spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
             });
 
             var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
@@ -377,9 +402,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") || t.equals("data") ? "client" : "server"));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
-                spec.withDependencies(set -> {
-                    set.addLater(neoForgeModDevLibrariesDependency);
-                });
+                spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
                 spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration(), additionalClasspath);
             });
 
@@ -412,10 +435,36 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArguments().set(run.getProgramArguments());
                 task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
-                task.dependsOn(run.getTasksBefore());
             });
             prepareRunTasks.put(run, prepareRunTask);
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+
+            var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+                task.setGroup(INTERNAL_TASK_GROUP);
+                task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
+
+                task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
+                // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
+                // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
+                // We don't want to do that on IDE sync!
+                // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
+                //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
+                //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
+                //   depending on what order the tasks are executed.
+                // So we pass the absolute paths directly...
+                task.getRuntimeClasspath().set(project.provider(() -> {
+                    return runtimeClasspathConfig.get().getFiles().stream()
+                            .map(File::getAbsolutePath)
+                            .toList();
+                }));
+                task.getLaunchScript().set(RunUtils.getLaunchScript(modDevBuildDir, run));
+                task.getClasspathArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.CLASSPATH));
+                task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+                task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+                task.getEnvironment().set(run.getEnvironment());
+                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
+            });
+            ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
@@ -435,6 +484,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
                 // Of course we need the arg files to be up-to-date ;)
                 task.dependsOn(prepareRunTask);
+                task.dependsOn(run.getTasksBefore());
 
                 task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
             });
@@ -487,16 +537,16 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-moddev-bundle");
-                    }))));
+                    })));
 
             // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform");
-                    }))));
+                    })));
         });
 
         // This configuration is empty when running in Vanilla-mode.
@@ -504,7 +554,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency));
+            spec.getDependencies().addLater(neoForgeDependency);
             spec.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
                 attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
@@ -517,15 +567,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
-                    }))));
+                    })));
             // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            spec.withDependencies(depSpec -> depSpec.addLater(neoFormDependency.map(dependency -> dependency.copy()
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
-                    }))));
+                    })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
@@ -537,13 +587,16 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(depSpec -> {
-                depSpec.addLater(neoForgeDependency); // Universal Jar
-                depSpec.addLater(neoForgeDependency.map(dependency -> dependency.copy()
-                        .capabilities(caps -> {
-                            caps.requireCapability("net.neoforged:neoforge-dependencies");
-                        })));
-            });
+            spec.getDependencies().addLater(neoForgeDependency); // Universal Jar
+            spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-dependencies");
+                    })));
+            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
+            spec.getDependencies().addLater(neoFormDependency.map(dependency -> dependency.copy()
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoform-dependencies");
+                    })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
@@ -554,9 +607,9 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("The external tools used by the NeoForm runtime");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> dependencies.addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
+            spec.getDependencies().addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
                 caps.requireCapability("net.neoforged:neoform-runtime-external-tools");
-            }))));
+            })));
         });
 
         return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath, tools);
@@ -594,24 +647,20 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
         configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.withDependencies(dependencies -> {
-                dependencies.addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                dependencies.addLater(neoForgeModDevLibrariesDependency);
-            });
+            configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
             config.setDescription("Additional JUnit helpers provided by NeoForge");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.withDependencies(dependencies -> {
-                dependencies.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
-                            });
-                }));
-            });
+            config.getDependencies().addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
+                        });
+            }));
         });
 
         var testRuntimeClasspathConfig = configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
@@ -625,17 +674,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
             // NOTE: When running in vanilla mode, this configuration is simply empty
-            spec.withDependencies(set -> {
-                set.addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                            })
-                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                }));
-                set.add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-            });
+            spec.getDependencies().addLater(extension.getVersion().map(version -> {
+                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                        .capabilities(caps -> {
+                            caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                        })
+                        // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                        .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+            }));
+            spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
@@ -647,9 +694,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
             });
-            spec.withDependencies(set -> {
-                set.addLater(neoForgeModDevLibrariesDependency);
-            });
+            spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
 
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
@@ -852,14 +897,14 @@ public class ModDevPlugin implements Plugin<Project> {
             var runConfigurations = getIntelliJRunConfigurations(rootProject); // TODO: Consider making this a value source
 
             if (runConfigurations == null) {
-                project.getLogger().debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
+                LOG.debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
             } else {
                 var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
 
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
                     if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
+                        LOG.info("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
                     }
                     addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
@@ -904,8 +949,21 @@ public class ModDevPlugin implements Plugin<Project> {
         // Set up stuff for Eclipse
         var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
         if (eclipseModel == null) {
-            return;
+            // If we detect running under Eclipse or VSCode, we apply the Eclipse plugin
+            if (!IdeDetection.isEclipse() && !IdeDetection.isVsCode()) {
+                LOG.info("No Eclipse project model found, and not running under Eclipse or VSCode. Skipping Eclipse model configuration.");
+                return;
+            }
+
+            project.getPlugins().apply(EclipsePlugin.class);
+            eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
+            if (eclipseModel == null) {
+                LOG.error("Even after applying the Eclipse plugin, no 'eclipse' extension was present!");
+                return;
+            }
         }
+
+        LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
 
         // Make sure our post-sync task runs on Eclipse
         eclipseModel.synchronizationTasks(ideSyncTask);
@@ -925,16 +983,26 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         }
 
-        // Set up runs if running under buildship
-        // TODO: This should be moved into its own task being triggered via eclipseModel.synchronizationTask
-        if (IdeDetection.isEclipse()) {
+        // Set up runs if running under buildship and in VS Code
+        if (IdeDetection.isVsCode()) {
+            project.afterEvaluate(ignored -> {
+                var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
+
+                for (var run : extension.getRuns()) {
+                    var prepareTask = prepareRunTasks.get(run).get();
+                    addVscodeLaunchConfiguration(project, run, prepareTask, launchWriter);
+                }
+
+                try {
+                    launchWriter.writeToLatestJson(project.getRootDir().toPath());
+                } catch (final IOException e) {
+                    throw new RuntimeException("Failed to write VSCode launch files", e);
+                }
+            });
+        } else if (IdeDetection.isEclipse()) {
             project.afterEvaluate(ignored -> {
                 for (var run : extension.getRuns()) {
                     var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        project.getLogger().lifecycle("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
-                        continue;
-                    }
                     addEclipseLaunchConfiguration(project, run, prepareTask);
                 }
             });
@@ -944,6 +1012,10 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void addEclipseLaunchConfiguration(Project project,
                                                       RunModel run,
                                                       PrepareRun prepareTask) {
+        if (!prepareTask.getEnabled()) {
+            LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
 
         // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         // And so that post sync tasks are only run once for all subprojects.
@@ -997,42 +1069,93 @@ public class ModDevPlugin implements Plugin<Project> {
 
     }
 
-    private static Configuration dataFileConfiguration(Project project, String name, String description, String category, DataFileCollection collection) {
-        var depFactory = project.getDependencyFactory();
-        Action<AttributeContainer> attributeAction = attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category));
+    private static void addVscodeLaunchConfiguration(Project project,
+                                                     RunModel run,
+                                                     PrepareRun prepareTask,
+                                                     BatchedLaunchWriter launchWriter) {
+        if (!prepareTask.getEnabled()) {
+            LOG.info("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
 
+        var model = project.getExtensions().getByType(EclipseModel.class);
+        var runIdeName = run.getIdeName().get();
+        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
+
+        // If the user wants to run tasks before the actual execution, we attach them to autoBuildTasks
+        // Missing proper support - https://github.com/microsoft/vscode-java-debug/issues/1106
+        if (!run.getTasksBefore().isEmpty()) {
+            model.autoBuildTasks(run.getTasksBefore().toArray());
+        }
+
+        launchWriter.createGroup("Mod Development - " + project.getName(), WritingMode.REMOVE_EXISTING)
+                .createLaunchConfiguration()
+                .withName(runIdeName)
+                .withProjectName(eclipseProjectName)
+                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
+                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
+                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
+                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
+                .withShortenCommandLine(ShortCmdBehaviour.NONE)
+                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
+                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
+    }
+
+    record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
+    }
+
+    private static DataFileCollectionWrapper dataFileConfiguration(Project project, String name, String description, String category) {
         var configuration = project.getConfigurations().create(name, spec -> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getFiles())));
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
+
         var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
             spec.setDescription("Published data files for " + name);
             spec.setCanBeConsumed(true);
             spec.setCanBeResolved(false);
-            spec.withDependencies(dependencies -> dependencies.add(depFactory.create(collection.getPublished())));
+            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
         });
 
-        // Set up the publishing conditionally
-        AdhocComponentWithVariants java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+        // Set up the variant publishing conditionally
+        var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
+        java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+            // This should be invoked lazily, so checking if the artifacts are empty is fine:
+            // "The details object used to determine what to do with a configuration variant **when publishing**."
+            if (variant.getConfigurationVariant().getArtifacts().isEmpty()) {
+                variant.skip();
+            }
+        });
 
-        AtomicBoolean configured = new AtomicBoolean();
-        Runnable configurePublishing = () -> {
-            if (configured.compareAndSet(false, true)) {
-                java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+        var depFactory = project.getDependencyFactory();
+        Consumer<Object> publishCallback = new Consumer<>() {
+            ConfigurablePublishArtifact firstArtifact;
+            int artifactCount;
+
+            @Override
+            public void accept(Object artifactNotation) {
+                elementsConfiguration.getDependencies().add(depFactory.create(project.files(artifactNotation)));
+                project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation, artifact -> {
+                    if (firstArtifact == null) {
+                        firstArtifact = artifact;
+                        artifact.setClassifier(category);
+                        artifactCount = 1;
+                    } else {
+                        if (artifactCount == 1) {
+                            firstArtifact.setClassifier(category + artifactCount);
+                        }
+                        artifact.setClassifier(category + (++artifactCount));
+                    }
                 });
             }
         };
 
-        elementsConfiguration.getAllArtifacts().configureEach(artifact -> configurePublishing.run());
-        elementsConfiguration.getArtifacts().configureEach(artifact -> configurePublishing.run());
+        var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
+        configuration.getDependencies().add(depFactory.create(extension.getFiles()));
 
-        configuration.attributes(attributeAction);
-        elementsConfiguration.attributes(attributeAction);
-
-        return configuration;
+        return new DataFileCollectionWrapper(extension, configuration);
     }
-
 }
 

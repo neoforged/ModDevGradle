@@ -13,10 +13,6 @@ public class InternalModelHelper {
     public InternalModelHelper() {
     }
 
-    public static Configuration getModConfiguration(ModModel modModel) {
-        return modModel.getConfiguration();
-    }
-
     public static String nameOfRun(RunModel run, @Nullable String prefix, @Nullable String suffix) {
         return StringUtils.uncapitalize((prefix == null ? "" : prefix)
                                         + StringUtils.capitalize(run.getName())

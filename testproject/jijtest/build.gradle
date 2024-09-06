@@ -2,7 +2,11 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+evaluationDependsOn(":coremod") // Because of the sourceset reference
+
 dependencies {
+    implementation project(":coremod")
+
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     jarJar(project(":coremod"))
@@ -33,7 +37,7 @@ neoForge {
             sourceSet sourceSets.main
         }
         coremod {
-            dependency project(":coremod")
+            sourceSet project(":coremod").sourceSets.main
         }
     }
 

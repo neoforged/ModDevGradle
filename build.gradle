@@ -15,13 +15,19 @@ base {
     archivesName = "moddev-gradle"
 }
 gradleutils.version {
+    tags {
+        label = "beta"
+        cleanMarkerLabel = "stable"
+    }
     branches.suffixBranch()
 }
 project.version = gradleutils.version
+logger.lifecycle("ModDevGradle version ${gradleutils.version}")
 
 changelog {
-    from '0.1'
-    // For fine-grained changelog publication control
+    from '2.0'
+    // For fine-grained changelog publication control.
+    // Otherwise, the changelog would get published alongside the "xxx.gradle.plugin" artifact too which we don't want.
     disableAutomaticPublicationRegistration()
 }
 
@@ -85,14 +91,25 @@ configurations {
             attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, "not-wanted-publication"))
         }
     }
+    changelog {
+        canBeResolved = false
+        canBeConsumed = true
+        attributes {
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
+            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, "changelog"))
+        }
+        project.components.findByName("java").addVariantsFromConfiguration(it) { }
+    }
 }
 
 dependencies {
     compileOnly gradleApi()
     compileOnly "com.intellij:annotations:9.0.4"
+    testCompileOnly "com.intellij:annotations:9.0.4"
     shaded "com.google.code.gson:gson:2.11.0"
     implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
     shaded "net.neoforged:EclipseLaunchConfigs:0.1.11"
+    shaded "net.neoforged:VscLaunchConfigs:1.0.8"
     shaded("net.neoforged:JarJarMetadata:0.4.2") {
         exclude group: 'org.slf4j'
     }
@@ -185,6 +202,14 @@ test {
     useJUnitPlatform()
 }
 
+artifacts {
+    changelog(createChangelog.outputFile) {
+        builtBy(createChangelog)
+        setClassifier("changelog")
+        setExtension("txt")
+    }
+}
+
 publishing {
     repositories {
         maven {
@@ -251,7 +276,8 @@ public class MojangRepositoryFilter {
     public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
 ${artifactList.collect { "        filter.includeModule(\"${it.group}\", \"${it.module}\");" }.join('\n')}
     }
-}"""
+}
+"""
         output.get().asFile.write(clazz)
     }
 }

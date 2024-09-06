@@ -13,7 +13,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
-import java.io.File;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -32,7 +31,7 @@ public abstract class NeoForgeExtension {
     private final DataFileCollection interfaceInjectionData;
 
     @Inject
-    public NeoForgeExtension(Project project) {
+    public NeoForgeExtension(Project project, DataFileCollection accessTransformers, DataFileCollection interfaceInjectionData) {
         this.project = project;
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
@@ -47,23 +46,8 @@ public abstract class NeoForgeExtension {
             }
         }));
 
-        accessTransformers = project.getObjects().newInstance(DataFileCollection.class);
-        interfaceInjectionData = project.getObjects().newInstance(DataFileCollection.class);
-
-        getAccessTransformers().getFiles().convention(project.provider(() -> {
-            var collection = project.getObjects().fileCollection();
-
-            // Only return this when it actually exists
-            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
-                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
-                if (project.file(defaultPath).exists()) {
-                    return collection.from(defaultPath.getAbsolutePath());
-                }
-            }
-
-            return collection;
-        }));
+        this.accessTransformers = accessTransformers;
+        this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
     }
 

@@ -11,7 +11,8 @@ java {
 jar {
     manifest {
         attributes([
-                "FMLModType": "LIBRARY"
+                "FMLModType": "LIBRARY",
+                "Automatic-Module-Name": "testproject.coremod"
         ])
     }
 }

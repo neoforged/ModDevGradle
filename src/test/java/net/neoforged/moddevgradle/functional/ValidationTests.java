@@ -12,18 +12,10 @@ import java.nio.file.Files;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class ValidationTests {
-    @TempDir
-    File testProjectDir;
-    private File settingsFile;
-    private File buildFile;
-
+public class ValidationTests extends AbstractFunctionalTest {
     @BeforeEach
     public void setup() throws IOException {
-        settingsFile = new File(testProjectDir, "settings.gradle");
         Files.writeString(settingsFile.toPath(), "rootProject.name = 'test-project'");
-
-        buildFile = new File(testProjectDir, "build.gradle");
     }
 
     @Test

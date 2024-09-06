@@ -2,9 +2,7 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
-repositories {
-    mavenLocal()
-}
+evaluationDependsOn(":subproject") // Because of the sourceset reference
 
 sourceSets {
     api
@@ -56,7 +54,7 @@ neoForge {
         testproject {
             sourceSet sourceSets.main
             sourceSet sourceSets.api
-            dependency project(":subproject")
+            sourceSet project(":subproject").sourceSets.main
         }
     }
 
