@@ -8,6 +8,9 @@ version = '1.0.0'
 
 repositories {
     mavenLocal()
+    maven {
+        url 'https://cursemaven.com'
+    }
 }
 
 java {

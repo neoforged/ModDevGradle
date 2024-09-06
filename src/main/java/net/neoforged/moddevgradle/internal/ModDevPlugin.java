@@ -259,7 +259,10 @@ public class ModDevPlugin implements Plugin<Project> {
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getVersion().map(v -> "neoforge-" + v)
+                        extension.getNeoForgeArtifact().map(art -> {
+                            var split = art.split(":", 3);
+                            return split[1] + "-" + split[2];
+                        })
                                 .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
@@ -504,7 +507,7 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
-        return extension.getVersion().map(version -> "net.neoforged:neoforge:" + version + ":userdev");
+        return extension.getNeoForgeArtifact().map(art -> art + ":userdev");
     }
 
     /**
@@ -576,7 +579,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.getDependencies().addLater(neoForgeDependency); // Universal Jar
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(a -> a + ":universal").map(dependencyFactory::create)); // Universal Jar
             spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
@@ -588,6 +591,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     })));
             spec.attributes(attributes -> {
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
                 attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
             });
         });
@@ -663,8 +668,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
             // NOTE: When running in vanilla mode, this configuration is simply empty
-            spec.getDependencies().addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(art -> {
+                return dependencyFactory.create(art)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
                         })

@@ -1,3 +1,5 @@
 
 includeBuild '..'
 includeBuild '../../NeoFormRuntime'
+
+include 'forge'

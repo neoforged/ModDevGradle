@@ -3,13 +3,22 @@ package net.neoforged.moddevgradle.legacy;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataRule;
+import org.gradle.api.artifacts.DirectDependenciesMetadata;
+import org.gradle.api.artifacts.DirectDependencyMetadata;
+import org.gradle.api.artifacts.MutableVariantFilesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
+import org.gradle.api.attributes.java.TargetJvmEnvironment;
+import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
@@ -55,6 +64,11 @@ class LegacyForgeMetadataTransform implements ComponentMetadataRule {
             throw new GradleException("Couldn't find userdev config json in " + userdevJarPath);
         }
 
+        Action<DirectDependenciesMetadata> vanillaDependencies = deps -> {
+            deps.add("de.oceanlabs.mcp:mcp_config:" + id.getVersion().split("-")[0], DirectDependencyMetadata::endorseStrictVersions);
+            deps.add("net.neoforged:minecraft-dependencies:" + id.getVersion().split("-")[0], DirectDependencyMetadata::endorseStrictVersions);
+        };
+
         details.addVariant("modDevConfig", variantMetadata -> {
             variantMetadata.withFiles(metadata -> {
                 metadata.removeAllFiles();
@@ -65,6 +79,11 @@ class LegacyForgeMetadataTransform implements ComponentMetadataRule {
             });
         });
         details.addVariant("modDevBundle", variantMetadata -> {
+            variantMetadata.withFiles(metadata -> {
+                metadata.removeAllFiles();
+                metadata.addFile(userdevJarName, userdevJarName);
+            });
+            variantMetadata.withDependencies(vanillaDependencies);
             variantMetadata.withCapabilities(capabilities -> {
                 capabilities.addCapability("net.neoforged", "neoforge-moddev-bundle", id.getVersion());
             });
@@ -92,6 +111,7 @@ class LegacyForgeMetadataTransform implements ComponentMetadataRule {
                     dependencies.add(library.getAsString());
                 }
             });
+            variantMetadata.withDependencies(vanillaDependencies);
             variantMetadata.withCapabilities(capabilities -> {
                 capabilities.addCapability("net.neoforged", "neoforge-dependencies", id.getVersion());
             });
@@ -105,6 +125,29 @@ class LegacyForgeMetadataTransform implements ComponentMetadataRule {
             variantMetadata.withCapabilities(capabilities -> {
                 capabilities.addCapability("net.neoforged", "neoforge-dependencies", id.getVersion());
             });
+            variantMetadata.withDependencies(vanillaDependencies);
+            variantMetadata.withFiles(MutableVariantFilesMetadata::removeAllFiles);
+            variantMetadata.withDependencies(dependencies -> {
+                var modules = configRootHolder[0].getAsJsonArray("modules");
+                for (JsonElement module : modules) {
+                    dependencies.add(module.getAsString());
+                }
+                var libraries = configRootHolder[0].getAsJsonArray("libraries");
+                for (JsonElement library : libraries) {
+                    dependencies.add(library.getAsString());
+                }
+            });
         });
+//        details.addVariant("universalJar", variantMetadata -> {
+//            variantMetadata.withFiles(files -> {
+//                files.removeAllFiles();
+//                files.addFile(id.getName() + "-" + id.getVersion() + "-universal.jar");
+//            });
+//            variantMetadata.attributes(attributes -> {
+//                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
+//                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
+//                attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
+//            });
+//        });
     }
 }

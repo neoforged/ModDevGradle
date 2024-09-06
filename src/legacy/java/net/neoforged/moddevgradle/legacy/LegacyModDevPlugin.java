@@ -1,9 +1,13 @@
 package net.neoforged.moddevgradle.legacy;
 
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
+import net.neoforged.moddevgradle.internal.LegacyInternal;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ExternalModuleDependency;
+import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
@@ -11,8 +15,11 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.tasks.Jar;
 
 import java.net.URI;
+import java.util.Map;
 
 public class LegacyModDevPlugin implements Plugin<Project> {
+    public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
+
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(ModDevPlugin.class);
@@ -34,20 +41,30 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             spec.setTransitive(false);
             spec.defaultDependencies(dependencies -> dependencies.add(depFactory.create("net.neoforged:AutoRenamingTool:2.0.3:all")));
         });
+        var installerToolsRuntime = project.getConfigurations().create("installerToolsRuntime", spec -> {
+            spec.setDescription("The InstallerTools CLI tool");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(true);
+            spec.setTransitive(false);
+            spec.defaultDependencies(dependencies -> dependencies.add(depFactory.create("net.neoforged.installertools:installertools:2.1.7:fatjar")));
+        });
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
         var officialToSrg = modDevBuildDir.map(d -> d.file("officialToSrg.tsrg"));
+        var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
             extension.getNeoFormRuntime().getAdditionalResults().put("officialToSrgMapping", officialToSrg.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
+            extension.getRuns().configureEach(run -> LegacyInternal.configureRun(project, run));
         });
 
-        var reobf = project.getExtensions().create("reobfuscation", Reobfuscation.class, project, officialToSrg, autoRenamingToolRuntime);
+        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
 
-        var reobfJar = reobf.reobfuscate(
+        var reobfJar = obf.reobfuscate(
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                 project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME),
                 remapJarTask -> remapJarTask.getArchiveClassifier().set("")
@@ -55,5 +72,49 @@ public class LegacyModDevPlugin implements Plugin<Project> {
 
         project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class).configure(jar -> jar.getArchiveClassifier().set("dev"));
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
+
+        project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES)
+                        .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
+
+        project.getConfigurations().getByName("additionalRuntimeClasspath")
+                        .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
+                .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
+
+        project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
+        project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
+
+        var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
+            spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");
+            spec.setCanBeConsumed(false);
+            spec.setCanBeDeclared(false);
+            spec.setCanBeResolved(true);
+            spec.extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
+        });
+
+        project.getDependencies().registerTransform(RemappingTransform.class, params -> {
+            params.parameters(parameters -> {
+                parameters.getParameters().set(project.provider(() -> {
+                    var p = project.getObjects().newInstance(RemapParameters.class);
+                    p.from(obf, RemapParameters.ToolType.INSTALLER_TOOLS);
+                    return p;
+                }));
+                parameters.getMinecraftDependencies().from(remapDeps);
+            });
+            params.getFrom()
+                    .attribute(REMAPPED, false)
+                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
+            params.getTo()
+                    .attribute(REMAPPED, true)
+                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
+        });
+
+        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
+        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));
+        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME));
+
+        project.getPlugins().withId("java-library", plugin -> {
+            obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.API_CONFIGURATION_NAME));
+            obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.COMPILE_ONLY_API_CONFIGURATION_NAME));
+        });
     }
 }

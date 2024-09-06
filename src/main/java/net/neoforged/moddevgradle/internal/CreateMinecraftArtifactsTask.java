@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -18,6 +19,7 @@ import javax.inject.Inject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * The primary task for creating the Minecraft artifacts that mods will be compiled against,
@@ -99,6 +101,10 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
     @Input
     abstract Property<Boolean> getUseEclipseCompiler();
 
+    @Input
+    @Optional
+    abstract ListProperty<String> getAdditionalArguments();
+
     @TaskAction
     public void createArtifacts() {
         var args = new ArrayList<String>();
@@ -156,6 +162,8 @@ abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
         if (!getNeoFormArtifact().isPresent() && !getNeoForgeArtifact().isPresent()) {
             throw new GradleException("You need to specify at least 'version' or 'neoFormVersion' in the 'neoForge' block of your build script.");
         }
+
+        args.addAll(getAdditionalArguments().getOrElse(List.of()));
 
         Collections.addAll(
                 args,

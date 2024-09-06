@@ -15,6 +15,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
@@ -205,7 +206,7 @@ final class RunUtils {
     }
 
     public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class, project);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
         return modFoldersProvider;
     }
@@ -244,7 +245,7 @@ final class RunUtils {
             folders = getModFoldersForGradle(project, modsProvider, includeUnitTests);
         }
 
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class, project);
         modFoldersProvider.getModFolders().set(folders);
         return modFoldersProvider;
     }
@@ -395,24 +396,29 @@ record AssetProperties(String assetIndex, String assetsRoot) {
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
-    public ModFoldersProvider() {
+    public ModFoldersProvider(Project project) {
+        getClassesArgument().set(project.provider(() -> {
+            var stringModFolderMap = getModFolders().get();
+            return stringModFolderMap.entrySet().stream()
+                    .<String>mapMulti((entry, output) -> {
+                        for (var directory : entry.getValue().getFolders()) {
+                            // Resources
+                            output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                        }
+                    })
+                    .collect(Collectors.joining(File.pathSeparator));
+        }));
     }
 
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();
 
     @Internal
+    abstract Property<String> getClassesArgument();
+
+    @Internal
     public String getArgument() {
-        var stringModFolderMap = getModFolders().get();
-        return "-Dfml.modFolders=%s".formatted(
-                stringModFolderMap.entrySet().stream()
-                        .<String>mapMulti((entry, output) -> {
-                            for (var directory : entry.getValue().getFolders()) {
-                                // Resources
-                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
-                            }
-                        })
-                        .collect(Collectors.joining(File.pathSeparator)));
+        return "-Dfml.modFolders=%s".formatted(getClassesArgument().get());
     }
 
     @Override
