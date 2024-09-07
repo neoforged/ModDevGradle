@@ -57,7 +57,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
 
         var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
-        var mixin = project.getExtensions().create("mixin", MixinExtension.class, srgToOfficial);
+        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, srgToOfficial);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
@@ -87,9 +87,11 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class).configure(jar -> jar.getArchiveClassifier().set("dev"));
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
+        // Forge expects the mapping csv files on the root classpath
         project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES)
                         .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
+        // Forge expects to find the Forge and client-extra jar on the legacy classpath
         project.getConfigurations().getByName("additionalRuntimeClasspath")
                         .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));

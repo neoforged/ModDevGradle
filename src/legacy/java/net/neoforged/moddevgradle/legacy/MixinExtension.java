@@ -21,7 +21,7 @@ public abstract class MixinExtension {
     private final Provider<RegularFile> srgToOfficial;
 
     @Inject
-    protected MixinExtension(Project project, Provider<RegularFile> srgToOfficial) {
+    public MixinExtension(Project project, Provider<RegularFile> srgToOfficial) {
         this.project = project;
         this.srgToOfficial = srgToOfficial;
     }
