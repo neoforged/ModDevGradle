@@ -35,24 +35,18 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
         var userdevJarName = id.getName() + "-" + id.getVersion() + "-userdev.jar";
 
         Action<DirectDependenciesMetadata> vanillaDependencies = deps -> {
-            deps.add("de.oceanlabs.mcp:mcp_config:" + id.getVersion().split("-")[0], DirectDependencyMetadata::endorseStrictVersions);
-            deps.add("net.neoforged:minecraft-dependencies:" + id.getVersion().split("-")[0], DirectDependencyMetadata::endorseStrictVersions);
+            deps.add("de.oceanlabs.mcp:mcp_config:" + id.getVersion().split("-")[0]);
+            deps.add("net.neoforged:minecraft-dependencies:" + id.getVersion().split("-")[0]);
         };
 
         details.addVariant("modDevConfig", variantMetadata -> {
-            variantMetadata.withFiles(metadata -> {
-                metadata.removeAllFiles();
-                metadata.addFile(userdevJarName, userdevJarName);
-            });
+            variantMetadata.withFiles(metadata -> metadata.addFile(userdevJarName, userdevJarName));
             variantMetadata.withCapabilities(capabilities -> {
                 capabilities.addCapability("net.neoforged", "neoforge-moddev-config", id.getVersion());
             });
         });
         details.addVariant("modDevBundle", variantMetadata -> {
-            variantMetadata.withFiles(metadata -> {
-                metadata.removeAllFiles();
-                metadata.addFile(userdevJarName, userdevJarName);
-            });
+            variantMetadata.withFiles(metadata -> metadata.addFile(userdevJarName, userdevJarName));
             variantMetadata.withDependencies(vanillaDependencies);
             variantMetadata.withCapabilities(capabilities -> {
                 capabilities.addCapability("net.neoforged", "neoforge-moddev-bundle", id.getVersion());

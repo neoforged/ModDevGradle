@@ -2,9 +2,10 @@ package net.neoforged.moddevgradle.legacy;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.gradle.api.Action;
 import org.gradle.api.artifacts.ComponentMetadataContext;
+import org.gradle.api.artifacts.DirectDependenciesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
-import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.model.ObjectFactory;
@@ -20,8 +21,6 @@ import javax.inject.Inject;
  */
 // @CacheableTransform
 class McpMetadataTransform extends LegacyMetadataTransform {
-    private static final Attribute<String> JVM_VERSION = Attribute.of("org.gradle.jvm.version", String.class);
-
     @Inject
     public McpMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {
         super(objects, repositoryResourceAccessor);
@@ -44,9 +43,7 @@ class McpMetadataTransform extends LegacyMetadataTransform {
         // a.k.a. "neoformData"
         // Primarily pulled to use for NFRT manifest
         details.addVariant("mcpData", variantMetadata -> {
-            variantMetadata.withFiles(files -> {
-                files.addFile(zipDataName);
-            });
+            variantMetadata.withFiles(files -> files.addFile(zipDataName));
             variantMetadata.attributes(attributes -> {
                 attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaTarget);
             });
@@ -63,37 +60,28 @@ class McpMetadataTransform extends LegacyMetadataTransform {
             });
         });
 
-        details.addVariant("mcpRuntimeElements", variantMetadata -> {
-            variantMetadata.attributes(attributes -> {
-                attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaTarget);
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
-            });
-            variantMetadata.withDependencies(dependencies -> {
-                dependencies.add("net.neoforged:minecraft-dependencies:" + id.getVersion(), dependency -> {
-                    dependency.endorseStrictVersions();
-                });
-            });
-            variantMetadata.withCapabilities(capabilities -> {
-                capabilities.addCapability("net.neoforged", "neoform-dependencies", id.getVersion());
-            });
-        });
+        dependencies(context, "mcpRuntimeElements", javaTarget, Usage.JAVA_RUNTIME, deps -> {});
 
-        details.addVariant("mcpApiElements", variantMetadata -> {
+        dependencies(context, "mcpApiElements", javaTarget, Usage.JAVA_API, dependencies -> {
+            var libraries = config.getAsJsonObject("libraries").getAsJsonArray("joined");
+            for (JsonElement library : libraries) {
+                dependencies.add(library.getAsString());
+            }
+        });
+    }
+
+    private void dependencies(ComponentMetadataContext context, String name, int javaTarget, String usage, Action<DirectDependenciesMetadata> deps) {
+        context.getDetails().addVariant(name, variantMetadata -> {
             variantMetadata.attributes(attributes -> {
                 attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaTarget);
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_API));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, usage));
             });
             variantMetadata.withDependencies(dependencies -> {
-                var libraries = config.getAsJsonObject("libraries").getAsJsonArray("joined");
-                for (JsonElement library : libraries) {
-                    dependencies.add(library.getAsString());
-                }
-                dependencies.add("net.neoforged:minecraft-dependencies:" + id.getVersion(), dependency -> {
-                    dependency.endorseStrictVersions();
-                });
+                deps.execute(dependencies);
+                dependencies.add("net.neoforged:minecraft-dependencies:" + context.getDetails().getId().getVersion());
             });
             variantMetadata.withCapabilities(capabilities -> {
-                capabilities.addCapability("net.neoforged", "neoform-dependencies", id.getVersion());
+                capabilities.addCapability("net.neoforged", "neoform-dependencies", context.getDetails().getId().getVersion());
             });
         });
     }
