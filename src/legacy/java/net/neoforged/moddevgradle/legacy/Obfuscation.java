@@ -40,6 +40,7 @@ public abstract class Obfuscation {
             task.getArchiveBaseName().convention(jar.flatMap(AbstractArchiveTask::getArchiveBaseName));
             task.getArchiveVersion().convention(jar.flatMap(AbstractArchiveTask::getArchiveVersion));
             task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier).map(c -> c + "-reobf"));
+            task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
             task.getParameters().from(this, RemapParameters.ToolType.ART);
             task.getParameters().getMappings().from(extraMappings);
@@ -50,7 +51,7 @@ public abstract class Obfuscation {
 
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         for (var configurationNames : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
-            project.getArtifacts().add(configurationNames, reobf, artifact -> artifact.builtBy(reobf).setClassifier(reobf.flatMap(RemapJarTask::getArchiveClassifier).get()));
+            project.getArtifacts().add(configurationNames, reobf);
 
             java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationNames), variant -> {
                 variant.getConfigurationVariant().getArtifacts().removeIf(artifact -> artifact.getFile().equals(jar.get().getArchiveFile().get().getAsFile()));

@@ -84,7 +84,8 @@ abstract class MixinCompilerArgs implements CommandLineArgumentProvider {
                 "-AoutTsrgFile=" + getOutMappings().get().getAsFile().getAbsolutePath(),
                 "-AoutRefMapFile=" + getRefmap().get().getAsFile().getAbsolutePath(),
                 "-AmappingTypes=tsrg",
-                "-ApluginVersion=0.7.38" // Not sure what this is used for, but MixinGradle gives it to the AP. Latest as of time of writing
+                "-ApluginVersion=0.7", // Not sure what this is used for, but MixinGradle gives it to the AP. Latest as of time of writing
+                "-AdefaultObfuscationEnv=searge"
         );
     }
 }
