@@ -40,7 +40,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
-            spec.defaultDependencies(dependencies -> dependencies.add(depFactory.create("net.neoforged:AutoRenamingTool:2.0.3:all")));
+            spec.defaultDependencies(dependencies -> dependencies.add(depFactory.create("net.neoforged:AutoRenamingTool:2.0.4:all")));
         });
         var installerToolsRuntime = project.getConfigurations().create("installerToolsRuntime", spec -> {
             spec.setDescription("The InstallerTools CLI tool");
@@ -53,11 +53,11 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
         var officialToSrg = modDevBuildDir.map(d -> d.file("officialToSrg.tsrg"));
-        var srgToOfficial = modDevBuildDir.map(d -> d.file("srgToOfficial.tsrg"));
+        var srgToOfficial = modDevBuildDir.map(d -> d.file("srgToOfficial.srg"));
         var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
 
         var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
-        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, srgToOfficial);
+        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, officialToSrg);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
@@ -70,7 +70,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             extension.getRuns().configureEach(run -> {
                 LegacyInternal.configureRun(project, run);
 
-                // Mixin needs the SRG -> official mapping file in TSRGv1 (v2 is not supported) to be able to ignore the refmaps of dependencies
+                // Mixin needs the SRG -> official mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
                 run.getSystemProperties().put("mixin.env.remapRefMap", "true");
                 run.getSystemProperties().put("mixin.env.refMapRemappingFile", srgToOfficial.map(f -> f.getAsFile().getAbsolutePath()));
 

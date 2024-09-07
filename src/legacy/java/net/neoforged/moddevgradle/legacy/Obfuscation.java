@@ -50,7 +50,7 @@ public abstract class Obfuscation {
 
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         for (var configurationNames : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
-            project.getArtifacts().add(configurationNames, reobf, artifact -> artifact.builtBy(reobf));
+            project.getArtifacts().add(configurationNames, reobf, artifact -> artifact.builtBy(reobf).setClassifier(reobf.flatMap(RemapJarTask::getArchiveClassifier).get()));
 
             java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationNames), variant -> {
                 variant.getConfigurationVariant().getArtifacts().removeIf(artifact -> artifact.getFile().equals(jar.get().getArchiveFile().get().getAsFile()));

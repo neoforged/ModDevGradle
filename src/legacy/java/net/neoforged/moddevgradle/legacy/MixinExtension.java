@@ -8,6 +8,8 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
@@ -18,12 +20,12 @@ import java.util.List;
 
 public abstract class MixinExtension {
     private final Project project;
-    private final Provider<RegularFile> srgToOfficial;
+    private final Provider<RegularFile> officialToSrg;
 
     @Inject
-    public MixinExtension(Project project, Provider<RegularFile> srgToOfficial) {
+    public MixinExtension(Project project, Provider<RegularFile> officialToSrg) {
         this.project = project;
-        this.srgToOfficial = srgToOfficial;
+        this.officialToSrg = officialToSrg;
     }
 
     public abstract ListProperty<String> getConfigs();
@@ -34,14 +36,14 @@ public abstract class MixinExtension {
         getConfigs().add(name);
     }
 
-    public void add(SourceSet sourceSet, String refmap) {
+    public Provider<RegularFile> add(SourceSet sourceSet, String refmap) {
         var mappingFile = project.getLayout().getBuildDirectory().dir("mixin").map(d -> d.file(refmap + ".mappings.tsrg"));
         var refMapFile = project.getLayout().getBuildDirectory().dir("mixin").map(d -> d.file(refmap));
 
         var compilerArgs = project.getObjects().newInstance(MixinCompilerArgs.class);
         compilerArgs.getRefmap().set(refMapFile);
         compilerArgs.getOutMappings().set(mappingFile);
-        compilerArgs.getInMappings().set(srgToOfficial);
+        compilerArgs.getInMappings().set(officialToSrg);
 
         getExtraMappingFiles().from(mappingFile);
 
@@ -53,10 +55,15 @@ public abstract class MixinExtension {
         project.getTasks().withType(Jar.class).matching(jar -> jar.getName().equals(sourceSet.getJarTaskName())).configureEach(jar -> {
             jar.from(refMapFile);
         });
+
+        return refMapFile;
     }
 }
 
 abstract class MixinCompilerArgs implements CommandLineArgumentProvider {
+    @Inject
+    public MixinCompilerArgs() {}
+
     @OutputFile
     protected abstract RegularFileProperty getOutMappings();
 
@@ -64,16 +71,17 @@ abstract class MixinCompilerArgs implements CommandLineArgumentProvider {
     protected abstract RegularFileProperty getRefmap();
 
     /**
-     * {@return SRG -> official TSRGv1 mappings file of the game}
+     * {@return official -> SRG TSRGv2 mappings file of the game}
      */
     @InputFile
+    @PathSensitive(PathSensitivity.NAME_ONLY)
     protected abstract RegularFileProperty getInMappings();
 
     @Override
     public Iterable<String> asArguments() {
         return List.of(
                 "-AreobfTsrgFile=" + getInMappings().get().getAsFile().getAbsolutePath(),
-                "-AAoutTsrgFile=" + getOutMappings().get().getAsFile().getAbsolutePath(),
+                "-AoutTsrgFile=" + getOutMappings().get().getAsFile().getAbsolutePath(),
                 "-AoutRefMapFile=" + getRefmap().get().getAsFile().getAbsolutePath(),
                 "-AmappingTypes=tsrg",
                 "-ApluginVersion=0.7.38" // Not sure what this is used for, but MixinGradle gives it to the AP. Latest as of time of writing

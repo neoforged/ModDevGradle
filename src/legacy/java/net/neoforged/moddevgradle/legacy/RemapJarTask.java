@@ -28,7 +28,7 @@ public abstract class RemapJarTask extends DefaultTask {
     @Inject
     public RemapJarTask() {
         super();
-        getOutput().convention(getProject().provider(() -> {
+        getArchiveFile().convention(getProject().provider(() -> {
             var path = getArchiveBaseName().get() + getArchiveVersion().filter(s -> !s.isBlank()).map(v -> "-" + v).getOrElse("") + getArchiveClassifier()
                     .filter(s -> !s.isBlank()).map(c -> "-" + c).getOrElse("") + ".jar";
             return getDestinationDirectory().file(path);
@@ -58,13 +58,13 @@ public abstract class RemapJarTask extends DefaultTask {
     public abstract DirectoryProperty getDestinationDirectory();
 
     @OutputFile
-    public abstract RegularFileProperty getOutput();
+    public abstract RegularFileProperty getArchiveFile();
 
     @Inject
     protected abstract ExecOperations getExecOperations();
 
     @TaskAction
     public void remap() throws IOException {
-        getParameters().execute(getExecOperations(), getInput().getAsFile().get(), getOutput().getAsFile().get(), getLibraries());
+        getParameters().execute(getExecOperations(), getInput().getAsFile().get(), getArchiveFile().getAsFile().get(), getLibraries());
     }
 }
