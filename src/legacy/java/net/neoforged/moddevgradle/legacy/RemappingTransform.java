@@ -35,6 +35,7 @@ public abstract class RemappingTransform implements TransformAction<RemappingTra
     @Override
     public void transform(TransformOutputs outputs) {
         var inputFile = getInputArtifact().get().getAsFile();
+        // The file may not yet exist if i.e. IntelliJ requests it during indexing
         if (!inputFile.exists()) return;
 
         var mappedFile = outputs.file("mapped@" + inputFile.getName());

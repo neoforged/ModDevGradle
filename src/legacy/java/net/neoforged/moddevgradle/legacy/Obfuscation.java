@@ -33,6 +33,7 @@ public abstract class Obfuscation {
     }
 
     public TaskProvider<RemapJarTask> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar, SourceSet sourceSet, Action<RemapJarTask> configuration) {
+        var extraMappings = project.getExtensions().getByType(MixinExtension.class).getExtraMappingFiles();
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJarTask.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
             task.getDestinationDirectory().convention(jar.flatMap(AbstractArchiveTask::getDestinationDirectory));
@@ -41,6 +42,7 @@ public abstract class Obfuscation {
             task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier).map(c -> c + "-reobf"));
             task.getLibraries().from(sourceSet.getCompileClasspath());
             task.getParameters().from(this, RemapParameters.ToolType.ART);
+            task.getParameters().getMappings().from(extraMappings);
             configuration.execute(task);
         });
 

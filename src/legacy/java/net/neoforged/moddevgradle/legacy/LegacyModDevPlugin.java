@@ -16,6 +16,7 @@ import org.gradle.jvm.tasks.Jar;
 
 import java.net.URI;
 import java.util.Map;
+import java.util.stream.Stream;
 
 public class LegacyModDevPlugin implements Plugin<Project> {
     public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
@@ -55,6 +56,9 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         var srgToOfficial = modDevBuildDir.map(d -> d.file("srgToOfficial.tsrg"));
         var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
 
+        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
+        var mixin = project.getExtensions().create("mixin", MixinExtension.class, srgToOfficial);
+
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
@@ -69,10 +73,10 @@ public class LegacyModDevPlugin implements Plugin<Project> {
                 // Mixin needs the SRG -> official mapping file in TSRGv1 (v2 is not supported) to be able to ignore the refmaps of dependencies
                 run.getSystemProperties().put("mixin.env.remapRefMap", "true");
                 run.getSystemProperties().put("mixin.env.refMapRemappingFile", srgToOfficial.map(f -> f.getAsFile().getAbsolutePath()));
+
+                run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
             });
         });
-
-        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
 
         var reobfJar = obf.reobfuscate(
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),

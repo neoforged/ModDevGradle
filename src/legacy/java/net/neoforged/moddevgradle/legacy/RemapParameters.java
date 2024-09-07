@@ -4,6 +4,7 @@ import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
@@ -31,8 +32,8 @@ abstract class RemapParameters implements Serializable {
     @InputFiles
     protected abstract ConfigurableFileCollection getToolClasspath();
 
-    @InputFile
-    public abstract RegularFileProperty getMappings();
+    @InputFiles
+    public abstract ConfigurableFileCollection getMappings();
 
     @Internal
     public abstract RegularFileProperty getLogFile();
@@ -44,10 +45,10 @@ abstract class RemapParameters implements Serializable {
         getToolType().set(toolType);
         if (toolType == ToolType.ART) {
             getToolClasspath().from(reobfuscation.autoRenamingToolRuntime);
-            getMappings().set(reobfuscation.officialToSrg);
+            getMappings().from(reobfuscation.officialToSrg);
         } else {
             getToolClasspath().from(reobfuscation.installerToolsRuntime);
-            getMappings().set(reobfuscation.mappingsCsv);
+            getMappings().from(reobfuscation.mappingsCsv);
         }
     }
 
@@ -57,13 +58,13 @@ abstract class RemapParameters implements Serializable {
         args.addAll(Arrays.asList("--input", input.getAbsolutePath()));
         args.addAll(Arrays.asList("--output", output.getAbsolutePath()));
         if (getToolType().get() == ToolType.ART) {
-            args.addAll(Arrays.asList("--names", getMappings().get().getAsFile().getAbsolutePath()));
+            getMappings().forEach(file -> args.addAll(Arrays.asList("--names", file.getAbsolutePath())));
             libraries.forEach(lib -> args.addAll(Arrays.asList("--lib", lib.getAbsolutePath())));
             args.add("--disable-abstract-param");
             args.add("--strip-sigs");
         } else {
             args.addAll(Arrays.asList("--task", "SRG_TO_MCP"));
-            args.addAll(Arrays.asList("--mcp", getMappings().get().getAsFile().getAbsolutePath()));
+            getMappings().forEach(file -> args.addAll(Arrays.asList("--mcp", file.getAbsolutePath())));
             args.add("--strip-signatures");
         }
 
