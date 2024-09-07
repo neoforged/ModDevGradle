@@ -24,6 +24,7 @@ dependencies {
         transitive = false
     }
     modRuntimeOnly('curse.maven:mekanism-268560:5662583')
+    modImplementation('curse.maven:applied-energistics-2-223794:5641282')
 }
 
 neoForge {

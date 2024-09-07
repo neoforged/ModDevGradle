@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,6 +50,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -229,6 +231,16 @@ final class RunUtils {
             }
         }
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
+    }
+
+    public static Map<String, String> replaceModClassesEnv(RunModel model, Supplier<ModFoldersProvider> newProvider) {
+        var vars = model.getEnvironment().get();
+        if (vars.containsKey("MOD_CLASSES")) {
+            final var copy = new HashMap<>(vars);
+            copy.put("MOD_CLASSES", newProvider.get().getClassesArgument().get());
+            return copy;
+        }
+        return vars;
     }
 
     public static ModFoldersProvider getIdeaModFoldersProvider(Project project,

@@ -833,7 +833,7 @@ public class ModDevPlugin implements Plugin<Project> {
         }
         appRun.setModuleName(RunUtils.getIntellijModuleName(project, sourceSet));
         appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        appRun.setEnvs(run.getEnvironment().get());
+        appRun.setEnvs(RunUtils.replaceModClassesEnv(run, () -> RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false)));
 
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
@@ -1056,7 +1056,7 @@ public class ModDevPlugin implements Plugin<Project> {
                         RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .envVar(run.getEnvironment().get())
+                .envVar(RunUtils.replaceModClassesEnv(run, () -> RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false)))
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         RunUtils.writeEclipseLaunchConfig(project, launchConfigName, config);
