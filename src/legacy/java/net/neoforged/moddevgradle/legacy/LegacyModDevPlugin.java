@@ -52,14 +52,24 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
         var officialToSrg = modDevBuildDir.map(d -> d.file("officialToSrg.tsrg"));
+        var srgToOfficial = modDevBuildDir.map(d -> d.file("srgToOfficial.tsrg"));
         var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
+
             extension.getNeoFormRuntime().getAdditionalResults().put("officialToSrgMapping", officialToSrg.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("srgToOfficialMapping", srgToOfficial.map(RegularFile::getAsFile));
             extension.getNeoFormRuntime().getAdditionalResults().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
-            extension.getRuns().configureEach(run -> LegacyInternal.configureRun(project, run));
+
+            extension.getRuns().configureEach(run -> {
+                LegacyInternal.configureRun(project, run);
+
+                // Mixin needs the SRG -> official mapping file in TSRGv1 (v2 is not supported) to be able to ignore the refmaps of dependencies
+                run.getSystemProperties().put("mixin.env.remapRefMap", "true");
+                run.getSystemProperties().put("mixin.env.refMapRemappingFile", srgToOfficial.map(f -> f.getAsFile().getAbsolutePath()));
+            });
         });
 
         var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
