@@ -5,7 +5,6 @@ import net.neoforged.moddevgradle.internal.LegacyInternal;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.RegularFile;
@@ -52,27 +51,27 @@ public class LegacyModDevPlugin implements Plugin<Project> {
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
-        var officialToSrg = modDevBuildDir.map(d -> d.file("officialToSrg.tsrg"));
-        var srgToOfficial = modDevBuildDir.map(d -> d.file("srgToOfficial.srg"));
-        var mappingsCsv = modDevBuildDir.map(d -> d.file("srgToOfficial.zip"));
+        var namedToIntermediate = modDevBuildDir.map(d -> d.file("namedToIntermediate.tsrg"));
+        var intermediateToNamed = modDevBuildDir.map(d -> d.file("intermediateToNamed.srg"));
+        var mappingsCsv = modDevBuildDir.map(d -> d.file("intermediateToNamed.zip"));
 
-        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, officialToSrg, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
-        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, officialToSrg);
+        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, namedToIntermediate, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
+        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
 
-            extension.getNeoFormRuntime().getAdditionalResults().put("officialToSrgMapping", officialToSrg.map(RegularFile::getAsFile));
-            extension.getNeoFormRuntime().getAdditionalResults().put("srgToOfficialMapping", srgToOfficial.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("namedToIntermediateMapping", namedToIntermediate.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("intermediateToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
             extension.getNeoFormRuntime().getAdditionalResults().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
             extension.getRuns().configureEach(run -> {
                 LegacyInternal.configureRun(project, run);
 
-                // Mixin needs the SRG -> official mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
+                // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
                 run.getSystemProperties().put("mixin.env.remapRefMap", "true");
-                run.getSystemProperties().put("mixin.env.refMapRemappingFile", srgToOfficial.map(f -> f.getAsFile().getAbsolutePath()));
+                run.getSystemProperties().put("mixin.env.refMapRemappingFile", intermediateToNamed.map(f -> f.getAsFile().getAbsolutePath()));
 
                 run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
             });
@@ -89,11 +88,11 @@ public class LegacyModDevPlugin implements Plugin<Project> {
 
         // Forge expects the mapping csv files on the root classpath
         project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES)
-                        .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
+                .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
         project.getConfigurations().getByName("additionalRuntimeClasspath")
-                        .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
+                .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
         project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
