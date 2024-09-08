@@ -63,7 +63,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
 
             extension.getNeoFormRuntime().getAdditionalResults().put("namedToIntermediateMapping", namedToIntermediate.map(RegularFile::getAsFile));
-            extension.getNeoFormRuntime().getAdditionalResults().put("intermediateToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
             extension.getNeoFormRuntime().getAdditionalResults().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
             extension.getRuns().configureEach(run -> {
