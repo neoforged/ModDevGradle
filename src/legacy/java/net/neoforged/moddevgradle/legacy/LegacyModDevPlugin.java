@@ -62,7 +62,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
             extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
 
-            extension.getNeoFormRuntime().getAdditionalResults().put("namedToIntermediateMapping", namedToIntermediate.map(RegularFile::getAsFile));
+            extension.getNeoFormRuntime().getAdditionalResults().put("namedToIntermediaryMapping", namedToIntermediate.map(RegularFile::getAsFile));
             extension.getNeoFormRuntime().getAdditionalResults().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
             extension.getNeoFormRuntime().getAdditionalResults().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
