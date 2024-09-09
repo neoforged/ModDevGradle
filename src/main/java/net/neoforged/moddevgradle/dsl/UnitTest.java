@@ -34,7 +34,7 @@ public abstract class UnitTest {
 
     /**
      * The mods to load when running unit tests. Defaults to all mods registered in the project.
-     * This should include {@link #getTestedMod()}.
+     * This must contain {@link #getTestedMod()}.
      *
      * @see ModModel
      */
