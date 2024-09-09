@@ -458,7 +458,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getEnvironment().set(run.getEnvironment());
                 task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
             });
-            ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
