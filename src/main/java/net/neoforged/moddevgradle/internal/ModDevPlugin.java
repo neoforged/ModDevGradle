@@ -724,7 +724,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
             task.jvmArgs(RunUtils.getArgFileParameter(vmArgsFile.get()));
 
-            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, project.provider(extension::getMods), true);
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, unitTest.getLoadedMods(), true);
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 
@@ -736,7 +736,7 @@ public class ModDevPlugin implements Plugin<Project> {
             // For JUnit we have to write this to a separate file due to the Run parameters being shared among all projects.
             var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
             var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
-            var ideSpecificVmArgs = RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, unitTest.getTestedMod().map(Set::of), true).getArgument());
+            var ideSpecificVmArgs = RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, unitTest.getLoadedMods(), true).getArgument());
             try {
                 var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
                 Files.createDirectories(vmArgsFilePath.getParent());
