@@ -452,7 +452,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
                 task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
                 task.getEnvironment().set(run.getEnvironment());
-                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
+                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), false));
             });
             ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
 
@@ -476,7 +476,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.dependsOn(prepareRunTask);
                 task.dependsOn(run.getTasksBefore());
 
-                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getMods(), false));
+                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), false));
             });
         });
 
@@ -832,7 +832,7 @@ public class ModDevPlugin implements Plugin<Project> {
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
-                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getMods(), false).getArgument())
+                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getLoadedMods(), false).getArgument())
         );
         appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
@@ -1047,7 +1047,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
-                        RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument())
+                        RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getLoadedMods(), false).getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .envVar(run.getEnvironment().get())
@@ -1082,7 +1082,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 .withProjectName(eclipseProjectName)
                 .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
-                        RunUtils.getEclipseModFoldersProvider(project, run.getMods(), false).getArgument()))
+                        RunUtils.getEclipseModFoldersProvider(project, run.getLoadedMods(), false).getArgument()))
                 .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
                 .withShortenCommandLine(ShortCmdBehaviour.NONE)
                 .withConsoleType(ConsoleType.INTERNAL_CONSOLE)

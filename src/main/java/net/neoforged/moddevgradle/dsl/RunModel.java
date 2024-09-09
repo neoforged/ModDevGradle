@@ -9,6 +9,7 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.Dependencies;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -29,6 +30,7 @@ import java.util.regex.Pattern;
 public abstract class RunModel implements Named, Dependencies {
     private static final Pattern VALID_RUN_NAME = Pattern.compile("[a-zA-Z][\\w-]*");
 
+    private final Logger logger;
     private final String name;
 
     private final Configuration configuration;
@@ -40,12 +42,13 @@ public abstract class RunModel implements Named, Dependencies {
 
     @Inject
     public RunModel(String name, Project project) {
+        this.logger = project.getLogger();
         this.name = name;
         if (!VALID_RUN_NAME.matcher(name).matches()) {
             throw new GradleException("Run name '" + name + "' is invalid! It must match " + VALID_RUN_NAME.pattern());
         }
 
-        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
+        getLoadedMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 
@@ -140,7 +143,16 @@ public abstract class RunModel implements Named, Dependencies {
      *
      * @see ModModel
      */
-    public abstract SetProperty<ModModel> getMods();
+    public abstract SetProperty<ModModel> getLoadedMods();
+
+    /**
+     * @deprecated This method conflicts with {@link NeoForgeExtension#getMods()}. Use {@link #getLoadedMods()} instead.
+     */
+    @Deprecated(forRemoval = true)
+    public SetProperty<ModModel> getMods() {
+        logger.error("RunModel#getMods() is deprecated and will be removed in ModDevGradle 3. Use RunModel#getLoadedMods() instead.");
+        return getLoadedMods();
+    }
 
     /**
      * Sets the run configuration type from NeoForge that should be used.
