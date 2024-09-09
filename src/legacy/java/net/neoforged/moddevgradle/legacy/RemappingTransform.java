@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.legacy;
 
+import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.InputArtifactDependencies;
 import org.gradle.api.artifacts.transform.TransformAction;
@@ -13,16 +14,17 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.ExecOperations;
 
 import javax.inject.Inject;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
+@CacheableTransform
 public abstract class RemappingTransform implements TransformAction<RemappingTransform.Parameters> {
     @InputArtifact
+    @PathSensitive(PathSensitivity.NONE)
     public abstract Provider<FileSystemLocation> getInputArtifact();
 
     @CompileClasspath
@@ -57,6 +59,7 @@ public abstract class RemappingTransform implements TransformAction<RemappingTra
         Property<RemapParameters> getParameters();
 
         @InputFiles
+        @PathSensitive(PathSensitivity.NONE)
         ConfigurableFileCollection getMinecraftDependencies();
     }
 }
