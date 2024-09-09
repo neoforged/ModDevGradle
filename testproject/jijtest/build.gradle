@@ -44,6 +44,5 @@ neoForge {
     unitTest {
         enable()
         testedMod = mods.jijtest
-        loadedMods = [mods.coremod]
     }
 }
