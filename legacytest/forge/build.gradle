@@ -37,6 +37,9 @@ neoForge {
         client {
             client()
         }
+        data {
+            data()
+        }
     }
     mods {
         myMod {
