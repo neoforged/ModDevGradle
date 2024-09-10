@@ -441,7 +441,7 @@ public class ModDevPlugin implements Plugin<Project> {
             ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
 
             var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
-                task.setGroup(INTERNAL_TASK_GROUP);
+                task.setGroup(TASK_GROUP);
                 task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
                 task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
