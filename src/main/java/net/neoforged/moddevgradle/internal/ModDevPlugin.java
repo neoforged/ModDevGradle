@@ -256,20 +256,24 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
             var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
+            Provider<String> jarPrefix = extension.getNeoForgeArtifact().map(art -> {
+                        var split = art.split(":", 3);
+                        return split[1] + "-" + split[2];
+                    })
+                    .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2]));
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getNeoForgeArtifact().map(art -> {
-                            var split = art.split(":", 3);
-                            return split[1] + "-" + split[2];
-                        })
-                                .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
+                        jarPrefix,
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
             task.getCompiledWithSourcesArtifact().set(jarPathFactory.apply("-merged"));
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
-            task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
+            task.getResourcesArtifact().set(minecraftArtifactsDir.zip(
+                    jarPrefix,
+                    (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
+            ));
 
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getEnableCache().set(nfrtSettings.getEnableCache());
