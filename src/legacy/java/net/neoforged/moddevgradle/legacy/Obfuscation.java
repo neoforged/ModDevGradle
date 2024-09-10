@@ -6,6 +6,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
@@ -32,6 +33,14 @@ public abstract class Obfuscation {
         this.installerToolsRuntime = installerToolsRuntime;
     }
 
+    /**
+     * Create a configure a reobfuscation task.
+     *
+     * @param jar           the jar task to reobfuscate
+     * @param sourceSet     the source set whose classpath to use when remapping inherited methods
+     * @param configuration an action used to configure the rebfuscation task
+     * @return a provider of the created task
+     */
     public TaskProvider<RemapJarTask> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar, SourceSet sourceSet, Action<RemapJarTask> configuration) {
         var extraMappings = project.getExtensions().getByType(MixinExtension.class).getExtraMappingFiles();
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJarTask.class, task -> {
@@ -61,6 +70,9 @@ public abstract class Obfuscation {
         return reobf;
     }
 
+    /**
+     * Creates a configuration that will remap its dependencies, and adds it as a children of the provided {@code parent}.
+     */
     public Configuration createRemappingConfiguration(Configuration parent) {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
@@ -81,6 +93,12 @@ public abstract class Obfuscation {
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
+                            c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
+                        });
+                    });
+                } else if (dep instanceof ProjectDependency projectDependency) {
+                    project.getDependencies().constraints(constraints -> {
+                        constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
                             c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
                         });
                     });
