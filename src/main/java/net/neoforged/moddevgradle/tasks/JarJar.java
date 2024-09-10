@@ -155,6 +155,12 @@ public abstract class JarJar extends DefaultTask {
                         getLogger().warn("Embedding dependency {}:{}:{} from cursemaven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.",
                                 includedJar.getGroup(), includedJar.getArtifact(), includedJar.getVersion());
                     }
+                    // Same with the Modrinth official maven (see https://support.modrinth.com/en/articles/8801191-modrinth-maven)
+                    // While actual versions can be used, version IDs (which are random strings) can also be used
+                    else if ("maven.modrinth".equals(includedJar.getGroup())) {
+                        getLogger().warn("Embedding dependency {}:{}:{} from Modrinth Maven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.",
+                                includedJar.getGroup(), includedJar.getArtifact(), includedJar.getVersion());
+                    }
 
                     var originalName = includedJar.getFile().getName();
                     var embeddedName = includedJar.getEmbeddedFilename();
