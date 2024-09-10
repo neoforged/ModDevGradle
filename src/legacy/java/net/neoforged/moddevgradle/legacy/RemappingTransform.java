@@ -40,7 +40,7 @@ public abstract class RemappingTransform implements TransformAction<RemappingTra
         // The file may not yet exist if i.e. IntelliJ requests it during indexing
         if (!inputFile.exists()) return;
 
-        var mappedFile = outputs.file("mapped@" + inputFile.getName());
+        var mappedFile = outputs.file(inputFile.getName());
         try {
             getParameters().getParameters().get()
                     .execute(
