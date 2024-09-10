@@ -7,7 +7,7 @@ plugins {
     id 'maven-publish'
     id 'net.neoforged.gradleutils' version '3.0.0'
     id 'com.gradle.plugin-publish' version '1.2.1'
-    id 'io.github.goooler.shadow' version '8.1.7'
+    id 'com.gradleup.shadow' version '8.3.0'
 }
 
 group = 'net.neoforged'
@@ -143,7 +143,7 @@ shadowJar {
     from sourceSets.java8.output
 
     configurations = [project.configurations.shaded]
-    enableRelocation true
+    enableRelocation = true
     relocationPrefix = "net.neoforged.moddev.shadow"
 }
 
