@@ -45,7 +45,7 @@ public abstract class RunModel implements Named, Dependencies {
             throw new GradleException("Run name '" + name + "' is invalid! It must match " + VALID_RUN_NAME.pattern());
         }
 
-        getMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
+        getLoadedMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 
@@ -140,7 +140,7 @@ public abstract class RunModel implements Named, Dependencies {
      *
      * @see ModModel
      */
-    public abstract SetProperty<ModModel> getMods();
+    public abstract SetProperty<ModModel> getLoadedMods();
 
     /**
      * Sets the run configuration type from NeoForge that should be used.

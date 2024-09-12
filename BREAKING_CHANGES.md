@@ -20,3 +20,16 @@ Nonetheless, every single breaking change is documented here, along with a sugge
   - `sourceSet <sourceSet>` should be used instead. If this is not sufficient, please open an issue.
 - `mods` cannot contain the same source set multiple times.
   - This is meant to catch usage mistakes.
+- The `mods` set in runs was renamed to `loadedMods` to solve the name clash with `mods` in the `neoForge` block. This makes it easier to define which mods should be loaded. Available mods can now be referred to using `mods.<name>` instead of `neoForge.mods.<name>`.
+  - Example fix:
+```diff
+  neoForge {
+      runs {
+          client {
+              /* ... */
+-             mods = [neoForge.mods.mod1, neoForge.mods.mod2]
++             loadedMods = [mods.mod1, mods.mod2]
+          }
+      }
+  }
+```

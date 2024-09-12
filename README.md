@@ -192,7 +192,11 @@ neoForge {
             // Changes the source set whose runtime classpath is used for this run. This defaults to "main"
             // Eclipse does not support having multiple runtime classpaths per project (except for unit tests).
             sourceSet = sourceSets.main
-            
+
+            // Changes which local mods are loaded in this run.
+            // This defaults to all mods declared in this project (inside of mods { ... } ).
+            loadedMods = [mods.<mod name 1>, mods.<mod name 2>]
+
             // Allows advanced users to run additional Gradle tasks before each launch of this run
             // Please note that using this feature will significantly slow down launching the game
             taskBefore tasks.named("generateSomeCodeTask")
