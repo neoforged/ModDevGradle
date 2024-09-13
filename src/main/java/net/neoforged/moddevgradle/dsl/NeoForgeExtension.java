@@ -41,6 +41,7 @@ public abstract class NeoForgeExtension {
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
+        unitTest.getLoadedMods().convention(getMods());
     }
 
     /**

@@ -292,30 +292,39 @@ final class RunUtils {
                 .map(Optional::of)
                 .orElse(Optional.empty());
 
-        return modsProvider.zip(testedModProvider, ((mods, testedMod) -> mods.stream()
-                .collect(Collectors.toMap(ModModel::getName, mod -> {
-                    var modFolder = project.getObjects().newInstance(ModFolder.class);
+        return modsProvider.zip(testedModProvider, ((mods, testedMod) -> {
+            if (testedMod.isPresent()) {
+                if (!mods.contains(testedMod.get())) {
+                    throw new InvalidUserCodeException("The tested mod (%s) must be included in the mods loaded for unit testing (%s)."
+                            .formatted(testedMod.get().getName(), mods.stream().map(ModModel::getName).toList()));
+                }
+            }
 
-                    var sourceSets = mod.getModSourceSets().get();
+            return mods.stream()
+                    .collect(Collectors.toMap(ModModel::getName, mod -> {
+                        var modFolder = project.getObjects().newInstance(ModFolder.class);
 
-                    for (int i = 0; i < sourceSets.size(); ++i) {
-                        var sourceSet = sourceSets.get(i);
-                        if (sourceSets.subList(0, i).contains(sourceSet)) {
-                            throw new InvalidUserCodeException("Duplicate source set '%s' in mod '%s'".formatted(sourceSet.getName(), mod.getName()));
+                        var sourceSets = mod.getModSourceSets().get();
+
+                        for (int i = 0; i < sourceSets.size(); ++i) {
+                            var sourceSet = sourceSets.get(i);
+                            if (sourceSets.subList(0, i).contains(sourceSet)) {
+                                throw new InvalidUserCodeException("Duplicate source set '%s' in mod '%s'".formatted(sourceSet.getName(), mod.getName()));
+                            }
+                            outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                         }
-                        outputFolderResolver.accept(sourceSet, modFolder.getFolders());
-                    }
 
-                    // Add the test source set to the mod under test and if unit tests are enabled
-                    if (testedMod.isPresent() && testedMod.get() == mod) {
-                        var testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
-                        if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
-                            outputFolderResolver.accept(testSourceSet, modFolder.getFolders());
+                        // Add the test source set to the mod under test and if unit tests are enabled
+                        if (testedMod.isPresent() && testedMod.get() == mod) {
+                            var testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
+                            if (testSourceSet != null && !sourceSets.contains(testSourceSet)) {
+                                outputFolderResolver.accept(testSourceSet, modFolder.getFolders());
+                            }
                         }
-                    }
 
-                    return modFolder;
-                }))));
+                        return modFolder;
+                    }));
+        }));
     }
 
     // TODO: Loom has unit tests for this... Probably a good idea!

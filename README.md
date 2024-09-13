@@ -374,6 +374,9 @@ neoForge {
         // Configure which mod is being tested.
         // This allows NeoForge to load the test/ classes and resources as belonging to the mod.
         testedMod = mods.<mod name > // <mod name> must match the name in the mods { } block.
+        // Configure which mods are loaded in the test environment, if the default (all declared mods) is not appropriate.
+        // This must contain testedMod, and can include other mods as well.
+        // loadedMods = [mods.<mod name >, mods.<mod name 2>]
     }
 }
 ```

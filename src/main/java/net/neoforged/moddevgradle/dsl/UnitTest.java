@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.dsl;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.SetProperty;
 
 import javax.inject.Inject;
 
@@ -30,4 +31,12 @@ public abstract class UnitTest {
      * will be added to that mod at runtime.
      */
     public abstract Property<ModModel> getTestedMod();
+
+    /**
+     * The mods to load when running unit tests. Defaults to all mods registered in the project.
+     * This must contain {@link #getTestedMod()}.
+     *
+     * @see ModModel
+     */
+    public abstract SetProperty<ModModel> getLoadedMods();
 }
