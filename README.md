@@ -265,12 +265,12 @@ the [Maven version range format](https://cwiki.apache.org/confluence/display/MAV
 
 You can also include files built by other tasks in your project, for example, jar tasks of other source sets.
 
-When wanting to build a secondary jar for a coremod or service, you could define a separate source set `service`,
+When wanting to build a secondary jar for a coremod or plugin, you could define a separate source set `plugin`,
 add a jar task to package it and then include the output of that jar like this:
 
 ```groovy
 sourceSets {
-    service
+    plugin
 }
 
 
@@ -278,20 +278,20 @@ neoForge {
     // ...
     mods {
         // ...
-        // To make the service load in dev
-        'service' {
-            sourceSet sourceSets.service
+        // To make the plugin load in dev
+        'plugin' {
+            sourceSet sourceSets.plugin
         }
     }
 }
 
-def serviceJar = tasks.register("serviceJar", Jar) {
-    from(sourceSets.service.output)
-    archiveClassifier = "service"
+def serviceJar = tasks.register("pluginJar", Jar) {
+    from(sourceSets.plugin.output)
+    archiveClassifier = "plugin"
     manifest {
         attributes(
                 'FMLModType': "LIBRARY",
-                "Automatic-Module-Name": project.name + "-service"
+                "Automatic-Module-Name": project.name + "-plugin"
         )
     }
 }
