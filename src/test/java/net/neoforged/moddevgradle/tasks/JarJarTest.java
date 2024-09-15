@@ -211,7 +211,7 @@ class JarJarTest extends AbstractFunctionalTest {
                 }
                 compilePluginJava {
                     // otherwise testkit needs to run with J21
-                    options.release = 9
+                    options.release = 17
                 }
                 var pluginJar = tasks.register(sourceSets.plugin.jarTaskName, Jar) {
                     from sourceSets.plugin.output
