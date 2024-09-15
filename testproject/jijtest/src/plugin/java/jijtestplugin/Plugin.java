@@ -1,4 +1,4 @@
-package jijtestservice;
+package jijtestplugin;
 
 public class Plugin {
 
