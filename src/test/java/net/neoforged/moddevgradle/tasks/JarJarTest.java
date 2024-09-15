@@ -5,6 +5,7 @@ import net.neoforged.jarjar.metadata.ContainedJarMetadata;
 import net.neoforged.jarjar.metadata.ContainedVersion;
 import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
+import net.neoforged.moddevgradle.functional.AbstractFunctionalTest;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
@@ -12,11 +13,10 @@ import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.UnexpectedBuildFailure;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
@@ -27,10 +27,7 @@ import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class JarJarTest {
-    @TempDir
-    Path tempDir;
-
+class JarJarTest extends AbstractFunctionalTest {
     @Test
     public void testNoSourceWhenNoDependenciesAreDefined() throws IOException {
         var result = runWithSource("");
@@ -57,8 +54,27 @@ class JarJarTest {
     }
 
     @Test
+    void testEmbeddingmODRINTHMavenDependencyProducesWarning() throws IOException {
+        var result = runWithSource("""
+                repositories {
+                    maven {
+                        url = "https://api.modrinth.com/maven"
+                        content {
+                            includeGroup "maven.modrinth"
+                        }
+                    }
+                }
+                dependencies {
+                    jarJar(implementation("maven.modrinth:lithium:mc1.19.2-0.10.0"))
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        assertThat(result.getOutput()).contains("Embedding dependency maven.modrinth:lithium:mc1.19.2-0.10.0 from Modrinth Maven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.");
+    }
+
+    @Test
     void testCannotEmbedLocalFileWithoutExplicitJavaModuleName() throws IOException {
-        var localFile = tempDir.resolve("file.jar");
+        var localFile = testProjectDir.toPath().resolve("file.jar");
         new JarOutputStream(Files.newOutputStream(localFile), new Manifest()).close();
 
         var e = assertThrows(UnexpectedBuildFailure.class, () -> runWithSource("""
@@ -73,7 +89,7 @@ class JarJarTest {
 
     @Test
     void testCanEmbedLocalFileWithAutomaticModuleName() throws Exception {
-        var localFile = tempDir.resolve("file.jar");
+        var localFile = testProjectDir.toPath().resolve("file.jar");
         var manifest = new Manifest();
         manifest.getMainAttributes().putValue("Manifest-Version", "1.0");
         manifest.getMainAttributes().putValue("Automatic-Module-Name", "super_duper_module");
@@ -98,9 +114,94 @@ class JarJarTest {
         ), readMetadata());
     }
 
+    /**
+     * The default capability of a subproject uses group=name of the root project
+     */
+    @Test
+    void testEmbeddingSubprojectUsesDefaultCapabilityCoordinate() throws Exception {
+        writeProjectFile("settings.gradle", """
+                plugins {
+                    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+                }
+                rootProject.name = 'root_project_name'
+                
+                include ':plugin'
+                """);
+        writeProjectFile("build.gradle", """
+                plugins {
+                  id "net.neoforged.moddev"
+                }
+                dependencies {
+                    jarJar(project(":plugin"))
+                }
+                """);
+        writeProjectFile("plugin/build.gradle", """
+                plugins {
+                  id 'java'
+                }
+                version = "9.0.0"
+                """);
+
+        var result = run();
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("root_project_name", "plugin"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[9.0.0,)"), new DefaultArtifactVersion("9.0.0")),
+                                "META-INF/jarjar/root_project_name.plugin-9.0.0.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
+    }
+
+    /**
+     * The default capability of a subproject uses group=name of the root project
+     */
+    @Test
+    void testEmbeddingSubprojectWithExplicitGroupIdSet() throws Exception {
+        writeProjectFile("settings.gradle", """
+                plugins {
+                    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+                }
+                rootProject.name = 'root_project_name'
+                
+                include ':plugin'
+                """);
+        writeProjectFile("build.gradle", """
+                plugins {
+                  id "net.neoforged.moddev"
+                }
+                dependencies {
+                    jarJar(project(":plugin"))
+                }
+                """);
+        writeProjectFile("plugin/build.gradle", """
+                plugins {
+                  id 'java'
+                }
+                version = "9.0.0"
+                group = "net.somegroup"
+                """);
+
+        var result = run();
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+        assertEquals(new Metadata(
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("net.somegroup", "plugin"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[9.0.0,)"), new DefaultArtifactVersion("9.0.0")),
+                                "META-INF/jarjar/net.somegroup.plugin-9.0.0.jar",
+                                false
+                        )
+                )
+        ), readMetadata());
+    }
+
     @Test
     void testCanEmbedLocalFileWithModuleInfo() throws Exception {
-        var moduleInfoJava = tempDir.resolve("src/service/java/module-info.java");
+        var moduleInfoJava = testProjectDir.toPath().resolve("src/service/java/module-info.java");
         Files.createDirectories(moduleInfoJava.getParent());
         Files.writeString(moduleInfoJava, "module super_duper_module {}");
 
@@ -121,7 +222,7 @@ class JarJarTest {
                 }
                 """);
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
-        var md5Hash = FileUtils.hashFile(tempDir.resolve("build/libs/jijtest-service.jar").toFile(), "MD5");
+        var md5Hash = FileUtils.hashFile(new File(testProjectDir, "build/libs/jijtest-service.jar"), "MD5");
         assertEquals(new Metadata(
                 List.of(
                         new ContainedJarMetadata(
@@ -276,33 +377,35 @@ class JarJarTest {
     }
 
     private BuildResult runWithSource(String source) throws IOException {
-        Files.writeString(tempDir.resolve("settings.gradle"), """
+        writeProjectFile("settings.gradle", """
                 plugins {
                     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
                 }
                 rootProject.name = 'jijtest'
                 """);
-        Files.writeString(
-                tempDir.resolve("build.gradle"),
-                """
-                        plugins {
-                          id "net.neoforged.moddev"
-                        }
-                        repositories {
-                          mavenCentral()
-                        }
-                        """ + source);
+        writeProjectFile("build.gradle", """
+                                                 plugins {
+                                                   id "net.neoforged.moddev"
+                                                 }
+                                                 repositories {
+                                                   mavenCentral()
+                                                 }
+                                                 """ + source);
 
+        return run();
+    }
+
+    private BuildResult run() {
         return GradleRunner.create()
                 .withPluginClasspath()
-                .withProjectDir(tempDir.toFile())
+                .withProjectDir(testProjectDir)
                 .withArguments("jarjar", "--stacktrace")
                 .withDebug(true)
                 .build();
     }
 
     private List<String> listFiles() throws IOException {
-        var path = tempDir.resolve("build/generated/jarJar");
+        var path = testProjectDir.toPath().resolve("build/generated/jarJar");
         if (!Files.isDirectory(path)) {
             return List.of();
         }
@@ -314,7 +417,7 @@ class JarJarTest {
     }
 
     private Metadata readMetadata() throws IOException {
-        try (var in = Files.newInputStream(tempDir.resolve("build/generated/jarJar/META-INF/jarjar/metadata.json"))) {
+        try (var in = Files.newInputStream(testProjectDir.toPath().resolve("build/generated/jarJar/META-INF/jarjar/metadata.json"))) {
             return MetadataIOHandler.fromStream(in).orElseThrow();
         }
     }
