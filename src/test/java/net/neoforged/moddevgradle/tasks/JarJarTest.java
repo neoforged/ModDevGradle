@@ -209,7 +209,7 @@ class JarJarTest extends AbstractFunctionalTest {
                 sourceSets {
                     plugin
                 }
-                compileServiceJava {
+                compilePluginJava {
                     // otherwise testkit needs to run with J21
                     options.release = 9
                 }

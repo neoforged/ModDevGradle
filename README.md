@@ -281,7 +281,7 @@ neoForge {
     }
 }
 
-def serviceJar = tasks.register("pluginJar", Jar) {
+def pluginJar = tasks.register("pluginJar", Jar) {
     from(sourceSets.plugin.output)
     archiveClassifier = "plugin"
     manifest {
@@ -293,7 +293,7 @@ def serviceJar = tasks.register("pluginJar", Jar) {
 }
 
 dependencies {
-    jarJar files(serviceJar)
+    jarJar files(pluginJar)
 }
 ```
 
