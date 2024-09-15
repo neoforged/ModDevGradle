@@ -201,34 +201,34 @@ class JarJarTest extends AbstractFunctionalTest {
 
     @Test
     void testCanEmbedLocalFileWithModuleInfo() throws Exception {
-        var moduleInfoJava = testProjectDir.toPath().resolve("src/service/java/module-info.java");
+        var moduleInfoJava = testProjectDir.toPath().resolve("src/plugin/java/module-info.java");
         Files.createDirectories(moduleInfoJava.getParent());
         Files.writeString(moduleInfoJava, "module super_duper_module {}");
 
         var result = runWithSource("""
                 sourceSets {
-                    service
+                    plugin
                 }
                 compileServiceJava {
                     // otherwise testkit needs to run with J21
                     options.release = 9
                 }
-                var serviceJar = tasks.register(sourceSets.service.jarTaskName, Jar) {
-                    from sourceSets.service.output
-                    archiveClassifier = "service"
+                var pluginJar = tasks.register(sourceSets.plugin.jarTaskName, Jar) {
+                    from sourceSets.plugin.output
+                    archiveClassifier = "plugin"
                 }
                 dependencies {
-                    jarJar(files(serviceJar))
+                    jarJar(files(pluginJar))
                 }
                 """);
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
-        var md5Hash = FileUtils.hashFile(new File(testProjectDir, "build/libs/jijtest-service.jar"), "MD5");
+        var md5Hash = FileUtils.hashFile(new File(testProjectDir, "build/libs/jijtest-plugin.jar"), "MD5");
         assertEquals(new Metadata(
                 List.of(
                         new ContainedJarMetadata(
                                 new ContainedJarIdentifier("", "super_duper_module"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[" + md5Hash + "]"), new DefaultArtifactVersion(md5Hash)),
-                                "META-INF/jarjar/jijtest-service.jar",
+                                "META-INF/jarjar/jijtest-plugin.jar",
                                 false
                         )
                 )

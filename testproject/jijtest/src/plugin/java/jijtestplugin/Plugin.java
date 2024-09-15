@@ -1,5 +1,5 @@
 package jijtestservice;
 
-public class Service {
+public class Plugin {
 
 }
