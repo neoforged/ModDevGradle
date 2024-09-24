@@ -16,6 +16,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("com.mojang", "brigadier");
         filter.includeModule("com.mojang", "datafixerupper");
         filter.includeModule("com.mojang", "javabridge");
+        filter.includeModule("com.mojang", "jtracy");
         filter.includeModule("com.mojang", "logging");
         filter.includeModule("com.mojang", "netty");
         filter.includeModule("com.mojang", "patchy");
