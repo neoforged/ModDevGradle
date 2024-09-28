@@ -59,7 +59,8 @@ final class RunUtils {
 
     public static String escapeJvmArg(String arg) {
         var escaped = arg.replace("\\", "\\\\").replace("\"", "\\\"");
-        if (escaped.contains(" ")) {
+        // # is used for line comments in arg files and should be quoted to avoid misinterpretation
+        if (escaped.contains(" ") || escaped.contains("#")) {
             return "\"" + escaped + "\"";
         }
         return escaped;
