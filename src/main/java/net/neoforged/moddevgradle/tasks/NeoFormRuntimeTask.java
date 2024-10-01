@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.moddevgradle.tasks;
 
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;

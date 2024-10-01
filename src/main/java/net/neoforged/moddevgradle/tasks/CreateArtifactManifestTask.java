@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.moddevgradle.tasks;
 
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;

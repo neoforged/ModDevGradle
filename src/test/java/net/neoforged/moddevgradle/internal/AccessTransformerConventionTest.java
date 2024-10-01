@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.nfrt.CreateMinecraftArtifactsTask;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;

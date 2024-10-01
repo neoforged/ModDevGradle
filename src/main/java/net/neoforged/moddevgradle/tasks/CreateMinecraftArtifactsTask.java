@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.moddevgradle.tasks;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
