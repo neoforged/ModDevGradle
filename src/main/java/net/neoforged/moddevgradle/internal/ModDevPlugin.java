@@ -7,17 +7,14 @@ import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
-import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import net.neoforged.moddevgradle.nfrt.ArtifactManifestEntry;
-import net.neoforged.moddevgradle.nfrt.CreateArtifactManifestTask;
-import net.neoforged.moddevgradle.nfrt.CreateMinecraftArtifactsTask;
-import net.neoforged.moddevgradle.nfrt.DownloadAssetsTask;
-import net.neoforged.moddevgradle.tasks.NeoFormRuntimeTask;
+import net.neoforged.moddevgradle.tasks.CreateMinecraftArtifactsTask;
+import net.neoforged.moddevgradle.tasks.DownloadAssetsTask;
 import net.neoforged.moddevgradle.tasks.JarJar;
+import net.neoforged.moddevgradle.tasks.NeoFormRuntimeTask;
 import net.neoforged.vsclc.BatchedLaunchWriter;
 import net.neoforged.vsclc.attribute.ConsoleType;
 import net.neoforged.vsclc.attribute.PathLike;
@@ -197,23 +194,6 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(project, extension);
-        var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
-            task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
-            for (var configuration : createManifestConfigurations) {
-                // Convert to a serializable representation for the task.
-                task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                    return results.stream().map(result -> {
-                        var gav = DependencyUtils.guessMavenGav(result);
-                        return new ArtifactManifestEntry(
-                                gav,
-                                result.getFile()
-                        );
-                    }).collect(Collectors.toSet());
-                }));
-            }
-        });
 
         var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
             spec.setDescription("The NeoFormRuntime CLI tool");
@@ -240,9 +220,8 @@ public class ModDevPlugin implements Plugin<Project> {
         Consumer<NeoFormRuntimeTask> configureNfrtTask = task -> {
             var nfrtSettings = extension.getNeoFormRuntime();
             task.getVerbose().set(nfrtSettings.getVerbose());
-            task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
             for (var configuration : createManifestConfigurations) {
-                task.getArtifacts().from(configuration);
+                task.addArtifactsToManifest(configuration);
             }
             task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
