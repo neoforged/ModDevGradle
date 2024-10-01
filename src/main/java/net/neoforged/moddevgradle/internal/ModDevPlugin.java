@@ -400,8 +400,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 writeLcp.setGroup(INTERNAL_TASK_GROUP);
                 writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
                 writeLcp.getLegacyClasspathFile().convention(modDevBuildDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
-                writeLcp.getEntries().from(legacyClasspathConfiguration);
-                writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
+                writeLcp.addEntries(legacyClasspathConfiguration, createArtifacts.get().getResourcesArtifact());
             });
 
             var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
@@ -692,8 +691,7 @@ public class ModDevPlugin implements Plugin<Project> {
             writeLcp.setGroup(INTERNAL_TASK_GROUP);
             writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
-            writeLcp.getEntries().from(legacyClasspathConfiguration);
-            writeLcp.getEntries().from(createArtifacts.get().getResourcesArtifact());
+            writeLcp.addEntries(legacyClasspathConfiguration, createArtifacts.get().getResourcesArtifact());
         });
 
         var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
