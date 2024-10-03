@@ -58,14 +58,6 @@ neoForge {
         }
     }
 
-    neoFormRuntime {
-        useEclipseCompiler = true
-        // enableCache = false
-        // verbose = true
-
-        additionalResults.put('vanillaDeobfuscated', project.file('build/vanilla.jar'))
-    }
-
     parchment {
         minecraftVersion = "1.21"
         mappingsVersion = "2024.06.23"
@@ -75,4 +67,12 @@ neoForge {
         enable()
         testedMod = mods.testproject
     }
+}
+
+neoFormRuntime {
+    useEclipseCompiler = true
+    // enableCache = false
+    // verbose = true
+
+    additionalResults.put('vanillaDeobfuscated', project.file('build/vanilla.jar'))
 }

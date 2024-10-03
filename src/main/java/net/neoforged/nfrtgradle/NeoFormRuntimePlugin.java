@@ -38,6 +38,7 @@ public class NeoFormRuntimePlugin implements Plugin<Project> {
 
         project.getTasks().withType(NeoFormRuntimeTask.class).configureEach(task -> {
             task.getNeoFormRuntime().convention(toolConfiguration);
+            task.getVerbose().convention(extension.getVerbose());
             // Every invocation of NFRT should inherit the tools it's using itself via Gradle
             task.addArtifactsToManifest(externalToolsConfiguration);
         });
