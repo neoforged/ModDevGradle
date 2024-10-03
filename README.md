@@ -560,7 +560,8 @@ Which results are available depends on the NeoForm/NeoForge version used.
 
 ```groovy
 neoForge {
-    // Allows pulling additional NFRT results. This affects all CreateMinecraftArtifact tasks in the project.
+    // Request NFRT to write additional results to the given locations
+    // This happens alongside the creation of the normal Minecraft jar
     additionalMinecraftArtifacts.put('vanillaDeobfuscated', project.file('vanilla.jar'))
 }
 ```
