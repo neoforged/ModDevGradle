@@ -550,34 +550,45 @@ configurations.all {
 }
 ```
 
-### Advanced Settings for NFRT
+### Requesting Additional Minecraft Artifacts
+
+The NeoForm process executed to create the Minecraft jars contains additional intermediate results, which may be useful in advanced build scripts.
+
+You can request those results to be written to specific output files by using the `additionalMinecraftArtifacts` property.
+
+Which results are available depends on the NeoForm/NeoForge version used.
 
 ```groovy
 neoForge {
-    neoFormRuntime {
-        // Use a specific NFRT version
-        // Gradle Property: neoForge.neoFormRuntime.version
-        version = "1.2.3"
+    // Request NFRT to write additional results to the given locations
+    // This happens alongside the creation of the normal Minecraft jar
+    additionalMinecraftArtifacts.put('vanillaDeobfuscated', project.file('vanilla.jar'))
+}
+```
 
-        // Control use of cache
-        // Gradle Property: neoForge.neoFormRuntime.enableCache
-        enableCache = false
+### Global Settings for NFRT
 
-        // Enable Verbose Output
-        // Gradle Property: neoForge.neoFormRuntime.verbose
-        verbose = true
+```groovy
+neoFormRuntime {
+    // Use a specific NFRT version
+    // Gradle Property: neoForge.neoFormRuntime.version
+    version = "1.2.3"
 
-        // Use Eclipse Compiler for Minecraft
-        // Gradle Property: neoForge.neoFormRuntime.useEclipseCompiler
-        useEclipseCompiler = true
+    // Control use of cache
+    // Gradle Property: neoForge.neoFormRuntime.enableCache
+    enableCache = false
 
-        // Print more information when NFRT cannot use a cached result
-        // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
-        analyzeCacheMisses = true
-        
-        // Allows pulling additional NFRT results
-        // additionalResults.put('vanillaDeobfuscated', project.file('vanilla.jar'))
-    }
+    // Enable Verbose Output
+    // Gradle Property: neoForge.neoFormRuntime.verbose
+    verbose = true
+
+    // Use Eclipse Compiler for Minecraft
+    // Gradle Property: neoForge.neoFormRuntime.useEclipseCompiler
+    useEclipseCompiler = true
+
+    // Print more information when NFRT cannot use a cached result
+    // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
+    analyzeCacheMisses = true
 }
 ```
 

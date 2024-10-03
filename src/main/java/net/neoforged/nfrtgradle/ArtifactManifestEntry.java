@@ -1,5 +1,7 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.nfrtgradle;
 
+import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
+import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 
@@ -18,9 +20,9 @@ final class ArtifactManifestEntry implements Serializable {
     @InputFile
     private final File file;
 
-    ArtifactManifestEntry(String artifactId, File file) {
-        this.artifactId = artifactId;
-        this.file = file;
+    ArtifactManifestEntry(ResolvedArtifactResult artifactResult) {
+        this.artifactId = DependencyUtils.guessMavenGav(artifactResult);
+        this.file = artifactResult.getFile();
     }
 
     @Input

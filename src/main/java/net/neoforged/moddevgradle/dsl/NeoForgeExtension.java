@@ -8,11 +8,13 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
+import java.io.File;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -24,7 +26,6 @@ public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
-    private final NeoFormRuntime neoFormRuntime;
     private final UnitTest unitTest;
 
     private final DataFileCollection accessTransformers;
@@ -36,7 +37,6 @@ public abstract class NeoForgeExtension {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
-        neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
@@ -151,14 +151,6 @@ public abstract class NeoForgeExtension {
         action.execute(parchment);
     }
 
-    public NeoFormRuntime getNeoFormRuntime() {
-        return neoFormRuntime;
-    }
-
-    public void neoFormRuntime(Action<NeoFormRuntime> action) {
-        action.execute(neoFormRuntime);
-    }
-
     public UnitTest getUnitTest() {
         return unitTest;
     }
@@ -186,4 +178,13 @@ public abstract class NeoForgeExtension {
     public void ideSyncTask(Task task) {
         this.getIdeSyncTasks().add(task.getProject().getTasks().named(task.getName()));
     }
+
+    /**
+     * Used to request additional Minecraft artifacts from NFRT for advanced usage scenarios.
+     * <p>
+     * Maps a result name to the file it should be written to.
+     * The result names are specific to the NeoForm process that is being used in the background and may change between
+     * NeoForge versions.
+     */
+    public abstract MapProperty<String, File> getAdditionalMinecraftArtifacts();
 }

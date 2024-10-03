@@ -7,12 +7,15 @@ import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
-import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
+import net.neoforged.nfrtgradle.DownloadAssets;
 import net.neoforged.moddevgradle.tasks.JarJar;
+import net.neoforged.nfrtgradle.NeoFormRuntimeTask;
 import net.neoforged.vsclc.BatchedLaunchWriter;
 import net.neoforged.vsclc.attribute.ConsoleType;
 import net.neoforged.vsclc.attribute.PathLike;
@@ -76,7 +79,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -118,6 +120,7 @@ public class ModDevPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+        project.getPlugins().apply(NeoFormRuntimePlugin.class);
 
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
@@ -193,34 +196,6 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(project, extension);
-        var createManifest = tasks.register("createArtifactManifest", CreateArtifactManifestTask.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("Creates the NFRT manifest file, containing all dependencies needed to setup the MC artifacts and downloading them in the process.");
-            task.getManifestFile().set(modDevBuildDir.map(dir -> dir.file("nfrt_artifact_manifest.properties")));
-            for (var configuration : createManifestConfigurations) {
-                // Convert to a serializable representation for the task.
-                task.getNeoForgeModDevArtifacts().addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-                    return results.stream().map(result -> {
-                        var gav = DependencyUtils.guessMavenGav(result);
-                        return new ArtifactManifestEntry(
-                                gav,
-                                result.getFile()
-                        );
-                    }).collect(Collectors.toSet());
-                }));
-            }
-        });
-
-        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
-            spec.setDescription("The NeoFormRuntime CLI tool");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
-                dependencies.addLater(extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version).attributes(attributes -> {
-                    attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
-                })));
-            });
-        });
 
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
@@ -232,21 +207,13 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
         });
 
-        // Configure common properties of NeoFormRuntimeEngineTask
-        Consumer<NeoFormRuntimeTask> configureNfrtTask = task -> {
-            var nfrtSettings = extension.getNeoFormRuntime();
-            task.getVerbose().set(nfrtSettings.getVerbose());
-            task.getArtifactManifestFile().set(createManifest.get().getManifestFile());
-            for (var configuration : createManifestConfigurations) {
-                task.getArtifacts().from(configuration);
-            }
-            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
-        };
-
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
+            for (var configuration : createManifestConfigurations) {
+                task.addArtifactsToManifest(configuration);
+            }
 
             task.getAccessTransformers().from(accessTransformers.configuration);
             task.getInterfaceInjectionData().from(interfaceInjectionData.configuration);
@@ -267,25 +234,18 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
             task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
 
-            var nfrtSettings = extension.getNeoFormRuntime();
-            task.getEnableCache().set(nfrtSettings.getEnableCache());
-            task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
-            task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
-            task.getAdditionalResults().set(nfrtSettings.getAdditionalResults());
-
-            configureNfrtTask.accept(task);
+            task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
         });
 
-        var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+        var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
-            configureNfrtTask.accept(task);
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
@@ -415,7 +375,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
                 task.getSystemProperties().set(run.getSystemProperties().map(props -> {
                     props = new HashMap<>(props);
                     return props;
@@ -516,7 +476,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
-        Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -590,16 +549,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var tools = configurations.create(configurationPrefix + "ExternalTools", spec -> {
-            spec.setDescription("The external tools used by the NeoForm runtime");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.getDependencies().addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
-                caps.requireCapability("net.neoforged:neoform-runtime-external-tools");
-            })));
-        });
-
-        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath, tools);
+        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath);
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
@@ -619,9 +569,9 @@ public class ModDevPlugin implements Plugin<Project> {
     private void setupTesting(Project project,
                               Provider<Directory> modDevDir,
                               Configuration userDevConfigOnly,
-                              TaskProvider<DownloadAssetsTask> downloadAssets,
+                              TaskProvider<DownloadAssets> downloadAssets,
                               TaskProvider<Task> ideSyncTask,
-                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
+                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
                               Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
         var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
@@ -707,7 +657,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
             task.getGameLogLevel().set(Level.INFO);
         });
 
@@ -928,7 +878,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static void configureEclipseModel(Project project,
                                               TaskProvider<Task> ideSyncTask,
-                                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
+                                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
                                               NeoForgeExtension extension,
                                               Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
 
