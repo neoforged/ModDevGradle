@@ -20,9 +20,9 @@ import java.util.Collections;
  */
 @DisableCachingByDefault(because = "Implements its own caching and the output file is system specific")
 @ApiStatus.NonExtendable
-public abstract class DownloadAssetsTask extends NeoFormRuntimeTask {
+public abstract class DownloadAssets extends NeoFormRuntimeTask {
     @Inject
-    public DownloadAssetsTask() {
+    public DownloadAssets() {
     }
 
     /**

@@ -12,8 +12,8 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
-import net.neoforged.nfrtgradle.CreateMinecraftArtifactsTask;
-import net.neoforged.nfrtgradle.DownloadAssetsTask;
+import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
+import net.neoforged.nfrtgradle.DownloadAssets;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import net.neoforged.nfrtgradle.NeoFormRuntimeTask;
 import net.neoforged.vsclc.BatchedLaunchWriter;
@@ -215,7 +215,7 @@ public class ModDevPlugin implements Plugin<Project> {
         };
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifactsTask.class, task -> {
+        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
 
@@ -245,7 +245,7 @@ public class ModDevPlugin implements Plugin<Project> {
             configureNfrtTask.accept(task);
         });
 
-        var downloadAssets = tasks.register("downloadAssets", DownloadAssetsTask.class, task -> {
+        var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
@@ -382,7 +382,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getNeoForgeModDevConfig().from(userDevConfigOnly);
                 task.getModules().from(neoForgeModDevModules);
                 task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
                 task.getSystemProperties().set(run.getSystemProperties().map(props -> {
                     props = new HashMap<>(props);
                     return props;
@@ -576,9 +576,9 @@ public class ModDevPlugin implements Plugin<Project> {
     private void setupTesting(Project project,
                               Provider<Directory> modDevDir,
                               Configuration userDevConfigOnly,
-                              TaskProvider<DownloadAssetsTask> downloadAssets,
+                              TaskProvider<DownloadAssets> downloadAssets,
                               TaskProvider<Task> ideSyncTask,
-                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
+                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
                               Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
         var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
@@ -664,7 +664,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getNeoForgeModDevConfig().from(userDevConfigOnly);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssetsTask::getAssetPropertiesFile));
+            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
             task.getGameLogLevel().set(Level.INFO);
         });
 
@@ -885,7 +885,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
     private static void configureEclipseModel(Project project,
                                               TaskProvider<Task> ideSyncTask,
-                                              TaskProvider<CreateMinecraftArtifactsTask> createArtifacts,
+                                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
                                               NeoForgeExtension extension,
                                               Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
 

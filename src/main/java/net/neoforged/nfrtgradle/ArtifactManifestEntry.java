@@ -20,13 +20,9 @@ final class ArtifactManifestEntry implements Serializable {
     @InputFile
     private final File file;
 
-    public ArtifactManifestEntry(ResolvedArtifactResult artifactResult) {
-        this(DependencyUtils.guessMavenGav(artifactResult), artifactResult.getFile());
-    }
-
-    public ArtifactManifestEntry(String artifactId, File file) {
-        this.artifactId = artifactId;
-        this.file = file;
+    ArtifactManifestEntry(ResolvedArtifactResult artifactResult) {
+        this.artifactId = DependencyUtils.guessMavenGav(artifactResult);
+        this.file = artifactResult.getFile();
     }
 
     @Input

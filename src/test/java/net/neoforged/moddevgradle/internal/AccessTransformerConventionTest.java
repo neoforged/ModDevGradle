@@ -2,7 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.nfrtgradle.CreateMinecraftArtifactsTask;
+import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +67,7 @@ public class AccessTransformerConventionTest {
         return transformerPath;
     }
 
-    private CreateMinecraftArtifactsTask getCreateMinecraftArtifactsTask() {
-        return (CreateMinecraftArtifactsTask) project.getTasks().getByName("createMinecraftArtifacts");
+    private CreateMinecraftArtifacts getCreateMinecraftArtifactsTask() {
+        return (CreateMinecraftArtifacts) project.getTasks().getByName("createMinecraftArtifacts");
     }
 }

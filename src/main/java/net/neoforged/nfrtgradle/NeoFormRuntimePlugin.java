@@ -43,7 +43,7 @@ public class NeoFormRuntimePlugin implements Plugin<Project> {
             task.addArtifactsToManifest(externalToolsConfiguration);
         });
 
-        project.getTasks().withType(CreateMinecraftArtifactsTask.class).configureEach(task -> {
+        project.getTasks().withType(CreateMinecraftArtifacts.class).configureEach(task -> {
             task.getEnableCache().set(extension.getEnableCache());
             task.getAnalyzeCacheMisses().set(extension.getAnalyzeCacheMisses());
             task.getUseEclipseCompiler().set(extension.getUseEclipseCompiler());

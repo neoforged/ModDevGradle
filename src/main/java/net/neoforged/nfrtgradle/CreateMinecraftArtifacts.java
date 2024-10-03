@@ -27,11 +27,11 @@ import java.util.List;
  */
 @DisableCachingByDefault(because = "Implements its own caching")
 @ApiStatus.NonExtendable
-public abstract class CreateMinecraftArtifactsTask extends NeoFormRuntimeTask {
+public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @Inject
-    public CreateMinecraftArtifactsTask() {
+    public CreateMinecraftArtifacts() {
         // When cache is disabled, the task is NEVER up-to-date to aid with debugging problems
-        getOutputs().upToDateWhen(task -> ((CreateMinecraftArtifactsTask) task).getEnableCache().get());
+        getOutputs().upToDateWhen(task -> ((CreateMinecraftArtifacts) task).getEnableCache().get());
         getEnableCache().convention(true);
         getUseEclipseCompiler().convention(false);
         getAnalyzeCacheMisses().convention(false);
