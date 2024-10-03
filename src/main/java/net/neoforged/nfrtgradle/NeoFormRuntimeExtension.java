@@ -77,15 +77,4 @@ public abstract class NeoFormRuntimeExtension {
      * Maps a result name to the file it should be written to.
      */
     public abstract MapProperty<String, File> getAdditionalResults();
-
-    static NeoFormRuntimeExtension fromProject(Project project) {
-        var extension = project.getExtensions().findByName(NeoFormRuntimeExtension.NAME);
-        if (extension == null) {
-            throw new InvalidUserCodeException("You can only use the NFRT tasks if the NeoFormRuntimePlugin is applied to the project. This should have happened automatically when using ModDevGradle.");
-        }
-        if (!(extension instanceof NeoFormRuntimeExtension nfrtSettings)) {
-            throw new InvalidUserCodeException("The extension " + NAME + " is of type " + extension.getClass() + " and conflicts with " + NeoFormRuntimeExtension.class);
-        }
-        return nfrtSettings;
-    }
 }
