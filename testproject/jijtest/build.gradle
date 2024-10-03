@@ -2,14 +2,30 @@ plugins {
     id 'net.neoforged.moddev'
 }
 
+sourceSets {
+    plugin
+}
+
+def pluginJar = tasks.register("pluginJar", Jar) {
+    from(sourceSets.plugin.output)
+    archiveClassifier = "plugin"
+    manifest {
+        attributes(
+            'FMLModType': 'LIBRARY',
+            'Automatic-Module-Name': 'jij.plugin'
+        )
+    }
+}
+
 evaluationDependsOn(":coremod") // Because of the sourceset reference
 
 dependencies {
     implementation project(":coremod")
-
+    implementation files(sourceSets.plugin.output)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     jarJar(project(":coremod"))
+    jarJar(files(pluginJar))
 
     jarJar("org.commonmark:commonmark") {
         version {
@@ -38,6 +54,9 @@ neoForge {
         }
         coremod {
             sourceSet project(":coremod").sourceSets.main
+        }
+        plugin {
+            sourceSet sourceSets.plugin
         }
     }
 
