@@ -207,17 +207,13 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
         });
 
-        // Configure common properties of NeoFormRuntimeEngineTask
-        Consumer<NeoFormRuntimeTask> configureNfrtTask = task -> {
-            for (var configuration : createManifestConfigurations) {
-                task.addArtifactsToManifest(configuration);
-            }
-        };
-
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(INTERNAL_TASK_GROUP);
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
+            for (var configuration : createManifestConfigurations) {
+                task.addArtifactsToManifest(configuration);
+            }
 
             task.getAccessTransformers().from(accessTransformers.configuration);
             task.getInterfaceInjectionData().from(interfaceInjectionData.configuration);
@@ -241,8 +237,6 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
             task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
-
-            configureNfrtTask.accept(task);
         });
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
@@ -252,7 +246,6 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
-            configureNfrtTask.accept(task);
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
