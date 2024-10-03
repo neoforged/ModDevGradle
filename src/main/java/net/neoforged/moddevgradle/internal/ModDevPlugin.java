@@ -11,10 +11,11 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import net.neoforged.moddevgradle.tasks.CreateMinecraftArtifactsTask;
-import net.neoforged.moddevgradle.tasks.DownloadAssetsTask;
+import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import net.neoforged.nfrtgradle.CreateMinecraftArtifactsTask;
+import net.neoforged.nfrtgradle.DownloadAssetsTask;
 import net.neoforged.moddevgradle.tasks.JarJar;
-import net.neoforged.moddevgradle.tasks.NeoFormRuntimeTask;
+import net.neoforged.nfrtgradle.NeoFormRuntimeTask;
 import net.neoforged.vsclc.BatchedLaunchWriter;
 import net.neoforged.vsclc.attribute.ConsoleType;
 import net.neoforged.vsclc.attribute.PathLike;
@@ -119,6 +120,7 @@ public class ModDevPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
+        project.getPlugins().apply(NeoFormRuntimePlugin.class);
 
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
@@ -195,17 +197,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(project, extension);
 
-        var neoFormRuntimeConfig = configurations.create("neoFormRuntime", spec -> {
-            spec.setDescription("The NeoFormRuntime CLI tool");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.defaultDependencies(dependencies -> {
-                dependencies.addLater(extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version).attributes(attributes -> {
-                    attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.SHADOWED));
-                })));
-            });
-        });
-
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
@@ -218,12 +209,9 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Configure common properties of NeoFormRuntimeEngineTask
         Consumer<NeoFormRuntimeTask> configureNfrtTask = task -> {
-            var nfrtSettings = extension.getNeoFormRuntime();
-            task.getVerbose().set(nfrtSettings.getVerbose());
             for (var configuration : createManifestConfigurations) {
                 task.addArtifactsToManifest(configuration);
             }
-            task.getNeoFormRuntime().from(neoFormRuntimeConfig);
         };
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
@@ -250,13 +238,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
             task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
 
-            var nfrtSettings = extension.getNeoFormRuntime();
-            task.getEnableCache().set(nfrtSettings.getEnableCache());
-            task.getAnalyzeCacheMisses().set(nfrtSettings.getAnalyzeCacheMisses());
-            task.getUseEclipseCompiler().set(nfrtSettings.getUseEclipseCompiler());
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
-            task.getAdditionalResults().set(nfrtSettings.getAdditionalResults());
 
             configureNfrtTask.accept(task);
         });
@@ -499,7 +482,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
-        Provider<ExternalModuleDependency> nfrtDependency = extension.getNeoFormRuntime().getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -573,16 +555,7 @@ public class ModDevPlugin implements Plugin<Project> {
             });
         });
 
-        var tools = configurations.create(configurationPrefix + "ExternalTools", spec -> {
-            spec.setDescription("The external tools used by the NeoForm runtime");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.getDependencies().addLater(nfrtDependency.map(dep -> dep.capabilities(caps -> {
-                caps.requireCapability("net.neoforged:neoform-runtime-external-tools");
-            })));
-        });
-
-        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath, tools);
+        return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath);
     }
 
     private static boolean shouldUseCombinedSourcesAndClassesArtifact() {

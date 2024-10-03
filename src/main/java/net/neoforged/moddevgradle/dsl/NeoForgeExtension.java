@@ -24,7 +24,6 @@ public abstract class NeoForgeExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
-    private final NeoFormRuntime neoFormRuntime;
     private final UnitTest unitTest;
 
     private final DataFileCollection accessTransformers;
@@ -36,7 +35,6 @@ public abstract class NeoForgeExtension {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class);
         parchment = project.getObjects().newInstance(Parchment.class);
-        neoFormRuntime = project.getObjects().newInstance(NeoFormRuntime.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
@@ -149,14 +147,6 @@ public abstract class NeoForgeExtension {
 
     public void parchment(Action<Parchment> action) {
         action.execute(parchment);
-    }
-
-    public NeoFormRuntime getNeoFormRuntime() {
-        return neoFormRuntime;
-    }
-
-    public void neoFormRuntime(Action<NeoFormRuntime> action) {
-        action.execute(neoFormRuntime);
     }
 
     public UnitTest getUnitTest() {

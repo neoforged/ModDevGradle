@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.tasks;
+package net.neoforged.nfrtgradle;
 
 import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;

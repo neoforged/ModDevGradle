@@ -1,6 +1,7 @@
-package net.neoforged.moddevgradle.dsl;
+package net.neoforged.nfrtgradle;
 
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -12,11 +13,13 @@ import java.io.File;
  * Configures aspects of the NeoForm Runtime (NFRT), which is used by this plugin to produce
  * the Minecraft artifacts for compiling and mods.
  */
-public abstract class NeoFormRuntime {
+public abstract class NeoFormRuntimeExtension {
+    public static final String NAME = "neoFormRuntime";
+
     private static final String DEFAULT_NFRT_VERSION = "1.0.6";
 
     @Inject
-    public NeoFormRuntime(Project project) {
+    public NeoFormRuntimeExtension(Project project) {
         getVersion().convention(PropertyUtils.getStringProperty(project, "neoForge.neoFormRuntime.version").orElse(DEFAULT_NFRT_VERSION));
         getUseEclipseCompiler().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.useEclipseCompiler").orElse(false));
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));
@@ -74,4 +77,15 @@ public abstract class NeoFormRuntime {
      * Maps a result name to the file it should be written to.
      */
     public abstract MapProperty<String, File> getAdditionalResults();
+
+    static NeoFormRuntimeExtension fromProject(Project project) {
+        var extension = project.getExtensions().findByName(NeoFormRuntimeExtension.NAME);
+        if (extension == null) {
+            throw new InvalidUserCodeException("You can only use the NFRT tasks if the NeoFormRuntimePlugin is applied to the project. This should have happened automatically when using ModDevGradle.");
+        }
+        if (!(extension instanceof NeoFormRuntimeExtension nfrtSettings)) {
+            throw new InvalidUserCodeException("The extension " + NAME + " is of type " + extension.getClass() + " and conflicts with " + NeoFormRuntimeExtension.class);
+        }
+        return nfrtSettings;
+    }
 }

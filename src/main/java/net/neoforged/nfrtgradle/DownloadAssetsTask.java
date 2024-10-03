@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.tasks;
+package net.neoforged.nfrtgradle;
 
 import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;

@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.tasks;
+package net.neoforged.nfrtgradle;
 
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
@@ -94,8 +94,6 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
     public NeoFormRuntimeTask() {
         var project = getProject();
 
-        getVerbose().convention(false);
-
         // When running NeoForm as part of a Gradle build, we store our caches under Gradles
         // home directory for user convenience (they will be picked up by Gradle cache actions in CI, etc.)
         var gradleHome = project.getGradle().getGradleUserHomeDir();
@@ -103,7 +101,7 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         getHomeDirectory().set(cacheDir);
 
         // Store temporary working directories in this projects build directory such that gradle clean removes them
-        getWorkDirectory().set(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
+        getWorkDirectory().convention(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
 
         // Default to J21 for NFRT
         getJavaExecutable().convention(getJavaToolchainService()
