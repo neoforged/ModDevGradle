@@ -240,6 +240,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
+            task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
 
             configureNfrtTask.accept(task);
         });

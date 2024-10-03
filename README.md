@@ -550,7 +550,22 @@ configurations.all {
 }
 ```
 
-### Advanced Settings for NFRT
+### Requesting Additional Minecraft Artifacts
+
+The NeoForm process executed to create the Minecraft jars contains additional intermediate results, which may be useful in advanced build scripts.
+
+You can request those results to be written to specific output files by using the `additionalMinecraftArtifacts` property.
+
+Which results are available depends on the NeoForm/NeoForge version used.
+
+```groovy
+neoForge {
+    // Allows pulling additional NFRT results. This affects all CreateMinecraftArtifact tasks in the project.
+    additionalMinecraftArtifacts.put('vanillaDeobfuscated', project.file('vanilla.jar'))
+}
+```
+
+### Global Settings for NFRT
 
 ```groovy
 neoFormRuntime {
@@ -573,9 +588,6 @@ neoFormRuntime {
     // Print more information when NFRT cannot use a cached result
     // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
     analyzeCacheMisses = true
-    
-    // Allows pulling additional NFRT results. This affects all CreateMinecraftArtifact tasks in the project.
-    // additionalResults.put('vanillaDeobfuscated', project.file('vanilla.jar'))
 }
 ```
 

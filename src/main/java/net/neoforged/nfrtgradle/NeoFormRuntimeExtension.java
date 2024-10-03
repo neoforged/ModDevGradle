@@ -70,11 +70,4 @@ public abstract class NeoFormRuntimeExtension {
      * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.analyzeCacheMisses}.
      */
     public abstract Property<Boolean> getAnalyzeCacheMisses();
-
-    /**
-     * Used to request additional results from NFRT.
-     * <p>
-     * Maps a result name to the file it should be written to.
-     */
-    public abstract MapProperty<String, File> getAdditionalResults();
 }

@@ -67,12 +67,12 @@ neoForge {
         enable()
         testedMod = mods.testproject
     }
+
+    additionalMinecraftArtifacts.put('vanillaDeobfuscated', project.file('build/vanilla.jar'))
 }
 
 neoFormRuntime {
     useEclipseCompiler = true
     // enableCache = false
     // verbose = true
-
-    additionalResults.put('vanillaDeobfuscated', project.file('build/vanilla.jar'))
 }

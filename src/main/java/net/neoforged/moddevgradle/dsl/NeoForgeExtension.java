@@ -8,11 +8,13 @@ import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
+import java.io.File;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -176,4 +178,13 @@ public abstract class NeoForgeExtension {
     public void ideSyncTask(Task task) {
         this.getIdeSyncTasks().add(task.getProject().getTasks().named(task.getName()));
     }
+
+    /**
+     * Used to request additional Minecraft artifacts from NFRT for advanced usage scenarios.
+     * <p>
+     * Maps a result name to the file it should be written to.
+     * The result names are specific to the NeoForm process that is being used in the background and may change between
+     * NeoForge versions.
+     */
+    public abstract MapProperty<String, File> getAdditionalMinecraftArtifacts();
 }

@@ -33,12 +33,6 @@ Nonetheless, every single breaking change is documented here, along with a sugge
       }
   }
 ```
-- The `neoFormRuntime` property on the `neoForge` extension has been moved to the top-level. This should only affect advanced users. This was done in an effort to make the NFRT-specific tasks in MDG more reusable by projects not making use of a generic mod development environment.
-  - To fix, move your NFRT settings one level up: 
-```diff
--  neoForge {
-     neoFormRuntime {
-       ...
-     }
--  }
-```
+- The `neoFormRuntime` property on the `neoForge` extension has been moved to the top-level. This should only affect advanced users. This was done in an effort to make the NFRT-specific tasks in MDG more reusable by projects not making use of a generic mod development environment. The `additionalResults` property moved to `neoForge.additionalMinecraftArtifacts` since it is more sensible to apply this only to MDGs `createMinecraftArtifacts` task rather than all NFRT tasks including user-created ones.
+  - To fix, move your NFRT settings block to the project, and move `additionalResults` to `additionalMinecraftArtifacts` in the `neoForge` extension.
+  

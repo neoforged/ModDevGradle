@@ -47,7 +47,6 @@ public class NeoFormRuntimePlugin implements Plugin<Project> {
             task.getEnableCache().set(extension.getEnableCache());
             task.getAnalyzeCacheMisses().set(extension.getAnalyzeCacheMisses());
             task.getUseEclipseCompiler().set(extension.getUseEclipseCompiler());
-            task.getAdditionalResults().set(extension.getAdditionalResults());
         });
     }
 }
