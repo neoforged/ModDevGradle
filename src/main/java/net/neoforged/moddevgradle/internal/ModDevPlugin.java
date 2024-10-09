@@ -11,11 +11,10 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import net.neoforged.moddevgradle.tasks.JarJar;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
-import net.neoforged.moddevgradle.tasks.JarJar;
-import net.neoforged.nfrtgradle.NeoFormRuntimeTask;
+import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import net.neoforged.vsclc.BatchedLaunchWriter;
 import net.neoforged.vsclc.attribute.ConsoleType;
 import net.neoforged.vsclc.attribute.PathLike;
@@ -30,12 +29,9 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
-import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
-import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
@@ -97,8 +93,6 @@ public class ModDevPlugin implements Plugin<Project> {
      * directory across all subprojects due to IntelliJ limitations.
      */
     private static final String JUNIT_GAME_DIR = "build/minecraft-junit";
-
-    private static final String JAR_JAR_GROUP = "jarjar";
 
     private static final String TASK_GROUP = "mod development";
     private static final String INTERNAL_TASK_GROUP = "mod development/internal";
@@ -724,39 +718,13 @@ public class ModDevPlugin implements Plugin<Project> {
     private static void setupJarJar(Project project) {
         SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         sourceSets.all(sourceSet -> {
-            final Configuration configuration = project.getConfigurations().create(sourceSet.getTaskName(null, "jarJar"));
-            configuration.setTransitive(false);
-            // jarJar configurations should be resolvable, but ought not to be exposed to consumers;
-            // as it has attributes, it could conflict with normal exposed configurations
-            configuration.setCanBeResolved(true);
-            configuration.setCanBeConsumed(false);
+            var jarJarTask = JarJar.registerWithConfiguration(project, sourceSet.getTaskName(null, "jarJar"));
+            jarJarTask.configure(task -> task.setGroup(INTERNAL_TASK_GROUP));
 
-            var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
-
-            configuration.attributes(attributes -> {
-                // Unfortunately, while we can hopefully rely on disambiguation rules to get us some of these, others run
-                // into issues. The target JVM version is the most worrying - we don't want to pull in a variant for a newer
-                // jvm version. We could copy DefaultJvmFeature, and search for the target version of the compile task,
-                // but this is difficult - we only have a feature name, not the linked source set. For this reason, we use
-                // the toolchain version, which is the most likely to be correct.
-                attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().map(JavaLanguageVersion::asInt));
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
-                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
-                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
-                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
-            });
-
-            var jarJarTask = project.getTasks().register(sourceSet.getTaskName(null, "jarJar"), JarJar.class, jarJar -> {
-                jarJar.setGroup(JAR_JAR_GROUP);
-                jarJar.setDescription("Create a combined JAR of project and selected dependencies.");
-
-                jarJar.configuration(configuration);
-            });
-
-            // The task might not exist, and #named(String) requires the task to exist
-            project.getTasks().withType(AbstractArchiveTask.class).named(name -> name.equals(sourceSet.getJarTaskName())).configureEach(task -> {
-                task.from(jarJarTask.get().getOutputDirectory());
-                task.dependsOn(jarJarTask);
+            // The target jar task for this source set might not exist, and #named(String) requires the task to exist
+            var jarTaskName = sourceSet.getJarTaskName();
+            project.getTasks().withType(AbstractArchiveTask.class).named(name -> name.equals(jarTaskName)).configureEach(task -> {
+                task.from(jarJarTask);
             });
         });
     }
