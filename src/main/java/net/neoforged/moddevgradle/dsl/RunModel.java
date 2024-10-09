@@ -39,13 +39,13 @@ public abstract class RunModel implements Named, Dependencies {
     private List<TaskProvider<?>> tasksBefore = new ArrayList<>();
 
     @Inject
-    public RunModel(String name, Project project) {
+    public RunModel(String name, Project project, Iterable<ModModel> defaultMods) {
         this.name = name;
         if (!VALID_RUN_NAME.matcher(name).matches()) {
             throw new GradleException("Run name '" + name + "' is invalid! It must match " + VALID_RUN_NAME.pattern());
         }
 
-        getLoadedMods().convention(project.getExtensions().getByType(NeoForgeExtension.class).getMods());
+        getLoadedMods().convention(defaultMods);
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 

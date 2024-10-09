@@ -92,6 +92,9 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
 
     /**
      * To be implemented by specific IDE integrations to register a task to be run on reload with the IDE.
+     * Internally, a dummy task is registered with Gradle. All tasks that should run on project sync are then
+     * added as dependencies to that task using {@link #runTaskOnProjectSync}. This method is used to register
+     * the dummy task with the IDE itself.
      */
     protected abstract void registerProjectSyncTask(TaskProvider<?> task);
 

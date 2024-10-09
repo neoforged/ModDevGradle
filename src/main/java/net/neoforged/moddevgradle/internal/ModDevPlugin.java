@@ -4,21 +4,21 @@ import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
+import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.Named;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
-import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
@@ -32,7 +32,9 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -232,7 +234,7 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var runtimeDependenciesConfig = configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
+        configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -242,7 +244,6 @@ public class ModDevPlugin implements Plugin<Project> {
             // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
-            config.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
@@ -285,142 +286,87 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
+
+            spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            addClientResources(project, spec, createArtifacts);
         });
 
-        Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
-        extension.getRuns().all(run -> {
-            var type = RunUtils.getRequiredType(project, run);
-
-            var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
-                    .map(configurations::getByName);
-
-            var neoForgeModDevModules = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
-                spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
-                spec.setCanBeResolved(true);
-                spec.setCanBeConsumed(false);
-                spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
-                // NOTE: When running in vanilla mode, this configuration is simply empty
-                spec.getDependencies().addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                            .capabilities(caps -> {
-                                caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                            })
-                            // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                            .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                }));
-                spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
-            });
-
-            var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
-                spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
-                spec.setCanBeResolved(true);
-                spec.setCanBeConsumed(false);
-                spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
-                spec.attributes(attributes -> {
-                    attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
-                        var name = t.equals("client") || t.equals("data") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
-                        return project.getObjects().named(MinecraftDistribution.class, name);
-                    }));
-                    attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
-                });
-                spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
-                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration(), additionalClasspath);
-            });
-
-            var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
-                writeLcp.setGroup(INTERNAL_TASK_GROUP);
-                writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
-                writeLcp.getLegacyClasspathFile().convention(modDevBuildDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
-                writeLcp.addEntries(legacyClasspathConfiguration, createArtifacts.get().getResourcesArtifact());
-            });
-
-            var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
-                task.setGroup(INTERNAL_TASK_GROUP);
-                task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run.");
-
-                task.getGameDirectory().set(run.getGameDirectory());
-                task.getVmArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.VMARGS));
-                task.getProgramArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.PROGRAMARGS));
-                task.getLog4jConfigFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.LOG4J_CONFIG));
-                task.getRunType().set(run.getType());
-                task.getNeoForgeModDevConfig().from(userDevConfigOnly);
-                task.getModules().from(neoForgeModDevModules);
-                task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-                task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
-                task.getSystemProperties().set(run.getSystemProperties().map(props -> {
-                    props = new HashMap<>(props);
-                    return props;
-                }));
-                task.getMainClass().set(run.getMainClass());
-                task.getProgramArguments().set(run.getProgramArguments());
-                task.getJvmArguments().set(run.getJvmArguments());
-                task.getGameLogLevel().set(run.getLogLevel());
-            });
-            prepareRunTasks.put(run, prepareRunTask);
-            ideIntegration.runTaskOnProjectSync(prepareRunTask);
-
-            var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
-                task.setGroup(INTERNAL_TASK_GROUP);
-                task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
-
-                task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-                // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
-                // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
-                // We don't want to do that on IDE sync!
-                // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
-                //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
-                //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
-                //   depending on what order the tasks are executed.
-                // So we pass the absolute paths directly...
-                task.getRuntimeClasspath().set(project.provider(() -> {
-                    return runtimeClasspathConfig.get().getFiles().stream()
-                            .map(File::getAbsolutePath)
-                            .toList();
-                }));
-                task.getLaunchScript().set(RunUtils.getLaunchScript(modDevBuildDir, run));
-                task.getClasspathArgsFile().set(RunUtils.getArgFile(modDevBuildDir, run, RunUtils.RunArgFile.CLASSPATH));
-                task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
-                task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
-                task.getEnvironment().set(run.getEnvironment());
-                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
-            });
-            ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
-
-            tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
-                task.setGroup(TASK_GROUP);
-                task.setDescription("Runs the " + run.getName() + " Minecraft run configuration.");
-
-                // Launch with the Java version used in the project
-                var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
-                task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
-                // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
-                // This records a dependency on compiling and processing the resources of the source set.
-                task.getClasspathProvider().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
-                task.getGameDirectory().set(run.getGameDirectory());
-
-                task.getEnvironmentProperty().set(run.getEnvironment());
-                task.jvmArgs(RunUtils.getArgFileParameter(prepareRunTask.get().getVmArgsFile().get()).replace("\\", "\\\\"));
-                task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-                task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
-                // Of course we need the arg files to be up-to-date ;)
-                task.dependsOn(prepareRunTask);
-                task.dependsOn(run.getTasksBefore());
-
-                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
-            });
+        // This defines the module path for runs
+        var modulePathDependency = extension.getVersion().map(version -> {
+            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                    .capabilities(caps -> {
+                        caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                    })
+                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
         });
+
+        setupRuns(
+                project,
+                modDevBuildDir,
+                extension.getRuns(),
+                userDevConfigOnly,
+                modulePath -> {
+                    // NOTE: When running in vanilla mode, this configuration is simply empty
+                    modulePath.getDependencies().addLater(modulePathDependency);
+                },
+                legacyClassPath -> {
+                    legacyClassPath.extendsFrom(additionalClasspath);
+                },
+                downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
+        );
 
         setupJarJar(project);
 
-        configureTesting = () -> setupTesting(
-                project,
-                modDevBuildDir,
-                userDevConfigOnly,
-                downloadAssets,
-                createArtifacts,
-                neoForgeModDevLibrariesDependency,
-                minecraftClassesArtifact
-        );
+        configureTesting = () -> {
+            // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
+            configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
+                configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+                configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            });
+
+            var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
+                config.setDescription("Additional JUnit helpers provided by NeoForge");
+                config.setCanBeResolved(false);
+                config.setCanBeConsumed(false);
+                config.getDependencies().addLater(extension.getVersion().map(version -> {
+                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                            .capabilities(caps -> {
+                                caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
+                            });
+                }));
+            });
+
+            configurations.getByName(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
+                files.extendsFrom(configurations.getByName(CONFIGURATION_RUNTIME_DEPENDENCIES));
+                files.extendsFrom(testFixtures);
+            });
+
+            setupTestTask(
+                    project,
+                    userDevConfigOnly,
+                    tasks.named("test", Test.class),
+                    extension.getUnitTest().getLoadedMods(),
+                    extension.getUnitTest().getTestedMod(),
+                    modDevBuildDir,
+                    modulePath -> {
+                        // NOTE: When running in vanilla mode, this configuration is simply empty
+                        modulePath.getDependencies().addLater(extension.getVersion().map(version -> {
+                            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                                    .capabilities(caps -> {
+                                        caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
+                                    })
+                                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+                        }));
+                    },
+                    spec -> {
+                        spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+                        addClientResources(project, spec, createArtifacts);
+                    },
+                    downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
+            );
+        };
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
         if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
@@ -431,6 +377,16 @@ public class ModDevPlugin implements Plugin<Project> {
                     )
             );
         }
+    }
+
+    // FML searches for client resources on the legacy classpath
+    private static void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
+        // FML searches for client resources on the legacy classpath
+        spec.getDependencies().add(
+                project.getDependencyFactory().create(
+                        project.files(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact))
+                )
+        );
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
@@ -478,8 +434,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.getDependencies().addLater(neoForgeDependency);
             spec.attributes(attributes -> {
-                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.DOCUMENTATION));
-                attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE, project.getObjects().named(DocsType.class, DocsType.SOURCES));
+                setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, Category.DOCUMENTATION);
+                setNamedAttribute(project, attributes, DocsType.DOCS_TYPE_ATTRIBUTE, DocsType.SOURCES);
             });
         });
 
@@ -528,13 +484,179 @@ public class ModDevPlugin implements Plugin<Project> {
         return List.of(neoForgeClassesAndData, neoForgeSources, compileClasspath, runtimeClasspath);
     }
 
-    private static boolean shouldUseCombinedSourcesAndClassesArtifact() {
-        // Only IntelliJ needs the combined artifact
-        // For Eclipse, we can attach the sources via the Eclipse project model.
-        return IdeDetection.isIntelliJ();
+    static void setupRuns(Project project,
+                          Provider<Directory> argFileDir,
+                          DomainObjectCollection<RunModel> runs,
+                          Object runTemplatesSourceFile,
+                          Consumer<Configuration> configureModulePath,
+                          Consumer<Configuration> configureLegacyClasspath,
+                          Provider<RegularFile> assetPropertiesFile
+    ) {
+        var ideIntegration = IdeIntegration.of(project);
+
+        // Create a configuration to resolve DevLaunch without leaking it to consumers
+        var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
+            spec.setDescription("This configuration is used to inject DevLaunch into the runtime classpaths of runs.");
+            spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
+        });
+
+        Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
+        runs.all(run -> {
+            var prepareRunTask = setupRunInGradle(
+                    project,
+                    argFileDir,
+                    run,
+                    runTemplatesSourceFile,
+                    configureModulePath,
+                    configureLegacyClasspath,
+                    assetPropertiesFile,
+                    devLaunchConfig
+            );
+            prepareRunTasks.put(run, prepareRunTask);
+        });
+        ideIntegration.configureRuns(prepareRunTasks, runs);
     }
 
-    public void setupTesting() {
+    /**
+     * @param runTemplatesFile         See {@link ConfigurableFileCollection#from(Object...)}. This must ultimately resolve
+     *                                 to a single file that is
+     * @param configureLegacyClasspath Callback to add entries to the legacy classpath.
+     * @param assetPropertiesFile      File that contains the asset properties file produced by NFRT.
+     */
+    private static TaskProvider<PrepareRun> setupRunInGradle(
+            Project project,
+            Provider<Directory> argFileDir,
+            RunModel run,
+            Object runTemplatesFile,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
+            Provider<RegularFile> assetPropertiesFile,
+            Configuration devLaunchConfig
+    ) {
+        var ideIntegration = IdeIntegration.of(project);
+        var configurations = project.getConfigurations();
+        var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
+        var tasks = project.getTasks();
+
+        var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
+                .map(configurations::getByName);
+
+        // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
+        project.afterEvaluate(ignored -> {
+            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
+        });
+
+        var type = RunUtils.getRequiredType(project, run);
+
+        var modulePathConfiguration = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
+            spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            configureModulePath.accept(spec);
+        });
+
+        var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
+            spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            spec.attributes(attributes -> {
+                attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
+                    var name = t.equals("client") || t.equals("data") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                    return project.getObjects().named(MinecraftDistribution.class, name);
+                }));
+                setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+            });
+            configureLegacyClasspath.accept(spec);
+            spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
+        });
+
+        var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
+            writeLcp.setGroup(INTERNAL_TASK_GROUP);
+            writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
+            writeLcp.getLegacyClasspathFile().set(argFileDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
+            writeLcp.addEntries(legacyClasspathConfiguration);
+        });
+
+        var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run.");
+
+            task.getGameDirectory().set(run.getGameDirectory());
+            task.getVmArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.VMARGS));
+            task.getProgramArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.PROGRAMARGS));
+            task.getLog4jConfigFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.LOG4J_CONFIG));
+            task.getRunType().set(run.getType());
+            task.getRunTypeTemplatesSource().from(runTemplatesFile);
+            task.getModules().from(modulePathConfiguration);
+            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            task.getAssetProperties().set(assetPropertiesFile);
+            task.getSystemProperties().set(run.getSystemProperties().map(props -> {
+                props = new HashMap<>(props);
+                return props;
+            }));
+            task.getMainClass().set(run.getMainClass());
+            task.getProgramArguments().set(run.getProgramArguments());
+            task.getJvmArguments().set(run.getJvmArguments());
+            task.getGameLogLevel().set(run.getLogLevel());
+        });
+        ideIntegration.runTaskOnProjectSync(prepareRunTask);
+
+        var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
+
+            task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
+            // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
+            // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
+            // We don't want to do that on IDE sync!
+            // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
+            //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
+            //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
+            //   depending on what order the tasks are executed.
+            // So we pass the absolute paths directly...
+            task.getRuntimeClasspath().set(project.provider(() -> {
+                return runtimeClasspathConfig.get().getFiles().stream()
+                        .map(File::getAbsolutePath)
+                        .toList();
+            }));
+            task.getLaunchScript().set(RunUtils.getLaunchScript(argFileDir, run));
+            task.getClasspathArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.CLASSPATH));
+            task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+            task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
+            task.getEnvironment().set(run.getEnvironment());
+            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+        });
+        ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
+
+        tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
+            task.setGroup(TASK_GROUP);
+            task.setDescription("Runs the " + run.getName() + " Minecraft run configuration.");
+
+            // Launch with the Java version used in the project
+            var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
+            task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
+            // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
+            // This records a dependency on compiling and processing the resources of the source set.
+            task.getClasspathProvider().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
+            task.getGameDirectory().set(run.getGameDirectory());
+
+            task.getEnvironmentProperty().set(run.getEnvironment());
+            task.jvmArgs(RunUtils.getArgFileParameter(prepareRunTask.get().getVmArgsFile().get()).replace("\\", "\\\\"));
+            task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+            task.args(RunUtils.getArgFileParameter(prepareRunTask.get().getProgramArgsFile().get()).replace("\\", "\\\\"));
+            // Of course we need the arg files to be up-to-date ;)
+            task.dependsOn(prepareRunTask);
+            task.dependsOn(run.getTasksBefore());
+
+            task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+        });
+
+        return prepareRunTask;
+    }
+
+    public void setupTestTask() {
         if (configureTesting == null) {
             throw new IllegalStateException("Unit testing was already enabled once!");
         }
@@ -542,85 +664,56 @@ public class ModDevPlugin implements Plugin<Project> {
         configureTesting = null;
     }
 
-    private void setupTesting(Project project,
-                              Provider<Directory> modDevDir,
-                              Configuration userDevConfigOnly,
-                              TaskProvider<DownloadAssets> downloadAssets,
-                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
-                              Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
-                              Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
-        var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
-        var unitTest = extension.getUnitTest();
-        var loadedMods = unitTest.getLoadedMods();
-        var testedMod = unitTest.getTestedMod();
+    /**
+     * @see #setupRunInGradle for a description of the parameters
+     */
+    static void setupTestTask(Project project,
+                              Object runTemplatesSourceFile,
+                              TaskProvider<Test> testTask,
+                              SetProperty<ModModel> loadedMods,
+                              Property<ModModel> testedMod,
+                              Provider<Directory> argFileDir,
+                              Consumer<Configuration> configureModulePath,
+                              Consumer<Configuration> configureLegacyClasspath,
+                              Provider<RegularFile> assetPropertiesFile
+    ) {
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var ideIntegration = IdeIntegration.of(project);
 
         var tasks = project.getTasks();
         var configurations = project.getConfigurations();
-        var dependencyFactory = project.getDependencyFactory();
 
-        // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
-        configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            configuration.getDependencies().addLater(neoForgeModDevLibrariesDependency);
-        });
-
-        var testFixtures = configurations.create("neoForgeTestFixtures", config -> {
-            config.setDescription("Additional JUnit helpers provided by NeoForge");
-            config.setCanBeResolved(false);
-            config.setCanBeConsumed(false);
-            config.getDependencies().addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                        .capabilities(caps -> {
-                            caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
-                        });
-            }));
-        });
-
-        var testRuntimeClasspathConfig = configurations.named(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
-            files.extendsFrom(configurations.getByName(CONFIGURATION_RUNTIME_DEPENDENCIES));
-            files.extendsFrom(testFixtures);
-        });
+        var testRuntimeClasspath = configurations.getByName(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME);
 
         var neoForgeModDevModules = project.getConfigurations().create("neoForgeTestModules", spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
-            // NOTE: When running in vanilla mode, this configuration is simply empty
-            spec.getDependencies().addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                        .capabilities(caps -> {
-                            caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                        })
-                        // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                        .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            }));
-            spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
+            spec.shouldResolveConsistentlyWith(testRuntimeClasspath);
+            configureModulePath.accept(spec);
         });
 
         var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
             spec.setDescription("Contains the legacy classpath of unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
+            spec.shouldResolveConsistentlyWith(testRuntimeClasspath);
             spec.attributes(attributes -> {
                 setNamedAttribute(project, attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
                 setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
             });
-            spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+            configureLegacyClasspath.accept(spec);
         });
 
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
-        var runArgsDir = modDevDir.map(dir -> dir.dir("junit"));
+        var runArgsDir = argFileDir.map(dir -> dir.dir("junit"));
 
         var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
             writeLcp.setGroup(INTERNAL_TASK_GROUP);
             writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
-            writeLcp.addEntries(legacyClasspathConfiguration, createArtifacts.get().getResourcesArtifact());
+            writeLcp.addEntries(legacyClasspathConfiguration);
         });
 
         var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
@@ -633,17 +726,17 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getVmArgsFile().set(vmArgsFile);
             task.getProgramArgsFile().set(programArgsFile);
             task.getLog4jConfigFile().set(log4j2ConfigFile);
-            task.getNeoForgeModDevConfig().from(userDevConfigOnly);
+            task.getRunTypeTemplatesSource().from(runTemplatesSourceFile);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
-            task.getAssetProperties().set(downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile));
+            task.getAssetProperties().set(assetPropertiesFile);
             task.getGameLogLevel().set(Level.INFO);
         });
 
         // Ensure the test files are written on sync so that users who use IDE-only tests can run them
         ideIntegration.runTaskOnProjectSync(prepareTask);
 
-        var testTask = tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class, task -> {
+        testTask.configure(task -> {
             task.dependsOn(prepareTask);
 
             // The FML JUnit plugin uses this system property to read a
