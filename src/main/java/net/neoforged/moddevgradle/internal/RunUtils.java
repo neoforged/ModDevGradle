@@ -1,12 +1,9 @@
 package net.neoforged.moddevgradle.internal;
 
-import net.neoforged.elc.configs.LaunchConfig;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
-import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserCodeException;
@@ -22,21 +19,13 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.process.CommandLineArgumentProvider;
-import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.gradle.ext.ModuleRef;
 import org.slf4j.event.Level;
-import org.xml.sax.InputSource;
 
 import javax.inject.Inject;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -47,7 +36,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -155,7 +143,7 @@ final class RunUtils {
                         <Logger level="${sys:forge.logging.mojang.level:-info}" name="com.mojang"/>
                         <Logger level="${sys:forge.logging.mojang.level:-info}" name="net.minecraft"/>
                         <Logger level="${sys:forge.logging.classtransformer.level:-info}" name="cpw.mods.modlauncher.ClassTransformer"/>
-
+                
                         <!-- Netty reflects into JDK internals, and it's causing useless DEBUG-level error stacktraces. We just ignore them -->
                         <Logger name="io.netty.util.internal.PlatformDependent0">
                             <filters>
@@ -163,7 +151,7 @@ final class RunUtils {
                                 <RegexFilter regex="^jdk\\.internal\\.misc\\.Unsafe\\.allocateUninitializedArray\\(int\\): unavailable$" onMatch="DENY" onMismatch="NEUTRAL" />
                             </filters>
                         </Logger>
-
+                
                         <Root level="$ROOTLEVEL$">
                             <AppenderRef ref="Console" />
                             <AppenderRef ref="ServerGuiConsole" level="${sys:forge.logging.console.level:-info}"/>
@@ -205,13 +193,13 @@ final class RunUtils {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
 
-    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
+    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, includeUnitTests));
+        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod));
         return modFoldersProvider;
     }
 
-    private static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
+    public static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
         for (var s : ExtensionUtils.getSourceSets(someProject)) {
             if (s == sourceSet) {
                 return someProject;
@@ -231,69 +219,25 @@ final class RunUtils {
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
     }
 
-    public static ModFoldersProvider getIdeaModFoldersProvider(Project project,
-                                                               @Nullable Function<Project, File> outputDirectory,
-                                                               Provider<Set<ModModel>> modsProvider,
-                                                               boolean includeUnitTests) {
-        Provider<Map<String, ModFolder>> folders;
-        if (outputDirectory != null) {
-            folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-                var sourceSetDir = outputDirectory.apply(findSourceSetProject(project, sourceSet)).toPath().resolve(getIdeaOutName(sourceSet));
-                output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
-            });
-        } else {
-            folders = getModFoldersForGradle(project, modsProvider, includeUnitTests);
-        }
-
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(folders);
-        return modFoldersProvider;
-    }
-
-    public static void writeEclipseLaunchConfig(Project project, String name, LaunchConfig config) {
-        var file = project.file(".eclipse/configurations/" + name + ".launch");
-        file.getParentFile().mkdirs();
-        try (var writer = new FileWriter(file, false)) {
-            config.write(writer);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to write launch file: " + file, e);
-        } catch (XMLStreamException e) {
-            throw new RuntimeException("Failed to write launch file: " + file, e);
-        }
-    }
-
-    public static ModFoldersProvider getEclipseModFoldersProvider(Project project,
-                                                                  Provider<Set<ModModel>> modsProvider,
-                                                                  boolean includeUnitTests) {
-        var folders = buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
-            output.from(findSourceSetProject(project, sourceSet).getProjectDir().toPath()
-                    .resolve("bin")
-                    .resolve(sourceSet.getName()));
-        });
-
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(folders);
-        return modFoldersProvider;
-    }
-
-    private static String getIdeaOutName(final SourceSet sourceSet) {
-        return sourceSet.getName().equals(SourceSet.MAIN_SOURCE_SET_NAME) ? "production" : sourceSet.getName();
-    }
-
-    private static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests) {
-        return buildModFolders(project, modsProvider, includeUnitTests, (sourceSet, output) -> {
+    public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
+                                                                          Provider<Set<ModModel>> modsProvider,
+                                                                          @Nullable Provider<ModModel> testedMod) {
+        return buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(sourceSet.getOutput());
         });
     }
 
-    private static Provider<Map<String, ModFolder>> buildModFolders(Project project, Provider<Set<ModModel>> modsProvider, boolean includeUnitTests, BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
-        var extension = ExtensionUtils.findExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
-        var testedModProvider = extension.getUnitTest().getTestedMod()
-                .filter(m -> includeUnitTests)
-                .map(Optional::of)
-                .orElse(Optional.empty());
+    public static Provider<Map<String, ModFolder>> buildModFolders(Project project,
+                                                                   Provider<Set<ModModel>> modsProvider,
+                                                                   @Nullable Provider<ModModel> testedModProvider,
+                                                                   BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
+        // Convert it to optional to ensure zip will be called even if no mod under test is present.
+        if (testedModProvider == null) {
+            testedModProvider = project.provider(() -> null);
+        }
+        var optionalTestedModProvider = testedModProvider.map(Optional::of).orElse(Optional.empty());
 
-        return modsProvider.zip(testedModProvider, ((mods, testedMod) -> {
+        return modsProvider.zip(optionalTestedModProvider, ((mods, testedMod) -> {
             if (testedMod.isPresent()) {
                 if (!mods.contains(testedMod.get())) {
                     throw new InvalidUserCodeException("The tested mod (%s) must be included in the mods loaded for unit testing (%s)."
@@ -328,76 +272,6 @@ final class RunUtils {
         }));
     }
 
-    // TODO: Loom has unit tests for this... Probably a good idea!
-    @Language("xpath")
-    public static final String IDEA_DELEGATED_BUILD_XPATH = "/project/component[@name='GradleSettings']/option[@name='linkedExternalProjectsSettings']/GradleProjectSettings/option[@name='delegatedBuild']/@value";
-    @Language("xpath")
-    public static final String IDEA_OUTPUT_XPATH = "/project/component[@name='ProjectRootManager']/output/@url";
-
-    /**
-     * Returns a function that maps a project to the configured output directory,
-     * only if "Build and run using" is set to "IDEA".
-     * In other cases, returns {@code null}.
-     */
-    @Nullable
-    static Function<Project, File> getIntellijOutputDirectory(Project someProject) {
-        var ideaDir = IdeDetection.getIntellijProjectDir(someProject);
-        if (ideaDir == null) {
-            return null;
-        }
-
-        // Check if IntelliJ is configured to build with Gradle.
-        var gradleXml = new File(ideaDir, "gradle.xml");
-        var delegatedBuild = evaluateXPath(gradleXml, IDEA_DELEGATED_BUILD_XPATH);
-        if (!"false".equals(delegatedBuild)) {
-            return null;
-        }
-
-        // Find configured output path
-        var miscXml = new File(ideaDir, "misc.xml");
-        String outputDirUrl = evaluateXPath(miscXml, IDEA_OUTPUT_XPATH);
-        if (outputDirUrl == null) {
-            // Apparently IntelliJ defaults to out/ now?
-            outputDirUrl = "file://$PROJECT_DIR$/out";
-        }
-
-        // The output dir can start with something like "//C:\"; File can handle it.
-        outputDirUrl = outputDirUrl.replaceAll("^file:", "");
-
-        var outputDirTemplate = outputDirUrl;
-        return p -> new File(outputDirTemplate.replace("$PROJECT_DIR$", p.getProjectDir().getAbsolutePath()));
-    }
-
-    @Nullable
-    private static String evaluateXPath(File file, @Language("xpath") String expression) {
-        try (var fis = new FileInputStream(file)) {
-            String result = XPathFactory.newInstance().newXPath().evaluate(expression, new InputSource(fis));
-            return result.isBlank() ? null : result;
-        } catch (FileNotFoundException | XPathExpressionException ignored) {
-            return null;
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to evaluate xpath " + expression + " on file " + file, e);
-        }
-    }
-
-    /**
-     * Convert a project and source set to an IntelliJ module name.
-     * Do not use {@link ModuleRef} as it does not correctly handle projects with a space in their name!
-     */
-    public static String getIntellijModuleName(Project project, SourceSet sourceSet) {
-        var moduleName = new StringBuilder();
-        // The `replace` call here is our bug fix compared to ModuleRef!
-        // The actual IDEA logic is more complicated, but this should cover the majority of use cases.
-        // See https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java#L205
-        // which calls https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/platform/util-rt/src/com/intellij/util/PathUtilRt.java#L120
-        moduleName.append(project.getRootProject().getName().replace(" ", "_"));
-        if (project != project.getRootProject()) {
-            moduleName.append(project.getPath().replaceAll(":", "."));
-        }
-        moduleName.append(".");
-        moduleName.append(sourceSet.getName());
-        return moduleName.toString();
-    }
 }
 
 record AssetProperties(String assetIndex, String assetsRoot) {
