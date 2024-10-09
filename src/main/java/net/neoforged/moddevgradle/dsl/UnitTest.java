@@ -22,7 +22,7 @@ public abstract class UnitTest {
      * Enables the integration.
      */
     public void enable() {
-        project.getPlugins().getPlugin(ModDevPlugin.class).setupTesting();
+        project.getPlugins().getPlugin(ModDevPlugin.class).setupTestTask();
     }
 
     /**

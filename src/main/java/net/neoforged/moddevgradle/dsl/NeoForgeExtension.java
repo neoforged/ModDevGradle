@@ -35,7 +35,7 @@ public abstract class NeoForgeExtension {
     public NeoForgeExtension(Project project, DataFileCollection accessTransformers, DataFileCollection interfaceInjectionData) {
         this.project = project;
         mods = project.container(ModModel.class);
-        runs = project.container(RunModel.class);
+        runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
         this.accessTransformers = accessTransformers;
