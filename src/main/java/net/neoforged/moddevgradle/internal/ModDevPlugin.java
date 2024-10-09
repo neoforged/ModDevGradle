@@ -3,6 +3,8 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.elc.configs.GradleLaunchConfig;
 import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.elc.configs.LaunchGroup;
+import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
+import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
@@ -21,6 +23,7 @@ import net.neoforged.vsclc.attribute.PathLike;
 import net.neoforged.vsclc.attribute.ShortCmdBehaviour;
 import net.neoforged.vsclc.writer.WritingMode;
 import org.gradle.api.GradleException;
+import org.gradle.api.Named;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -29,6 +32,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
+import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.Usage;
@@ -36,6 +40,7 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
@@ -85,9 +90,6 @@ import java.util.stream.Collectors;
 public class ModDevPlugin implements Plugin<Project> {
     private static final Logger LOG = LoggerFactory.getLogger(ModDevPlugin.class);
 
-    private static final Attribute<String> ATTRIBUTE_DISTRIBUTION = Attribute.of("net.neoforged.distribution", String.class);
-    private static final Attribute<String> ATTRIBUTE_OPERATING_SYSTEM = Attribute.of("net.neoforged.operatingsystem", String.class);
-
     /**
      * This must be relative to the project directory since we can only set this to the same project-relative
      * directory across all subprojects due to IntelliJ limitations.
@@ -109,12 +111,20 @@ public class ModDevPlugin implements Plugin<Project> {
      */
     public static final String CONFIGURATION_COMPILE_DEPENDENCIES = "neoForgeCompileDependencies";
 
+    private final ObjectFactory objectFactory;
+
     private Runnable configureTesting = null;
+
+    @Inject
+    public ModDevPlugin(ObjectFactory objectFactory) {
+        this.objectFactory = objectFactory;
+    }
 
     @Override
     public void apply(Project project) {
         project.getPlugins().apply(JavaLibraryPlugin.class);
         project.getPlugins().apply(NeoFormRuntimePlugin.class);
+        project.getPlugins().apply(MinecraftDependenciesPlugin.class);
 
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
@@ -183,11 +193,6 @@ public class ModDevPlugin implements Plugin<Project> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
         }));
-
-        project.getDependencies().attributesSchema(attributesSchema -> {
-            attributesSchema.attribute(ATTRIBUTE_DISTRIBUTION).getDisambiguationRules().add(DistributionDisambiguation.class);
-            attributesSchema.attribute(ATTRIBUTE_OPERATING_SYSTEM).getDisambiguationRules().add(OperatingSystemDisambiguation.class);
-        });
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(project, extension);
 
@@ -343,7 +348,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 spec.attributes(attributes -> {
-                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") || t.equals("data") ? "client" : "server"));
+                    attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
+                        var name = t.equals("client") || t.equals("data") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                        return project.getObjects().named(MinecraftDistribution.class, name);
+                    }));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
                 spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
@@ -517,8 +525,8 @@ public class ModDevPlugin implements Plugin<Project> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     })));
             spec.attributes(attributes -> {
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_API));
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_API);
+                setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
             });
         });
 
@@ -538,8 +546,8 @@ public class ModDevPlugin implements Plugin<Project> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     })));
             spec.attributes(attributes -> {
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
+                setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+                setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
             });
         });
 
@@ -622,8 +630,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.shouldResolveConsistentlyWith(testRuntimeClasspathConfig.get());
             spec.attributes(attributes -> {
-                attributes.attribute(ATTRIBUTE_DISTRIBUTION, "client");
-                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+                setNamedAttribute(project, attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
+                setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
             });
             spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
         });
@@ -1013,14 +1021,14 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
+            spec.attributes(attributes -> setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, category));
         });
 
         var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
             spec.setDescription("Published data files for " + name);
             spec.setCanBeConsumed(true);
             spec.setCanBeResolved(false);
-            spec.attributes(attributes -> attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, category)));
+            spec.attributes(attributes -> setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, category));
         });
 
         // Set up the variant publishing conditionally
@@ -1061,5 +1069,12 @@ public class ModDevPlugin implements Plugin<Project> {
 
         return new DataFileCollectionWrapper(extension, configuration);
     }
-}
 
+    private <T extends Named> void setNamedAttribute(AttributeContainer attributes, Attribute<T> attribute, String value) {
+        attributes.attribute(attribute, objectFactory.named(attribute.getType(), value));
+    }
+
+    private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {
+        attributes.attribute(attribute, project.getObjects().named(attribute.getType(), value));
+    }
+}
