@@ -76,7 +76,7 @@ final class IntelliJIntegration extends IdeIntegration {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
 
-            var runConfigurations = getIntelliJRunConfigurations(); // TODO: Consider making this a value source
+            var runConfigurations = getIntelliJRunConfigurations();
 
             if (runConfigurations == null) {
                 LOG.debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
@@ -138,10 +138,8 @@ final class IntelliJIntegration extends IdeIntegration {
 
         // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
         // IMPORTANT: This affects *all projects*, not just this one. We have to use $MODULE_WORKING_DIR$ to make it work.
-        // TODO: remove getRootProject call here, this is just for testing!
         var intelliJRunConfigurations = getIntelliJRunConfigurations();
         if (intelliJRunConfigurations != null) {
-            Logging.getLogger(ModDevPlugin.class).lifecycle("Configuring intellij test thing");
             intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
                 // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
                 jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevPlugin.JUNIT_GAME_DIR);
@@ -157,8 +155,6 @@ final class IntelliJIntegration extends IdeIntegration {
                         + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
                 );
             });
-        } else {
-            Logging.getLogger(ModDevPlugin.class).lifecycle("NOT configuring intellij test thing");
         }
     }
 
