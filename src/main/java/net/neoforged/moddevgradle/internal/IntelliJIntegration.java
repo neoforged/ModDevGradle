@@ -189,12 +189,12 @@ final class IntelliJIntegration extends IdeIntegration {
         }
         appRun.setModuleName(getIntellijModuleName(project, sourceSet));
         appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        appRun.setEnvs(run.getEnvironment().get());
-
+        var modFoldersProvider = getModFoldersProvider(project, outputDirectory, run.getLoadedMods(), null);
+        appRun.setEnvs(RunUtils.replaceModClassesEnv(run, () -> modFoldersProvider));
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
                 + " "
-                + RunUtils.escapeJvmArg(getModFoldersProvider(project, outputDirectory, run.getLoadedMods(), null).getArgument())
+                + RunUtils.escapeJvmArg(modFoldersProvider.getArgument())
         );
         appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));

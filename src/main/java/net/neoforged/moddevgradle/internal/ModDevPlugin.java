@@ -23,6 +23,7 @@ import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
+import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -153,13 +154,13 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
-        var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+        var neoForgeModDevLibrariesDependency = extension.getNeoForgeArtifact().map(artifactId -> {
+            return dependencyFactory.create(artifactId)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
-        }).orElse(extension.getNeoFormVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoform:" + version)
+        }).orElse(extension.getNeoFormArtifact().map(artifact -> {
+            return dependencyFactory.create(artifact)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
@@ -196,13 +197,24 @@ public class ModDevPlugin implements Plugin<Project> {
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getVersion().map(v -> "neoforge-" + v).orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v)),
+                        extension.getNeoForgeArtifact().map(art -> {
+                                    var split = art.split(":", 3);
+                                    return split[1] + "-" + split[2];
+                                })
+                                .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
             task.getCompiledWithSourcesArtifact().set(jarPathFactory.apply("-merged"));
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
-            task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
+            task.getResourcesArtifact().set(minecraftArtifactsDir.zip(
+                    extension.getNeoForgeArtifact().map(art -> {
+                                var split = art.split(":", 3);
+                                return split[2] + "-" + split[1];
+                            })
+                            .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
+                    (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
+            ));
 
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
@@ -273,8 +285,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.getDependencies().addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                return dependencyFactory.create(artifact)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
@@ -378,11 +390,11 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
-        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip");
+        return extension.getNeoFormArtifact().map(art -> art + "@zip");
     }
 
     private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
-        return extension.getVersion().map(version -> "net.neoforged:neoforge:" + version + ":userdev");
+        return extension.getNeoForgeArtifact().map(art -> art + ":userdev");
     }
 
     /**
@@ -394,8 +406,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var configurationPrefix = "neoFormRuntimeDependencies";
 
-        Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
-        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
+        Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
+        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormArtifact().map(dependencyFactory::create);
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -453,7 +465,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.getDependencies().addLater(neoForgeDependency); // Universal Jar
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(a -> a + ":universal").map(dependencyFactory::create)); // Universal Jar
             spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
@@ -466,6 +478,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.attributes(attributes -> {
                 setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
                 setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
+                setNamedAttribute(attributes, Category.CATEGORY_ATTRIBUTE, Category.LIBRARY);
+                setNamedAttribute(attributes, LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, LibraryElements.JAR);
             });
         });
 

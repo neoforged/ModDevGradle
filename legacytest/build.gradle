@@ -1,0 +1,41 @@
+plugins {
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacy'
+}
+
+group = 'com.example.legacy'
+version = '1.0.0'
+
+repositories {
+    mavenLocal()
+    maven {
+        name 'cursemaven'
+        url 'https://cursemaven.com'
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+neoForge {
+    neoFormVersion = '1.19.2'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url file('local')
+        }
+    }
+}

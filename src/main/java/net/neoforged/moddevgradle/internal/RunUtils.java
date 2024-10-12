@@ -12,6 +12,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
@@ -30,12 +31,15 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 final class RunUtils {
@@ -194,7 +198,7 @@ final class RunUtils {
     }
 
     public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod) {
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class, project);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod));
         return modFoldersProvider;
     }
@@ -217,6 +221,16 @@ final class RunUtils {
             }
         }
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
+    }
+
+    public static Map<String, String> replaceModClassesEnv(RunModel model, Supplier<ModFoldersProvider> newProvider) {
+        var vars = model.getEnvironment().get();
+        if (vars.containsKey("MOD_CLASSES")) {
+            final var copy = new HashMap<>(vars);
+            copy.put("MOD_CLASSES", newProvider.get().getClassesArgument().get());
+            return copy;
+        }
+        return vars;
     }
 
     public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
@@ -279,24 +293,29 @@ record AssetProperties(String assetIndex, String assetsRoot) {
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
-    public ModFoldersProvider() {
+    public ModFoldersProvider(Project project) {
+        getClassesArgument().set(project.provider(() -> {
+            var stringModFolderMap = getModFolders().get();
+            return stringModFolderMap.entrySet().stream()
+                    .<String>mapMulti((entry, output) -> {
+                        for (var directory : entry.getValue().getFolders()) {
+                            // Resources
+                            output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                        }
+                    })
+                    .collect(Collectors.joining(File.pathSeparator));
+        }));
     }
 
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();
 
     @Internal
+    abstract Property<String> getClassesArgument();
+
+    @Internal
     public String getArgument() {
-        var stringModFolderMap = getModFolders().get();
-        return "-Dfml.modFolders=%s".formatted(
-                stringModFolderMap.entrySet().stream()
-                        .<String>mapMulti((entry, output) -> {
-                            for (var directory : entry.getValue().getFolders()) {
-                                // Resources
-                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
-                            }
-                        })
-                        .collect(Collectors.joining(File.pathSeparator)));
+        return "-Dfml.modFolders=%s".formatted(getClassesArgument().get());
     }
 
     @Override
