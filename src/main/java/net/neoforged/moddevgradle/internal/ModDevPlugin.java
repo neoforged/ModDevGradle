@@ -292,6 +292,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // This defines the module path for runs
+        // NOTE: When running in vanilla mode, this provider is undefined and will not result in an actual dependency
         var modulePathDependency = extension.getVersion().map(version -> {
             return dependencyFactory.create("net.neoforged:neoforge:" + version)
                     .capabilities(caps -> {
@@ -306,13 +307,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 modDevBuildDir,
                 extension.getRuns(),
                 userDevConfigOnly,
-                modulePath -> {
-                    // NOTE: When running in vanilla mode, this configuration is simply empty
-                    modulePath.getDependencies().addLater(modulePathDependency);
-                },
-                legacyClassPath -> {
-                    legacyClassPath.extendsFrom(additionalClasspath);
-                },
+                modulePath -> modulePath.getDependencies().addLater(modulePathDependency),
+                legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
         );
 
@@ -349,17 +345,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     extension.getUnitTest().getLoadedMods(),
                     extension.getUnitTest().getTestedMod(),
                     modDevBuildDir,
-                    modulePath -> {
-                        // NOTE: When running in vanilla mode, this configuration is simply empty
-                        modulePath.getDependencies().addLater(extension.getVersion().map(version -> {
-                            return dependencyFactory.create("net.neoforged:neoforge:" + version)
-                                    .capabilities(caps -> {
-                                        caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
-                                    })
-                                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-                        }));
-                    },
+                    modulePath -> modulePath.getDependencies().addLater(modulePathDependency),
                     spec -> {
                         spec.getDependencies().addLater(neoForgeModDevLibrariesDependency);
                         addClientResources(project, spec, createArtifacts);
