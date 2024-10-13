@@ -1,11 +1,7 @@
 package net.neoforged.moddevgradle.internal.utils;
 
-import org.gradle.api.Project;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 /**
  * Utilities for trying to detect in which IDE Gradle is running.
@@ -87,33 +83,6 @@ public final class IdeDetection {
         LOG.debug("VSCODE_PID is set to {}, but we ({}) are not running as a child of that process.",
                 vsCodePid, ourProcess.pid());
         return false;
-    }
-
-    /**
-     * Try to find the IntelliJ project directory that belongs to this Gradle project.
-     * There are scenarios where this is impossible, since IntelliJ allows adding
-     * Gradle builds to IntelliJ projects in a completely different directory.
-     */
-    @Nullable
-    public static File getIntellijProjectDir(Project project) {
-        // Always try the root of a composite build first, since it has the highest chance
-        var root = project.getGradle().getParent();
-        if (root != null) {
-            while (root.getParent() != null) {
-                root = root.getParent();
-            }
-
-            return getIntellijProjectDir(root.getRootProject().getProjectDir());
-        }
-
-        // As a fallback or in case of not using composite builds, try the root project folder
-        return getIntellijProjectDir(project.getRootDir());
-    }
-
-    @Nullable
-    private static File getIntellijProjectDir(File gradleProjectDir) {
-        var ideaDir = new File(gradleProjectDir, ".idea");
-        return ideaDir.exists() ? ideaDir : null;
     }
 
 }

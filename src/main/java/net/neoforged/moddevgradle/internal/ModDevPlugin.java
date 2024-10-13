@@ -1,8 +1,5 @@
 package net.neoforged.moddevgradle.internal;
 
-import net.neoforged.elc.configs.GradleLaunchConfig;
-import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
-import net.neoforged.elc.configs.LaunchGroup;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
@@ -10,23 +7,14 @@ import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
-import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
-import net.neoforged.vsclc.BatchedLaunchWriter;
-import net.neoforged.vsclc.attribute.ConsoleType;
-import net.neoforged.vsclc.attribute.PathLike;
-import net.neoforged.vsclc.attribute.ShortCmdBehaviour;
-import net.neoforged.vsclc.writer.WritingMode;
-import org.gradle.api.GradleException;
 import org.gradle.api.Named;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -41,7 +29,6 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -51,38 +38,20 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.tasks.testing.Test;
-import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
-import org.gradle.plugins.ide.eclipse.EclipsePlugin;
-import org.gradle.plugins.ide.eclipse.model.EclipseModel;
-import org.gradle.plugins.ide.eclipse.model.Library;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
-import org.gradle.plugins.ide.idea.model.IdeaProject;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.gradle.ext.Application;
-import org.jetbrains.gradle.ext.BeforeRunTask;
-import org.jetbrains.gradle.ext.IdeaExtPlugin;
-import org.jetbrains.gradle.ext.JUnit;
-import org.jetbrains.gradle.ext.ProjectSettings;
-import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * The main plugin class.
@@ -94,10 +63,10 @@ public class ModDevPlugin implements Plugin<Project> {
      * This must be relative to the project directory since we can only set this to the same project-relative
      * directory across all subprojects due to IntelliJ limitations.
      */
-    private static final String JUNIT_GAME_DIR = "build/minecraft-junit";
+    static final String JUNIT_GAME_DIR = "build/minecraft-junit";
 
     private static final String TASK_GROUP = "mod development";
-    private static final String INTERNAL_TASK_GROUP = "mod development/internal";
+    static final String INTERNAL_TASK_GROUP = "mod development/internal";
 
     /**
      * Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
@@ -138,6 +107,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var configurations = project.getConfigurations();
         var layout = project.getLayout();
         var tasks = project.getTasks();
+
+        var ideIntegration = IdeIntegration.of(project);
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
@@ -255,7 +226,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
         Provider<ConfigurableFileCollection> minecraftClassesArtifact;
-        if (shouldUseCombinedSourcesAndClassesArtifact()) {
+        if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact()));
         } else {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
@@ -308,13 +279,6 @@ public class ModDevPlugin implements Plugin<Project> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
             }));
-        });
-
-        var ideSyncTask = tasks.register("neoForgeIdeSync", task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
-            task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
-            task.dependsOn(createArtifacts);
-            task.dependsOn(extension.getIdeSyncTasks());
         });
 
         var additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
@@ -393,7 +357,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getGameLogLevel().set(run.getLogLevel());
             });
             prepareRunTasks.put(run, prepareRunTask);
-            ideSyncTask.configure(task -> task.dependsOn(prepareRunTask));
+            ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
             var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
                 task.setGroup(INTERNAL_TASK_GROUP);
@@ -418,9 +382,9 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
                 task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
                 task.getEnvironment().set(run.getEnvironment());
-                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), false));
+                task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
             });
-            ideSyncTask.configure(task -> task.dependsOn(createLaunchScriptTask));
+            ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
 
             tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
                 task.setGroup(TASK_GROUP);
@@ -442,7 +406,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.dependsOn(prepareRunTask);
                 task.dependsOn(run.getTasksBefore());
 
-                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), false));
+                task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
             });
         });
 
@@ -453,15 +417,20 @@ public class ModDevPlugin implements Plugin<Project> {
                 modDevBuildDir,
                 userDevConfigOnly,
                 downloadAssets,
-                ideSyncTask,
                 createArtifacts,
                 neoForgeModDevLibrariesDependency,
                 minecraftClassesArtifact
         );
 
-        configureIntelliJModel(project, ideSyncTask, extension, prepareRunTasks);
-
-        configureEclipseModel(project, ideSyncTask, createArtifacts, extension, prepareRunTasks);
+        // For IDEs that support it, link the source/binary artifacts if we use separated ones
+        if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+            ideIntegration.attachSources(
+                    Map.of(
+                            createArtifacts.get().getCompiledArtifact(),
+                            createArtifacts.get().getSourcesArtifact()
+                    )
+            );
+        }
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
@@ -577,13 +546,16 @@ public class ModDevPlugin implements Plugin<Project> {
                               Provider<Directory> modDevDir,
                               Configuration userDevConfigOnly,
                               TaskProvider<DownloadAssets> downloadAssets,
-                              TaskProvider<Task> ideSyncTask,
                               TaskProvider<CreateMinecraftArtifacts> createArtifacts,
                               Provider<ModuleDependency> neoForgeModDevLibrariesDependency,
                               Provider<ConfigurableFileCollection> minecraftClassesArtifact) {
         var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
         var unitTest = extension.getUnitTest();
+        var loadedMods = unitTest.getLoadedMods();
+        var testedMod = unitTest.getTestedMod();
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
+
+        var ideIntegration = IdeIntegration.of(project);
 
         var tasks = project.getTasks();
         var configurations = project.getConfigurations();
@@ -669,7 +641,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // Ensure the test files are written on sync so that users who use IDE-only tests can run them
-        ideSyncTask.configure(task -> task.dependsOn(prepareTask));
+        ideIntegration.runTaskOnProjectSync(prepareTask);
 
         var testTask = tasks.named(JavaPlugin.TEST_TASK_NAME, Test.class, task -> {
             task.dependsOn(prepareTask);
@@ -679,53 +651,16 @@ public class ModDevPlugin implements Plugin<Project> {
             task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
             task.jvmArgs(RunUtils.getArgFileParameter(vmArgsFile.get()));
 
-            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, unitTest.getLoadedMods(), true);
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, loadedMods, testedMod);
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 
         project.afterEvaluate(p -> {
             // Test tasks don't have a provider-based property for working directory, so we need to afterEvaluate it.
             testTask.configure(task -> task.setWorkingDir(gameDirectory));
-
-            // Write out a separate file that has IDE specific VM args, which include the definition of the output directories.
-            // For JUnit we have to write this to a separate file due to the Run parameters being shared among all projects.
-            var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
-            var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
-            var ideSpecificVmArgs = RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, unitTest.getLoadedMods(), true).getArgument());
-            try {
-                var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
-                Files.createDirectories(vmArgsFilePath.getParent());
-                // JVM args generally expect platform encoding
-                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, StringUtils.getNativeCharset());
-            } catch (IOException e) {
-                throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
-            }
-
-            // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
-            // IMPORTANT: This affects *all projects*, not just this one. We have to use $MODULE_WORKING_DIR$ to make it work.
-            var intelliJRunConfigurations = getIntelliJRunConfigurations(p);
-            if (intelliJRunConfigurations != null) {
-                intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
-                    // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
-                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + JUNIT_GAME_DIR);
-                    jUnitDefaults.setVmParameters(
-                            // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
-                            // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments
-                            // See https://youtrack.jetbrains.com/issue/IJPL-14230/Add-macro-support-for-VM-options-field-e.g.-expand-ModuleFileDir-properly
-                            // As a workaround, we just use paths relative to the working directory.
-                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + buildRelativePath(programArgsFile, gameDirectory))
-                            + " "
-                            + RunUtils.escapeJvmArg("@" + buildRelativePath(vmArgsFile, gameDirectory))
-                            + " "
-                            + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
-                    );
-                });
-            }
         });
-    }
 
-    private static String buildRelativePath(Provider<RegularFile> file, File workingDirectory) {
-        return workingDirectory.toPath().relativize(file.get().getAsFile().toPath()).toString().replace("\\", "/");
+        ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
     }
 
     private static void setupJarJar(Project project) {
@@ -740,282 +675,6 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.from(jarJarTask);
             });
         });
-    }
-
-    private static void addIntelliJRunConfiguration(Project project,
-                                                    RunConfigurationContainer runConfigurations,
-                                                    @Nullable Function<Project, File> outputDirectory,
-                                                    RunModel run,
-                                                    PrepareRun prepareTask) {
-        var appRun = new Application(run.getIdeName().get(), project);
-        var sourceSets = ExtensionUtils.getSourceSets(project);
-        var sourceSet = run.getSourceSet().get();
-        // Validate that the source set is part of this project
-        if (!sourceSets.contains(sourceSet)) {
-            throw new GradleException("Cannot use source set from another project for run " + run.getName());
-        }
-        appRun.setModuleName(RunUtils.getIntellijModuleName(project, sourceSet));
-        appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        appRun.setEnvs(run.getEnvironment().get());
-
-        appRun.setJvmArgs(
-                RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
-                + " "
-                + RunUtils.escapeJvmArg(RunUtils.getIdeaModFoldersProvider(project, outputDirectory, run.getLoadedMods(), false).getArgument())
-        );
-        appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-        appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
-
-        if (!run.getTasksBefore().isEmpty()) {
-            // This is slightly annoying.
-            // idea-ext does not expose the ability to run multiple gradle tasks at once, but the IDE model is capable of it.
-            class GradleTasks extends BeforeRunTask {
-                @Inject
-                GradleTasks(String nameParam) {
-                    type = "gradleTask";
-                    name = nameParam;
-                }
-
-                @SuppressWarnings("unchecked")
-                @Override
-                public Map<String, ?> toMap() {
-                    var result = (Map<String, Object>) super.toMap();
-                    result.put("projectPath", project.getProjectDir().getAbsolutePath().replaceAll("\\\\", "/"));
-                    var tasks = run.getTasksBefore().stream().map(task -> task.get().getPath()).collect(Collectors.joining(" "));
-                    result.put("taskName", tasks);
-                    return result;
-                }
-            }
-            appRun.getBeforeRun().add(new GradleTasks("Prepare"));
-        }
-
-        runConfigurations.add(appRun);
-    }
-
-    private static void configureIntelliJModel(Project project, TaskProvider<Task> ideSyncTask, NeoForgeExtension extension, Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
-        var rootProject = project.getRootProject();
-
-        if (!rootProject.getPlugins().hasPlugin(IdeaExtPlugin.class)) {
-            rootProject.getPlugins().apply(IdeaExtPlugin.class);
-        }
-
-        // IDEA Sync has no real notion of tasks or providers or similar
-        project.afterEvaluate(ignored -> {
-            var settings = getIntelliJProjectSettings(rootProject);
-            if (settings != null && IdeDetection.isIntelliJSync()) {
-                // Also run the sync task directly as part of the sync. (Thanks Loom).
-                var startParameter = project.getGradle().getStartParameter();
-                var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
-
-                taskRequests.add(new DefaultTaskExecutionRequest(List.of(ideSyncTask.getName())));
-                startParameter.setTaskRequests(taskRequests);
-            }
-
-            var runConfigurations = getIntelliJRunConfigurations(rootProject); // TODO: Consider making this a value source
-
-            if (runConfigurations == null) {
-                LOG.debug("Failed to find IntelliJ run configuration container. Not adding run configurations.");
-            } else {
-                var outputDirectory = RunUtils.getIntellijOutputDirectory(project);
-
-                for (var run : extension.getRuns()) {
-                    var prepareTask = prepareRunTasks.get(run).get();
-                    if (!prepareTask.getEnabled()) {
-                        LOG.info("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
-                        continue;
-                    }
-                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
-                }
-            }
-        });
-    }
-
-    @Nullable
-    private static IdeaProject getIntelliJProject(Project project) {
-        var ideaModel = ExtensionUtils.findExtension(project, "idea", IdeaModel.class);
-        if (ideaModel != null) {
-            return ideaModel.getProject();
-        }
-        return null;
-    }
-
-    @Nullable
-    private static ProjectSettings getIntelliJProjectSettings(Project project) {
-        var ideaProject = getIntelliJProject(project);
-        if (ideaProject != null) {
-            return ((ExtensionAware) ideaProject).getExtensions().getByType(ProjectSettings.class);
-        }
-        return null;
-    }
-
-    @Nullable
-    private static RunConfigurationContainer getIntelliJRunConfigurations(Project project) {
-        var projectSettings = getIntelliJProjectSettings(project);
-        if (projectSettings != null) {
-            return ExtensionUtils.findExtension((ExtensionAware) projectSettings, "runConfigurations", RunConfigurationContainer.class);
-        }
-        return null;
-    }
-
-    private static void configureEclipseModel(Project project,
-                                              TaskProvider<Task> ideSyncTask,
-                                              TaskProvider<CreateMinecraftArtifacts> createArtifacts,
-                                              NeoForgeExtension extension,
-                                              Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks) {
-
-        // Set up stuff for Eclipse
-        var eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
-        if (eclipseModel == null) {
-            // If we detect running under Eclipse or VSCode, we apply the Eclipse plugin
-            if (!IdeDetection.isEclipse() && !IdeDetection.isVsCode()) {
-                LOG.info("No Eclipse project model found, and not running under Eclipse or VSCode. Skipping Eclipse model configuration.");
-                return;
-            }
-
-            project.getPlugins().apply(EclipsePlugin.class);
-            eclipseModel = ExtensionUtils.findExtension(project, "eclipse", EclipseModel.class);
-            if (eclipseModel == null) {
-                LOG.error("Even after applying the Eclipse plugin, no 'eclipse' extension was present!");
-                return;
-            }
-        }
-
-        LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
-
-        // Make sure our post-sync task runs on Eclipse
-        eclipseModel.synchronizationTasks(ideSyncTask);
-
-        // When using separate artifacts for classes and sources, link them
-        if (!shouldUseCombinedSourcesAndClassesArtifact()) {
-            var fileClasspath = eclipseModel.getClasspath().getFile();
-            fileClasspath.whenMerged((org.gradle.plugins.ide.eclipse.model.Classpath classpath) -> {
-                var classesPath = createArtifacts.get().getCompiledArtifact().get().getAsFile();
-                var sourcesPath = createArtifacts.get().getSourcesArtifact().get().getAsFile();
-
-                for (var entry : classpath.getEntries()) {
-                    if (entry instanceof Library library && classesPath.equals(new File(library.getPath()))) {
-                        library.setSourcePath(classpath.fileReference(sourcesPath));
-                    }
-                }
-            });
-        }
-
-        // Set up runs if running under buildship and in VS Code
-        if (IdeDetection.isVsCode()) {
-            project.afterEvaluate(ignored -> {
-                var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
-
-                for (var run : extension.getRuns()) {
-                    var prepareTask = prepareRunTasks.get(run).get();
-                    addVscodeLaunchConfiguration(project, run, prepareTask, launchWriter);
-                }
-
-                try {
-                    launchWriter.writeToLatestJson(project.getRootDir().toPath());
-                } catch (final IOException e) {
-                    throw new RuntimeException("Failed to write VSCode launch files", e);
-                }
-            });
-        } else if (IdeDetection.isEclipse()) {
-            project.afterEvaluate(ignored -> {
-                for (var run : extension.getRuns()) {
-                    var prepareTask = prepareRunTasks.get(run).get();
-                    addEclipseLaunchConfiguration(project, run, prepareTask);
-                }
-            });
-        }
-    }
-
-    private static void addEclipseLaunchConfiguration(Project project,
-                                                      RunModel run,
-                                                      PrepareRun prepareTask) {
-        if (!prepareTask.getEnabled()) {
-            LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
-            return;
-        }
-
-        // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
-        // And so that post sync tasks are only run once for all subprojects.
-        var model = project.getExtensions().getByType(EclipseModel.class);
-
-        var runIdeName = run.getIdeName().get();
-        var launchConfigName = runIdeName;
-        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
-
-        // If the user wants to run tasks before the actual execution, we create a launch group to facilitate that
-        if (!run.getTasksBefore().isEmpty()) {
-            // Rename the main launch to "Run " ...
-            launchConfigName = "Run " + runIdeName;
-
-            // Creates a launch config to run the preparation tasks
-            var prepareRunConfig = GradleLaunchConfig.builder(eclipseProjectName)
-                    .tasks(run.getTasksBefore().stream().map(task -> task.get().getPath()).toArray(String[]::new))
-                    .build();
-            var prepareRunLaunchName = "Prepare " + runIdeName;
-            RunUtils.writeEclipseLaunchConfig(project, prepareRunLaunchName, prepareRunConfig);
-
-            // This is the launch group that will first launch Gradle, and then the game
-            var withGradleTasksConfig = LaunchGroup.builder()
-                    .entry(LaunchGroup.entry(prepareRunLaunchName)
-                            .enabled(true)
-                            .adoptIfRunning(false)
-                            .mode(LaunchGroup.Mode.RUN)
-                            // See https://github.com/eclipse/buildship/issues/1272
-                            // for why we cannot just wait for termination
-                            .action(LaunchGroup.Action.delay(2)))
-                    .entry(LaunchGroup.entry(launchConfigName)
-                            .enabled(true)
-                            .adoptIfRunning(false)
-                            .mode(LaunchGroup.Mode.INHERIT)
-                            .action(LaunchGroup.Action.none()))
-                    .build();
-            RunUtils.writeEclipseLaunchConfig(project, runIdeName, withGradleTasksConfig);
-        }
-
-        // This is the actual main launch configuration that launches the game
-        var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
-                .vmArgs(
-                        RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
-                        RunUtils.escapeJvmArg(RunUtils.getEclipseModFoldersProvider(project, run.getLoadedMods(), false).getArgument())
-                )
-                .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .envVar(run.getEnvironment().get())
-                .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
-                .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
-        RunUtils.writeEclipseLaunchConfig(project, launchConfigName, config);
-
-    }
-
-    private static void addVscodeLaunchConfiguration(Project project,
-                                                     RunModel run,
-                                                     PrepareRun prepareTask,
-                                                     BatchedLaunchWriter launchWriter) {
-        if (!prepareTask.getEnabled()) {
-            LOG.info("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
-            return;
-        }
-
-        var model = project.getExtensions().getByType(EclipseModel.class);
-        var runIdeName = run.getIdeName().get();
-        var eclipseProjectName = Objects.requireNonNullElse(model.getProject().getName(), project.getName());
-
-        // If the user wants to run tasks before the actual execution, we attach them to autoBuildTasks
-        // Missing proper support - https://github.com/microsoft/vscode-java-debug/issues/1106
-        if (!run.getTasksBefore().isEmpty()) {
-            model.autoBuildTasks(run.getTasksBefore().toArray());
-        }
-
-        launchWriter.createGroup("Mod Development - " + project.getName(), WritingMode.REMOVE_EXISTING)
-                .createLaunchConfiguration()
-                .withName(runIdeName)
-                .withProjectName(eclipseProjectName)
-                .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
-                        RunUtils.getEclipseModFoldersProvider(project, run.getLoadedMods(), false).getArgument()))
-                .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
-                .withShortenCommandLine(ShortCmdBehaviour.NONE)
-                .withConsoleType(ConsoleType.INTERNAL_CONSOLE)
-                .withCurrentWorkingDirectory(PathLike.ofNio(run.getGameDirectory().get().getAsFile().toPath()));
     }
 
     record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
