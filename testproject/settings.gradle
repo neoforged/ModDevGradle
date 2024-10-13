@@ -21,5 +21,6 @@ include 'subproject'
 include 'common'
 include 'jijtest'
 include 'coremod'
+//include 'oldneo'
 
 enableFeaturePreview "STABLE_CONFIGURATION_CACHE"

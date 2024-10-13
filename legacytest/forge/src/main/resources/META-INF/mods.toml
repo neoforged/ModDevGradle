@@ -1,0 +1,12 @@
+modLoader="javafml" #mandatory
+loaderVersion="*" #mandatory This is typically bumped every Minecraft version by Forge. See our download page for lists of versions.
+license="ARR"
+[[mods]] #mandatory
+# The modid of the mod
+modId="mymod" #mandatory
+# The version number of the mod
+version="1.0" #mandatory
+# A display name for the mod
+displayName="My Mod" #mandatory
+authors="MDG" #optional
+description='''Hi.'''
