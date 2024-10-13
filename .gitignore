@@ -18,7 +18,7 @@ out/
 ### Eclipse ###
 .apt_generated
 .classpath
-.eclipse
+.eclipse/
 .factorypath
 .project
 .settings
