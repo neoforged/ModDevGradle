@@ -242,6 +242,11 @@ public class ModDevPlugin implements Plugin<Project> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(TASK_GROUP);
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
+            // While downloadAssets does not require *all* of the dependencies, it does need NeoForge/NeoForm to benefit
+            // from any caching/overrides applied to these dependencies in Gradle
+            for (var configuration : createManifestConfigurations) {
+                task.addArtifactsToManifest(configuration);
+            }
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
