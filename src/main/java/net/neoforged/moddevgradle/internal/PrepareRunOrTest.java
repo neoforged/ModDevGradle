@@ -55,8 +55,17 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Optional
     public abstract RegularFileProperty getLog4jConfigFile();
 
+    /**
+     * The source of the underlying run type templates. This must contain a single file, which has one of the
+     * following supported formats:
+     * <ul>
+     *     <li>NeoForge Userdev config.json file</li>
+     *     <li>NeoForge Userdev jar file, containing a Userdev config.json file</li>
+     * </ul>
+     * Subclasses implementing {@link #resolveRunType} can then access this information to get the run type template.
+     */
     @Classpath
-    public abstract ConfigurableFileCollection getNeoForgeModDevConfig();
+    public abstract ConfigurableFileCollection getRunTypeTemplatesSource();
 
     @InputFile
     @PathSensitive(PathSensitivity.NONE)
@@ -123,10 +132,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         // If no NeoForge userdev config is set, we only support Vanilla run types
         UserDevRunType runConfig;
-        if (getNeoForgeModDevConfig().isEmpty()) {
+        if (getRunTypeTemplatesSource().isEmpty()) {
             runConfig = resolveRunType(getSimulatedUserDevConfigForVanilla());
         } else {
-            var userDevConfig = UserDevConfig.from(getNeoForgeModDevConfig().getSingleFile());
+            var userDevConfig = UserDevConfig.from(getRunTypeTemplatesSource().getSingleFile());
             runConfig = resolveRunType(userDevConfig);
         }
 
