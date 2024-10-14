@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.dsl;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
-import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -15,6 +15,7 @@ import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
 import java.io.File;
+import java.util.List;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -38,63 +39,30 @@ public abstract class NeoForgeExtension {
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
-        getNeoForgeArtifact().convention(getVersion().map(version -> "net.neoforged:neoforge:" + version));
-        getNeoFormArtifact().convention(getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version));
-
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
         unitTest.getLoadedMods().convention(getMods());
     }
 
-    /**
-     * Adds the necessary dependencies to develop a Minecraft mod to the given source set.
-     * The plugin automatically adds these dependencies to the main source set.
-     */
-    public void addModdingDependenciesTo(SourceSet sourceSet) {
-        var configurations = project.getConfigurations();
-        var sourceSets = ExtensionUtils.getSourceSets(project);
-        if (!sourceSets.contains(sourceSet)) {
-            throw new GradleException("Cannot add to the source set in another project.");
-        }
-
-        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName())
-                .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
-        configurations.getByName(sourceSet.getCompileClasspathConfigurationName())
-                .extendsFrom(configurations.getByName(ModDevPlugin.CONFIGURATION_COMPILE_DEPENDENCIES));
+    @Deprecated(forRemoval = true)
+    public void setVersion(Object any) {
+        throw new InvalidUserCodeException("Please use enableModding { neoForgeVersion = ... } instead of the version property.");
     }
 
-    /**
-     * NeoForge version number. You have to set either this, {@link #getNeoFormVersion()}
-     * or {@link #getNeoFormArtifact()}.
-     */
-    public abstract Property<String> getVersion();
+    public void enableModding(Action<ModdingVersionSettings> customizer) {
+        var modDevPlugin = project.getPlugins().getPlugin(ModDevPlugin.class);
 
-    /**
-     * You can set this property to a version of <a href="https://projects.neoforged.net/neoforged/neoform">NeoForm</a>
-     * to either override the version used in the version of NeoForge you set, or to compile against
-     * Vanilla artifacts that have no NeoForge code added.
-     * <p>
-     * This property is mutually exclusive with {@link #getNeoFormArtifact()}.
-     */
-    public abstract Property<String> getNeoFormVersion();
+        var settings = project.getObjects().newInstance(ModdingVersionSettings.class);
+        // By default, enable modding deps only for the main source set
+        settings.getEnabledSourceSets().convention(project.provider(() -> {
+            var sourceSets = ExtensionUtils.getSourceSets(project);
+            return List.of(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+        }));
+        customizer.execute(settings);
 
-    /**
-     * Is derived automatically from {@link #getVersion()}.
-     *
-     * @return Maven artifact coordinate (group:module:version)
-     */
-    public abstract Property<String> getNeoForgeArtifact();
-
-    /**
-     * Derived automatically from the {@link #getNeoFormVersion()}.
-     * You can override this property to use i.e. MCP for up to 1.20.1.
-     * <p>
-     * This property is mutually exclusive with {@link #getNeoForgeArtifact()}.
-     *
-     * @return Maven artifact coordinate (group:module:version)
-     */
-    public abstract Property<String> getNeoFormArtifact();
+        modDevPlugin.enableModding(project, settings);
+    }
 
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.

@@ -28,7 +28,7 @@ public class GroovyScriptTest extends AbstractFunctionalTest {
                 .withArguments("tasks", "--all")
                 .build();
 
-        assertThat(result.getOutput()).contains("createMinecraftArtifacts");
+        assertThat(result.getOutput()).doesNotContain("createMinecraftArtifacts");
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
     }
 
