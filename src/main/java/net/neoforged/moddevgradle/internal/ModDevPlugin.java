@@ -151,6 +151,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 accessTransformers.extension,
                 interfaceInjectionData.extension
         );
+        ideIntegration.runTaskOnProjectSync(extension.getIdeSyncTasks());
         var dependencyFactory = project.getDependencyFactory();
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
@@ -210,6 +211,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
             task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
         });
+        ideIntegration.runTaskOnProjectSync(createArtifacts);
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
