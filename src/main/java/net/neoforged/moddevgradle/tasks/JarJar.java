@@ -94,7 +94,7 @@ public abstract class JarJar extends DefaultTask {
             // jvm version. We could copy DefaultJvmFeature, and search for the target version of the compile task,
             // but this is difficult - we only have a feature name, not the linked source set. For this reason, we use
             // the toolchain version, which is the most likely to be correct.
-            attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().map(JavaLanguageVersion::asInt));
+            attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().orElse(JavaLanguageVersion.current()).map(JavaLanguageVersion::asInt));
             attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
             attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
             attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
