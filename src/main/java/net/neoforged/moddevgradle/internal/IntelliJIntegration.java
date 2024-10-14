@@ -10,7 +10,6 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
-import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -63,6 +62,19 @@ final class IntelliJIntegration extends IdeIntegration {
         if (!rootProject.getPlugins().hasPlugin(IdeaExtPlugin.class)) {
             rootProject.getPlugins().apply(IdeaExtPlugin.class);
         }
+
+        // Since this does not just configure a data model but actually runs an additional task, we only do this
+        // when IntelliJ is actually reloading the Gradle project right now.
+        if (IdeDetection.isIntelliJSync()) {
+            project.afterEvaluate(ignored -> {
+                // Also run the sync task directly as part of the sync. (Thanks Loom).
+                var startParameter = project.getGradle().getStartParameter();
+                var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
+
+                taskRequests.add(new DefaultTaskExecutionRequest(List.of(ideSyncTask.getName())));
+                startParameter.setTaskRequests(taskRequests);
+            });
+        }
     }
 
     @Override
@@ -92,25 +104,6 @@ final class IntelliJIntegration extends IdeIntegration {
                     addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
                 }
             }
-        });
-    }
-
-    @Override
-    protected void registerProjectSyncTask(TaskProvider<?> task) {
-        // Since this does not just configure a data model but actually runs an additional task, we only do this
-        // when IntelliJ is actually reloading the Gradle project right now.
-        if (!IdeDetection.isIntelliJSync()) {
-            return;
-        }
-
-        project.afterEvaluate(ignored -> {
-            // Also run the sync task directly as part of the sync. (Thanks Loom).
-            var startParameter = project.getGradle().getStartParameter();
-            var taskRequests = new ArrayList<>(startParameter.getTaskRequests());
-
-            taskRequests.add(new DefaultTaskExecutionRequest(List.of(task.getName())));
-            startParameter.setTaskRequests(taskRequests);
-
         });
     }
 

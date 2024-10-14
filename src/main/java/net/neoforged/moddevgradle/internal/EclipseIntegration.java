@@ -44,6 +44,9 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
         super(project);
         this.eclipseModel = getOrCreateEclipseModel(project);
         LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
+
+        // Make sure our post-sync task runs on Eclipse project reload
+        eclipseModel.synchronizationTasks(ideSyncTask);
     }
 
     /**
@@ -68,12 +71,6 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
                 }
             }
         });
-    }
-
-    @Override
-    protected void registerProjectSyncTask(TaskProvider<?> task) {
-        // Make sure our post-sync task runs on Eclipse
-        eclipseModel.synchronizationTasks(task);
     }
 
     @Override

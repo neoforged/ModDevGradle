@@ -18,13 +18,16 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Map;
 
+/**
+ * Implementing classes are responsible for registering {@code ideSyncTask} with their IDE.
+ */
 sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegration, NoIdeIntegration {
     private static final Logger LOG = LoggerFactory.getLogger(IdeIntegration.class);
 
     /**
      * A task we attach other tasks to that should run when the IDE reloads the projects.
      */
-    private final TaskProvider<Task> ideSyncTask;
+    protected final TaskProvider<Task> ideSyncTask;
 
     protected final Project project;
 
@@ -34,7 +37,6 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
             task.setGroup(ModDevPlugin.INTERNAL_TASK_GROUP);
             task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
         });
-        this.registerProjectSyncTask(ideSyncTask);
     }
 
     public static IdeIntegration of(Project project) {
@@ -89,14 +91,6 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
     public final void runTaskOnProjectSync(TaskProvider<?> task) {
         ideSyncTask.configure(ideSyncTask -> ideSyncTask.dependsOn(task));
     }
-
-    /**
-     * To be implemented by specific IDE integrations to register a task to be run on reload with the IDE.
-     * Internally, a dummy task is registered with Gradle. All tasks that should run on project sync are then
-     * added as dependencies to that task using {@link #runTaskOnProjectSync}. This method is used to register
-     * the dummy task with the IDE itself.
-     */
-    protected abstract void registerProjectSyncTask(TaskProvider<?> task);
 
     void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {
     }
