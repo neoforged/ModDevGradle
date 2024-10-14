@@ -26,8 +26,10 @@ test {
 }
 
 neoForge {
-    version = project.neoforge_version
-    addModdingDependenciesTo(sourceSets.api)
+    enableModding {
+        neoForgeVersion = project.neoforge_version
+        enabledSourceSets = [sourceSets.main, sourceSets.api]
+    }
 
     interfaceInjectionData = files("interfaces.json")
 
