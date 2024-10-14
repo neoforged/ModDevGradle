@@ -5,7 +5,6 @@ import org.gradle.api.attributes.Attribute;
 
 /**
  * The source of this attribute is the list of dependencies declared by the server and client Minecraft distributions.
- * <p>
  *
  * @see <a href="https://github.com/neoforged/GradleMinecraftDependencies/blob/999449cc54c5c01fff1a66406be6e72872b75979/buildSrc/src/main/groovy/net/neoforged/minecraftdependencies/GenerateModuleMetadata.groovy#L83">GradleMinecraftDependencies project</a>
  */

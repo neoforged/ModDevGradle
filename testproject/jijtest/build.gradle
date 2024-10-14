@@ -24,7 +24,9 @@ test {
 }
 
 neoForge {
-    version = project.neoforge_version
+    enableModding {
+        neoForgeVersion = project.neoforge_version
+    }
 
     runs {
         data {
