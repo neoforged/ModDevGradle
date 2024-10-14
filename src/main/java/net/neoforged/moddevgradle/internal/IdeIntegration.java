@@ -88,7 +88,7 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
     /**
      * Registers a task to be run when the IDE reloads the Gradle project.
      */
-    public final void runTaskOnProjectSync(TaskProvider<?> task) {
+    public final void runTaskOnProjectSync(Object task) {
         ideSyncTask.configure(ideSyncTask -> ideSyncTask.dependsOn(task));
     }
 
