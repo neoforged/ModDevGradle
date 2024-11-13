@@ -105,10 +105,10 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
 
     protected boolean shouldGenerateRunFor(RunModel run) {
         // The user can disable the IDE run directly...
-        final var shouldGenerate = run.getIdeConfigGenerated().get();
-        if (shouldGenerate != Boolean.TRUE) return false;
+        var shouldGenerate = run.getIdeConfigGenerated().get();
+        if (!shouldGenerate) return false;
         // ...or specify an empty IDE run name to disable the run config generation
-        final var ideName = run.getIdeName().get();
+        var ideName = run.getIdeName().get();
         return !ideName.isBlank();
     }
 
