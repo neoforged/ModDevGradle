@@ -115,7 +115,7 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
             LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
             return;
         }
-        if (!shouldGenerateRunFor(run)) {
+        if (!shouldGenerateConfigFor(run)) {
             LOG.info("Not creating Eclipse run {} since it's explicitly disabled", run);
             return;
         }

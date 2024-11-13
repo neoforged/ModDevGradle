@@ -54,7 +54,7 @@ final class VsCodeIntegration extends EclipseIntegration {
             LOG.info("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
             return;
         }
-        if (!shouldGenerateRunFor(run)) {
+        if (!shouldGenerateConfigFor(run)) {
             LOG.info("Not creating VSCode run {} since it's explicitly disabled", run);
             return;
         }

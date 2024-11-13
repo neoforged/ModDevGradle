@@ -46,7 +46,7 @@ neoForge {
         gradleOnlyClient2 {
             client()
             programArguments.addAll('--username', 'Dev4')
-            ideConfigGenerated = false
+            disableIdeRun()
         }
         data {
             data()

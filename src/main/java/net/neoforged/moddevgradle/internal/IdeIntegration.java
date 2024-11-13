@@ -103,11 +103,7 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
                           Provider<RegularFile> vmArgsFile) {
     }
 
-    protected boolean shouldGenerateRunFor(RunModel run) {
-        // The user can disable the IDE run directly...
-        var shouldGenerate = run.getIdeConfigGenerated().get();
-        if (!shouldGenerate) return false;
-        // ...or specify an empty IDE run name to disable the run config generation
+    protected boolean shouldGenerateConfigFor(RunModel run) {
         var ideName = run.getIdeName().get();
         return !ideName.isBlank();
     }

@@ -64,7 +64,6 @@ public abstract class RunModel implements Named, Dependencies {
             ideName = project.getName() + " - " + ideName;
         }
         getIdeName().convention(ideName);
-        getIdeConfigGenerated().convention(true);
 
         getSourceSet().convention(ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
     }
@@ -76,14 +75,9 @@ public abstract class RunModel implements Named, Dependencies {
 
     /**
      * Name for the run configuration in the IDE.
+     * If this is set to {@code ""}, no config will be generated.
      */
     public abstract Property<String> getIdeName();
-
-    /**
-     * Whether an IDE run config should be generated, alternatively
-     * set the IDE name to {@code ""}.
-     */
-    public abstract Property<Boolean> getIdeConfigGenerated();
 
     /**
      * Directory that the game will run in. Defaults to {@code run/}.
@@ -174,6 +168,13 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public void server() {
         getType().set("server");
+    }
+
+    /**
+     * Equivalent to setting {@code ideName = ""}
+     */
+    public void disableIdeRun() {
+        getIdeName().set("");
     }
 
     /**

@@ -190,7 +190,7 @@ neoForge {
             ideName = "Run Game Tests"
             
             // You can disable a run configuration being generated for your IDE
-            ideConfigGenerated = false
+            disableIdeRun()
             // ... alternatively you can set ideName = ""
 
             // Changes the source set whose runtime classpath is used for this run. This defaults to "main"
