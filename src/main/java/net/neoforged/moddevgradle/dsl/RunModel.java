@@ -24,7 +24,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Model of a run. Each run will generate a corresponding IDE run and {@code runXxx} gradle task.
+ * Model of a run. Each run will generate a {@code runXxx} gradle task and optionally
+ * (enabled by default) a corresponding IDE run.
  */
 public abstract class RunModel implements Named, Dependencies {
     private static final Pattern VALID_RUN_NAME = Pattern.compile("[a-zA-Z][\\w-]*");
@@ -63,6 +64,7 @@ public abstract class RunModel implements Named, Dependencies {
             ideName = project.getName() + " - " + ideName;
         }
         getIdeName().convention(ideName);
+        getIdeConfigGenerated().convention(true);
 
         getSourceSet().convention(ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
     }
@@ -76,6 +78,12 @@ public abstract class RunModel implements Named, Dependencies {
      * Name for the run configuration in the IDE.
      */
     public abstract Property<String> getIdeName();
+
+    /**
+     * Whether an IDE run config should be generated, alternatively
+     * set the IDE name to {@code ""}.
+     */
+    public abstract Property<Boolean> getIdeConfigGenerated();
 
     /**
      * Directory that the game will run in. Defaults to {@code run/}.

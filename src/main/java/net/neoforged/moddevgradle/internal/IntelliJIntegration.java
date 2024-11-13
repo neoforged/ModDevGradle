@@ -101,6 +101,10 @@ final class IntelliJIntegration extends IdeIntegration {
                         LOG.info("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
                     }
+                    if (!shouldGenerateRunFor(run)) {
+                        LOG.info("Not creating IntelliJ run {} since it's explicitly disabled", run);
+                        continue;
+                    }
                     addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
                 }
             }

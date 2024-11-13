@@ -38,6 +38,16 @@ neoForge {
             client()
             programArguments.addAll('--username', 'Dev2')
         }
+        gradleOnlyClient {
+            client()
+            programArguments.addAll('--username', 'Dev3')
+            ideName = ""
+        }
+        gradleOnlyClient2 {
+            client()
+            programArguments.addAll('--username', 'Dev4')
+            ideConfigGenerated = false
+        }
         data {
             data()
         }

@@ -115,6 +115,10 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
             LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
             return;
         }
+        if (!shouldGenerateRunFor(run)) {
+            LOG.info("Not creating Eclipse run {} since it's explicitly disabled", run);
+            return;
+        }
 
         // Grab the eclipse model so we can extend it. -> Done on the root project so that the model is available to all subprojects.
         // And so that post sync tasks are only run once for all subprojects.
