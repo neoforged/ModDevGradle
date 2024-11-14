@@ -188,6 +188,10 @@ neoForge {
 
             // You can change the name used for this run in your IDE
             ideName = "Run Game Tests"
+            
+            // You can disable a run configuration being generated for your IDE
+            disableIdeRun()
+            // ... alternatively you can set ideName = ""
 
             // Changes the source set whose runtime classpath is used for this run. This defaults to "main"
             // Eclipse does not support having multiple runtime classpaths per project (except for unit tests).

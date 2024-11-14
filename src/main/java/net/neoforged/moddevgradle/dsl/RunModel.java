@@ -24,7 +24,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Model of a run. Each run will generate a corresponding IDE run and {@code runXxx} gradle task.
+ * Model of a run. Each run will generate a {@code runXxx} gradle task and optionally
+ * (enabled by default) a corresponding IDE run.
  */
 public abstract class RunModel implements Named, Dependencies {
     private static final Pattern VALID_RUN_NAME = Pattern.compile("[a-zA-Z][\\w-]*");
@@ -74,6 +75,7 @@ public abstract class RunModel implements Named, Dependencies {
 
     /**
      * Name for the run configuration in the IDE.
+     * If this is set to {@code ""}, no config will be generated.
      */
     public abstract Property<String> getIdeName();
 
@@ -166,6 +168,13 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public void server() {
         getType().set("server");
+    }
+
+    /**
+     * Equivalent to setting {@code ideName = ""}
+     */
+    public void disableIdeRun() {
+        getIdeName().set("");
     }
 
     /**

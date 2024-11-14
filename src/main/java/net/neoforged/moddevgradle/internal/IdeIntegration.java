@@ -103,4 +103,9 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
                           Provider<RegularFile> vmArgsFile) {
     }
 
+    protected boolean shouldGenerateConfigFor(RunModel run) {
+        var ideName = run.getIdeName().get();
+        return !ideName.isBlank();
+    }
+
 }
