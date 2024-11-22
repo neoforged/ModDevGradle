@@ -67,4 +67,8 @@ public final class NeoDevFacade {
                 assetPropertiesFile
         );
     }
+
+    public static void runTaskOnProjectSync(Project project, Object task) {
+        IdeIntegration.of(project).runTaskOnProjectSync(task);
+    }
 }
