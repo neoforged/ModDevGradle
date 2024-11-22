@@ -31,36 +31,36 @@ sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegra
 
     protected final Project project;
 
-    public IdeIntegration(Project project) {
+    public IdeIntegration(Project project, Branding branding) {
         this.project = project;
         this.ideSyncTask = project.getTasks().register("neoForgeIdeSync", task -> {
-            task.setGroup(ModDevPlugin.INTERNAL_TASK_GROUP);
+            task.setGroup(branding.internalTaskGroup());
             task.setDescription("A utility task that is used to create necessary files when the Gradle project is synchronized with the IDE project.");
         });
     }
 
-    public static IdeIntegration of(Project project) {
+    public static IdeIntegration of(Project project, Branding branding) {
         var ideIntegration = ExtensionUtils.findExtension(project, "mdgInternalIdeIntegration", IdeIntegration.class);
         if (ideIntegration == null) {
-            ideIntegration = createForProject(project);
+            ideIntegration = createForProject(project, branding);
             project.getExtensions().add(IdeIntegration.class, "mdgInternalIdeIntegration", ideIntegration);
         }
         return ideIntegration;
     }
 
-    private static IdeIntegration createForProject(Project project) {
+    private static IdeIntegration createForProject(Project project, Branding branding) {
         if (IdeDetection.isVsCode()) {
             // VSCode internally uses Eclipse and as such, we need to prioritize it over the pure Eclipse integration
             LOG.debug("Activating VSCode integration for project {}.", project.getPath());
-            return new VsCodeIntegration(project);
+            return new VsCodeIntegration(project, branding);
         } else if (IdeDetection.isEclipse()) {
             LOG.debug("Activating Eclipse integration for project {}.", project.getPath());
-            return new EclipseIntegration(project);
+            return new EclipseIntegration(project, branding);
         } else if (IdeDetection.isIntelliJSync()) {
             LOG.debug("Activating IntelliJ integration for project {}.", project.getPath());
-            return new IntelliJIntegration(project);
+            return new IntelliJIntegration(project, branding);
         } else {
-            return new NoIdeIntegration(project);
+            return new NoIdeIntegration(project, branding);
         }
     }
 

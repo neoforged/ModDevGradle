@@ -67,9 +67,6 @@ public class ModDevPlugin implements Plugin<Project> {
      */
     static final String JUNIT_GAME_DIR = "build/minecraft-junit";
 
-    private static final String TASK_GROUP = "mod development";
-    static final String INTERNAL_TASK_GROUP = "mod development/internal";
-
     /**
      * Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
      * We cannot use "runtimeOnly", since the contents of that are published.
@@ -110,7 +107,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var layout = project.getLayout();
         var tasks = project.getTasks();
 
-        var ideIntegration = IdeIntegration.of(project);
+        var ideIntegration = IdeIntegration.of(project, Branding.MDG);
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
@@ -182,7 +179,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setGroup(Branding.MDG.internalTaskGroup());
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
             for (var configuration : createManifestConfigurations) {
                 task.addArtifactsToManifest(configuration);
@@ -215,7 +212,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
-            task.setGroup(TASK_GROUP);
+            task.setGroup(Branding.MDG.publicTaskGroup());
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
             // While downloadAssets does not require *all* of the dependencies, it does need NeoForge/NeoForm to benefit
             // from any caching/overrides applied to these dependencies in Gradle
@@ -306,6 +303,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         setupRuns(
                 project,
+                Branding.MDG,
                 modDevBuildDir,
                 extension.getRuns(),
                 userDevConfigOnly,
@@ -342,6 +340,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
             setupTestTask(
                     project,
+                    Branding.MDG,
                     userDevConfigOnly,
                     tasks.named("test", Test.class),
                     extension.getUnitTest().getLoadedMods(),
@@ -473,6 +472,7 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     static void setupRuns(Project project,
+                          Branding branding,
                           Provider<Directory> argFileDir,
                           DomainObjectCollection<RunModel> runs,
                           Object runTemplatesSourceFile,
@@ -480,7 +480,7 @@ public class ModDevPlugin implements Plugin<Project> {
                           Consumer<Configuration> configureLegacyClasspath,
                           Provider<RegularFile> assetPropertiesFile
     ) {
-        var ideIntegration = IdeIntegration.of(project);
+        var ideIntegration = IdeIntegration.of(project, branding);
 
         // Create a configuration to resolve DevLaunch without leaking it to consumers
         var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
@@ -492,6 +492,7 @@ public class ModDevPlugin implements Plugin<Project> {
         runs.all(run -> {
             var prepareRunTask = setupRunInGradle(
                     project,
+                    branding,
                     argFileDir,
                     run,
                     runTemplatesSourceFile,
@@ -513,6 +514,7 @@ public class ModDevPlugin implements Plugin<Project> {
      */
     private static TaskProvider<PrepareRun> setupRunInGradle(
             Project project,
+            Branding branding,
             Provider<Directory> argFileDir,
             RunModel run,
             Object runTemplatesFile,
@@ -521,7 +523,7 @@ public class ModDevPlugin implements Plugin<Project> {
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig
     ) {
-        var ideIntegration = IdeIntegration.of(project);
+        var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
         var tasks = project.getTasks();
@@ -561,14 +563,14 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.setGroup(INTERNAL_TASK_GROUP);
+            writeLcp.setGroup(branding.internalTaskGroup());
             writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().set(argFileDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
             writeLcp.addEntries(legacyClasspathConfiguration);
         });
 
         var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setGroup(branding.internalTaskGroup());
             task.setDescription("Prepares all files needed to launch the " + run.getName() + " Minecraft run.");
 
             task.getGameDirectory().set(run.getGameDirectory());
@@ -592,7 +594,7 @@ public class ModDevPlugin implements Plugin<Project> {
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
         var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
             task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
@@ -619,7 +621,7 @@ public class ModDevPlugin implements Plugin<Project> {
         ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
 
         tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
-            task.setGroup(TASK_GROUP);
+            task.setGroup(branding.publicTaskGroup());
             task.setDescription("Runs the " + run.getName() + " Minecraft run configuration.");
 
             // Launch with the Java version used in the project
@@ -656,6 +658,7 @@ public class ModDevPlugin implements Plugin<Project> {
      * @see #setupRunInGradle for a description of the parameters
      */
     static void setupTestTask(Project project,
+                              Branding branding,
                               Object runTemplatesSourceFile,
                               TaskProvider<Test> testTask,
                               SetProperty<ModModel> loadedMods,
@@ -667,7 +670,7 @@ public class ModDevPlugin implements Plugin<Project> {
     ) {
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
-        var ideIntegration = IdeIntegration.of(project);
+        var ideIntegration = IdeIntegration.of(project, branding);
 
         var tasks = project.getTasks();
         var configurations = project.getConfigurations();
@@ -698,7 +701,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var runArgsDir = argFileDir.map(dir -> dir.dir("junit"));
 
         var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.setGroup(INTERNAL_TASK_GROUP);
+            writeLcp.setGroup(branding.internalTaskGroup());
             writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
             writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
             writeLcp.addEntries(legacyClasspathConfiguration);
@@ -708,7 +711,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
         var log4j2ConfigFile = runArgsDir.map(dir -> dir.file("log4j2.xml"));
         var prepareTask = tasks.register("prepareNeoForgeTestFiles", PrepareTest.class, task -> {
-            task.setGroup(INTERNAL_TASK_GROUP);
+            task.setGroup(branding.internalTaskGroup());
             task.setDescription("Prepares all files needed to run the JUnit test task.");
             task.getGameDirectory().set(gameDirectory);
             task.getVmArgsFile().set(vmArgsFile);
@@ -748,7 +751,7 @@ public class ModDevPlugin implements Plugin<Project> {
         SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
         sourceSets.all(sourceSet -> {
             var jarJarTask = JarJar.registerWithConfiguration(project, sourceSet.getTaskName(null, "jarJar"));
-            jarJarTask.configure(task -> task.setGroup(INTERNAL_TASK_GROUP));
+            jarJarTask.configure(task -> task.setGroup(Branding.MDG.internalTaskGroup()));
 
             // The target jar task for this source set might not exist, and #named(String) requires the task to exist
             var jarTaskName = sourceSet.getJarTaskName();

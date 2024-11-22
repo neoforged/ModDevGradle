@@ -36,6 +36,7 @@ public final class NeoDevFacade {
     ) {
         ModDevPlugin.setupRuns(
                 project,
+                Branding.NEODEV,
                 argFileDir,
                 runs,
                 runTemplatesSourceFile,
@@ -57,6 +58,7 @@ public final class NeoDevFacade {
     ) {
         ModDevPlugin.setupTestTask(
                 project,
+                Branding.NEODEV,
                 runTemplatesSourceFile,
                 testTask,
                 loadedMods,
@@ -69,6 +71,6 @@ public final class NeoDevFacade {
     }
 
     public static void runTaskOnProjectSync(Project project, Object task) {
-        IdeIntegration.of(project).runTaskOnProjectSync(task);
+        IdeIntegration.of(project, Branding.NEODEV).runTaskOnProjectSync(task);
     }
 }

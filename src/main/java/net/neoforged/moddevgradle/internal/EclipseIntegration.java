@@ -40,8 +40,8 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
 
     protected final EclipseModel eclipseModel;
 
-    protected EclipseIntegration(Project project) {
-        super(project);
+    protected EclipseIntegration(Project project, Branding branding) {
+        super(project, branding);
         this.eclipseModel = getOrCreateEclipseModel(project);
         LOG.debug("Configuring Eclipse model for Eclipse project '{}'.", eclipseModel.getProject().getName());
 
