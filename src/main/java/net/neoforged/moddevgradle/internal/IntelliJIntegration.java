@@ -118,41 +118,44 @@ final class IntelliJIntegration extends IdeIntegration {
                                  File gameDirectory,
                                  Provider<RegularFile> programArgsFile,
                                  Provider<RegularFile> vmArgsFile) {
-        // Write out a separate file that has IDE specific VM args, which include the definition of the output directories.
-        // For JUnit we have to write this to a separate file due to the Run parameters being shared among all projects.
-        var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
+        // IDEA Sync has no real notion of tasks or providers or similar
+        project.afterEvaluate(ignored -> {
+            // Write out a separate file that has IDE specific VM args, which include the definition of the output directories.
+            // For JUnit we have to write this to a separate file due to the Run parameters being shared among all projects.
+            var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
 
-        var outputDirectory = IntelliJOutputDirectoryValueSource.getIntellijOutputDirectory(project);
-        var ideSpecificVmArgs = RunUtils.escapeJvmArg(getModFoldersProvider(project, outputDirectory, loadedMods, testedMod).getArgument());
-        try {
-            var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
-            Files.createDirectories(vmArgsFilePath.getParent());
-            // JVM args generally expect platform encoding
-            FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, StringUtils.getNativeCharset());
-        } catch (IOException e) {
-            throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
-        }
+            var outputDirectory = IntelliJOutputDirectoryValueSource.getIntellijOutputDirectory(project);
+            var ideSpecificVmArgs = RunUtils.escapeJvmArg(getModFoldersProvider(project, outputDirectory, loadedMods, testedMod).getArgument());
+            try {
+                var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
+                Files.createDirectories(vmArgsFilePath.getParent());
+                // JVM args generally expect platform encoding
+                FileUtils.writeStringSafe(vmArgsFilePath, ideSpecificVmArgs, StringUtils.getNativeCharset());
+            } catch (IOException e) {
+                throw new GradleException("Failed to write VM args file for IntelliJ unit tests", e);
+            }
 
-        // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
-        // IMPORTANT: This affects *all projects*, not just this one. We have to use $MODULE_WORKING_DIR$ to make it work.
-        var intelliJRunConfigurations = getIntelliJRunConfigurations();
-        if (intelliJRunConfigurations != null) {
-            intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
-                // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
-                jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevPlugin.JUNIT_GAME_DIR);
-                jUnitDefaults.setVmParameters(
-                        // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
-                        // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments
-                        // See https://youtrack.jetbrains.com/issue/IJPL-14230/Add-macro-support-for-VM-options-field-e.g.-expand-ModuleFileDir-properly
-                        // As a workaround, we just use paths relative to the working directory.
-                        RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + buildRelativePath(programArgsFile, gameDirectory))
-                        + " "
-                        + RunUtils.escapeJvmArg("@" + buildRelativePath(vmArgsFile, gameDirectory))
-                        + " "
-                        + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
-                );
-            });
-        }
+            // Configure IntelliJ default JUnit parameters, which are used when the user configures IJ to run tests natively
+            // IMPORTANT: This affects *all projects*, not just this one. We have to use $MODULE_WORKING_DIR$ to make it work.
+            var intelliJRunConfigurations = getIntelliJRunConfigurations();
+            if (intelliJRunConfigurations != null) {
+                intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
+                    // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
+                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevPlugin.JUNIT_GAME_DIR);
+                    jUnitDefaults.setVmParameters(
+                            // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
+                            // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments
+                            // See https://youtrack.jetbrains.com/issue/IJPL-14230/Add-macro-support-for-VM-options-field-e.g.-expand-ModuleFileDir-properly
+                            // As a workaround, we just use paths relative to the working directory.
+                            RunUtils.escapeJvmArg("-Dfml.junit.argsfile=" + buildRelativePath(programArgsFile, gameDirectory))
+                                    + " "
+                                    + RunUtils.escapeJvmArg("@" + buildRelativePath(vmArgsFile, gameDirectory))
+                                    + " "
+                                    + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
+                    );
+                });
+            }
+        });
     }
 
     @Nullable
