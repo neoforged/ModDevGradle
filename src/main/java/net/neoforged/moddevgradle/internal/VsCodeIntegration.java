@@ -22,8 +22,8 @@ import java.util.Objects;
 final class VsCodeIntegration extends EclipseIntegration {
     private static final Logger LOG = LoggerFactory.getLogger(VsCodeIntegration.class);
 
-    VsCodeIntegration(Project project) {
-        super(project);
+    VsCodeIntegration(Project project, Branding branding) {
+        super(project, branding);
     }
 
     @Override

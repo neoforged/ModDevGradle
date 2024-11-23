@@ -46,8 +46,8 @@ final class IntelliJIntegration extends IdeIntegration {
 
     private final IdeaModel rootIdeaModel;
 
-    IntelliJIntegration(Project project) {
-        super(project);
+    IntelliJIntegration(Project project, Branding branding) {
+        super(project, branding);
 
         // While the IDEA model on the root project is the only sensible place to adjust IntelliJ project-wide settings
         // such as run configurations.
