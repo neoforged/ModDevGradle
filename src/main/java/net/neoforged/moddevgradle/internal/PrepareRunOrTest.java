@@ -149,20 +149,20 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
                 "client", new UserDevRunType(
-                        true, "net.minecraft.client.main.Main", clientArgs, List.of(), true, false, false, false, Map.of(), Map.of()
+                        true, "net.minecraft.client.main.Main", clientArgs, List.of(), Map.of(), Map.of()
                 ),
                 "server", new UserDevRunType(
-                        true, "net.minecraft.server.Main", commonArgs, List.of(), false, true, false, false, Map.of(), Map.of()
+                        true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
                 ),
                 // TODO: find a way to check for Minecraft version?
                 "data", new UserDevRunType(
-                        true, "net.minecraft.data.Main", commonArgs, List.of(), false, false, true, false, Map.of(), Map.of()
+                        true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
                 ),
                 "clientData", new UserDevRunType(
-                        true, "net.minecraft.client.data.Main", commonArgs, List.of(), false, false, true, false, Map.of(), Map.of()
+                        true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
                 ),
                 "serverData", new UserDevRunType(
-                        true, "net.minecraft.data.Main", commonArgs, List.of(), false, false, true, false, Map.of(), Map.of()
+                        true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
                 )
         ));
     }
