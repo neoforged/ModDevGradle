@@ -553,7 +553,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
             spec.attributes(attributes -> {
                 attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
-                    var name = t.equals("client") || t.equals("data") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                    var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
                     return project.getObjects().named(MinecraftDistribution.class, name);
                 }));
                 setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
