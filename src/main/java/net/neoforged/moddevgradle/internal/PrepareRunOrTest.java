@@ -165,18 +165,19 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
         ));
 
-        var singleData = VersionUtils.hasSingleDataRun(
-                // default to single data run
-                getNeoFormVersion().orElse("1.21").get());
-        if (singleData) {
-            runTypes.put("data", new UserDevRunType(
-                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
-            ));
-        } else {
+        var splitData = getNeoFormVersion()
+                .map(VersionUtils::hasSplitDataRuns)
+                .orElse(false) // Default to single run for backwards compatibility
+                .get();
+        if (splitData) {
             runTypes.put("clientData", new UserDevRunType(
                     true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
             ));
             runTypes.put("serverData", new UserDevRunType(
+                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
+            ));
+        } else {
+            runTypes.put("data", new UserDevRunType(
                     true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
             ));
         }
