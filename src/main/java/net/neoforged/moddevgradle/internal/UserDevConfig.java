@@ -6,11 +6,12 @@ import org.gradle.api.GradleException;
 import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Map;
 
-public record UserDevConfig(String mcp, String sources, String universal, List<String> libraries, List<String> modules,
-                            Map<String, UserDevRunType> runs) implements Serializable {
+/**
+ * Sourced from the userdev config json. The run templates are the only thing that we use.
+ */
+public record UserDevConfig(Map<String, UserDevRunType> runs) implements Serializable {
     public static UserDevConfig from(File userDevFile) {
         try (var reader = Files.newBufferedReader(userDevFile.toPath())) {
             return new Gson().fromJson(reader, UserDevConfig.class);

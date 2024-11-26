@@ -155,7 +155,20 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     /**
+     * Equivalent to setting {@code type = "clientData"}.
+     *
+     * <p>Should only be used for Minecraft versions starting from 1.21.4.
+     * (The first snapshot that supports this is 24w45a).
+     */
+    public void clientData() {
+        getType().set("clientData");
+    }
+
+    /**
      * Equivalent to setting {@code type = "data"}.
+     *
+     * <p>Should only be used for Minecraft versions up to 1.21.3 included.
+     * (The last snapshot that supports this is 24w44a).
      */
     public void data() {
         getType().set("data");
@@ -166,6 +179,16 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public void server() {
         getType().set("server");
+    }
+
+    /**
+     * Equivalent to setting {@code type = "serverData"}.
+     *
+     * <p>Should only be used for Minecraft versions starting from 1.21.4.
+     * (The first snapshot that supports this is 24w45a).
+     */
+    public void serverData() {
+        getType().set("serverData");
     }
 
     /**
