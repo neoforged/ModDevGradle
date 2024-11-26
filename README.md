@@ -227,24 +227,6 @@ neoForge {
 
 To embed external Jar-files into your mod file, you can use the `jarJar` configuration added by the plugin.
 
-#### Subprojects
-
-For example, if you have a coremod in a subproject and want to embed its jar file, you can use the following syntax.
-
-```groovy
-dependencies {
-    jarJar project(":coremod")
-}
-```
-
-When starting the game, FML will use the group and artifact id of an embedded Jar-file to determine if the same file
-has been embedded in other mods.
-For subprojects, the group id is the root project name, while the artifact id is the name of the subproject.
-Besides the group and artifact id, the Java module name of an embedded Jar also has to be unique across all loaded
-Jar files.
-To decrease the likelihood of conflicts if no explicit module name is set,
-we prefix the filename of embedded subprojects with the group id.
-
 #### External Dependencies
 
 When you want to bundle external dependencies, Jar-in-Jar has to be able to select a single copy of that dependency
@@ -279,7 +261,68 @@ the [Maven version range format](https://cwiki.apache.org/confluence/display/MAV
 | (,1.0],[1.2,) | x <= 1.0 or x >= 1.2. Multiple sets are comma-separated                       |
 | (,1.1),(1.1,) | This excludes 1.1 if it is known not to work in combination with this library |
 
-#### External Dependencies: Runs
+#### Local Files
+
+You can also include files built by other tasks in your project, for example, jar tasks of other source sets.
+
+When wanting to build a secondary jar for a coremod or plugin, you could define a separate source set `plugin`,
+add a jar task to package it and then include the output of that jar like this:
+
+```groovy
+sourceSets {
+    plugin
+}
+
+
+neoForge {
+    // ...
+    mods {
+        // ...
+        // To make the plugin load in dev
+        'plugin' {
+            sourceSet sourceSets.plugin
+        }
+    }
+}
+
+def pluginJar = tasks.register("pluginJar", Jar) {
+    from(sourceSets.plugin.output)
+    archiveClassifier = "plugin"
+    manifest {
+        attributes(
+                'FMLModType': "LIBRARY",
+                "Automatic-Module-Name": project.name + "-plugin"
+        )
+    }
+}
+
+dependencies {
+    jarJar files(pluginJar)
+}
+```
+
+When you include a jar file like this, we use its filename as the artifact-id and its MD5 hash as the version. 
+It will never be swapped out with embedded libraries of the same name, unless their content matches.
+
+#### Subprojects
+
+For example, if you have a coremod in a subproject and want to embed its jar file, you can use the following syntax.
+
+```groovy
+dependencies {
+    jarJar project(":coremod")
+}
+```
+
+When starting the game, FML will use the group and artifact id of an embedded Jar-file to determine if the same file
+has been embedded in other mods.
+For subprojects, the group id is the root project name, while the artifact id is the name of the subproject.
+Besides the group and artifact id, the Java module name of an embedded Jar also has to be unique across all loaded
+Jar files.
+To decrease the likelihood of conflicts if no explicit module name is set,
+we prefix the filename of embedded subprojects with the group id.
+
+### External Dependencies: Runs
 External dependencies will only be loaded in your runs if they are mods (with a `META-INF/neoforge.mods.toml` file),
 or if they have the `FMLModType` entry set in their `META-INF/MANIFEST.MF` file.
 Usually, Java libraries do not fit either of these requirements,

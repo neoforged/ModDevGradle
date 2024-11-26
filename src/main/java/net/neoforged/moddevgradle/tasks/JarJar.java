@@ -4,7 +4,9 @@ import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarArtifacts;
 import net.neoforged.moddevgradle.internal.jarjar.ResolvedJarJarArtifact;
+import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.Bundling;
@@ -18,6 +20,7 @@ import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.SkipWhenEmpty;
@@ -31,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -57,12 +61,16 @@ public abstract class JarJar extends DefaultTask {
     @OutputDirectory
     public abstract DirectoryProperty getOutputDirectory();
 
+    @Internal
+    public abstract DirectoryProperty getBuildDirectory();
+
     private final FileSystemOperations fileSystemOperations;
 
     @Inject
     public JarJar(FileSystemOperations fileSystemOperations) {
         this.fileSystemOperations = fileSystemOperations;
         this.getOutputDirectory().convention(getProject().getLayout().getBuildDirectory().dir("generated/" + getName()));
+        this.getBuildDirectory().convention(getProject().getLayout().getBuildDirectory());
         setGroup(DEFAULT_GROUP);
     }
 
@@ -100,16 +108,60 @@ public abstract class JarJar extends DefaultTask {
     }
 
     @TaskAction
-    protected void run() {
-        List<ResolvedJarJarArtifact> includedJars = getJarJarArtifacts().getResolvedArtifacts().get();
+    protected void run() throws IOException {
+        List<ResolvedJarJarArtifact> includedJars = new ArrayList<>(getJarJarArtifacts().getResolvedArtifacts().get());
         fileSystemOperations.delete(spec -> spec.delete(getOutputDirectory()));
+
+        var artifactFiles = new ArrayList<>(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toList());
+        // Now we have to handle pure file collection dependencies that do not have artifact ids
+        for (var file : getInputFiles()) {
+            if (!artifactFiles.contains(file)) {
+                // Determine the module-name of the file, which is also what Java will use as the unique key
+                // when it tries to load the file. No two files can have the same module name, so it seems
+                // like a fitting key for conflict resolution by JiJ.
+                var moduleName = FileUtils.getExplicitJavaModuleName(file);
+                if (moduleName.isEmpty()) {
+                    throw new GradleException("Cannot embed local file dependency " + file + " because it has no explicit Java module name.\n" +
+                                              "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\n" +
+                                              "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
+                }
+
+                // Create a hashcode to use as a version
+                var hashCode = FileUtils.hashFile(file, "MD5");
+                includedJars.add(new ResolvedJarJarArtifact(
+                        file,
+                        file.getName(),
+                        hashCode,
+                        "[" + hashCode + "]",
+                        "",
+                        moduleName.get()
+                ));
+                artifactFiles.add(file);
+            }
+        }
 
         // Only copy metadata if not empty, always delete
         if (!includedJars.isEmpty()) {
             fileSystemOperations.copy(spec -> {
                 spec.into(getOutputDirectory().dir("META-INF/jarjar"));
-                spec.from(includedJars.stream().map(ResolvedJarJarArtifact::getFile).toArray());
+                spec.from(artifactFiles.toArray());
                 for (var includedJar : includedJars) {
+                    // Warn if any included jar is using the cursemaven group.
+                    // We know that cursemaven versions are not comparable, and the same artifact might also be
+                    // available under a "normal" group and artifact from another Maven repository.
+                    // JIJ will not correctly detect the conflicting file at runtime if another mod uses the normal Maven dependency.
+                    // For a description of Curse Maven, see https://www.cursemaven.com/
+                    if ("curse.maven".equals(includedJar.getGroup())) {
+                        getLogger().warn("Embedding dependency {}:{}:{} from cursemaven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.",
+                                includedJar.getGroup(), includedJar.getArtifact(), includedJar.getVersion());
+                    }
+                    // Same with the Modrinth official maven (see https://support.modrinth.com/en/articles/8801191-modrinth-maven)
+                    // While actual versions can be used, version IDs (which are random strings) can also be used
+                    else if ("maven.modrinth".equals(includedJar.getGroup())) {
+                        getLogger().warn("Embedding dependency {}:{}:{} from Modrinth Maven using JiJ is likely to cause conflicts at runtime when other mods include the same library from a normal Maven repository.",
+                                includedJar.getGroup(), includedJar.getArtifact(), includedJar.getVersion());
+                    }
+
                     var originalName = includedJar.getFile().getName();
                     var embeddedName = includedJar.getEmbeddedFilename();
                     if (!originalName.equals(embeddedName)) {
@@ -123,8 +175,8 @@ public abstract class JarJar extends DefaultTask {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private Path writeMetadata(List<ResolvedJarJarArtifact> includedJars) {
-        final Path metadataPath = getJarJarMetadataPath();
-        final Metadata metadata = createMetadata(includedJars);
+        var metadataPath = getJarJarMetadataPath();
+        var metadata = createMetadata(includedJars);
 
         try {
             metadataPath.toFile().getParentFile().mkdirs();

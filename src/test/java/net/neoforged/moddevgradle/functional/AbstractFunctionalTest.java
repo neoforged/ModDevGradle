@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-abstract class AbstractFunctionalTest {
+public abstract class AbstractFunctionalTest {
     static final String DEFAULT_NEOFORGE_VERSION = "21.0.133-beta";
 
     static final Map<String, String> DEFAULT_PLACEHOLDERS = Map.of(
@@ -20,9 +20,9 @@ abstract class AbstractFunctionalTest {
     );
 
     @TempDir
-    File testProjectDir;
-    File settingsFile;
-    File buildFile;
+    protected File testProjectDir;
+    protected File settingsFile;
+    protected File buildFile;
 
     @BeforeEach
     final void setBaseFiles() {
