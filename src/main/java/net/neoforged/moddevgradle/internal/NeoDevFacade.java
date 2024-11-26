@@ -42,7 +42,30 @@ public final class NeoDevFacade {
                 runTemplatesSourceFile,
                 configureModulePath,
                 configureAdditionalClasspath,
-                assetPropertiesFile
+                assetPropertiesFile,
+                project.getObjects().property(String.class) // empty provider
+        );
+    }
+
+    public static void setupRuns(Project project,
+                                 Provider<Directory> argFileDir,
+                                 DomainObjectCollection<RunModel> runs,
+                                 Object runTemplatesSourceFile,
+                                 Consumer<Configuration> configureModulePath,
+                                 Consumer<Configuration> configureAdditionalClasspath,
+                                 Provider<RegularFile> assetPropertiesFile,
+                                 Provider<String> neoFormVersion
+    ) {
+        ModDevPlugin.setupRuns(
+                project,
+                Branding.NEODEV,
+                argFileDir,
+                runs,
+                runTemplatesSourceFile,
+                configureModulePath,
+                configureAdditionalClasspath,
+                assetPropertiesFile,
+                neoFormVersion
         );
     }
 

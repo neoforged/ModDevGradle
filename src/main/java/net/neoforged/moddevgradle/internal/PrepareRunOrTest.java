@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -91,6 +93,14 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Input
     public abstract Property<Level> getGameLogLevel();
 
+    /**
+     * Only used when {@link #getRunTypeTemplatesSource()} is empty,
+     * to know whether the associated Minecraft version requires one or two data runs.
+     */
+    @Optional
+    @Input
+    public abstract Property<String> getNeoFormVersion();
+
     private final ProgramArgsFormat programArgsFormat;
 
     protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
@@ -147,17 +157,32 @@ abstract class PrepareRunOrTest extends DefaultTask {
         var clientArgs = List.of("--gameDir", ".", "--assetIndex", "{asset_index}", "--assetsDir", "{assets_root}", "--accessToken", "NotValid", "--version", "ModDevGradle");
         var commonArgs = List.<String>of();
 
-        return new UserDevConfig("", "", "", List.of(), List.of(), Map.of(
-                "client", new UserDevRunType(
-                        true, "net.minecraft.client.main.Main", clientArgs, List.of(), true, false, false, false, Map.of(), Map.of()
-                ),
-                "server", new UserDevRunType(
-                        true, "net.minecraft.server.Main", commonArgs, List.of(), false, true, false, false, Map.of(), Map.of()
-                ),
-                "data", new UserDevRunType(
-                        true, "net.minecraft.data.Main", commonArgs, List.of(), false, false, true, false, Map.of(), Map.of()
-                )
+        var runTypes = new LinkedHashMap<String, UserDevRunType>();
+        runTypes.put("client", new UserDevRunType(
+                true, "net.minecraft.client.main.Main", clientArgs, List.of(), Map.of(), Map.of()
         ));
+        runTypes.put("server", new UserDevRunType(
+                true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
+        ));
+
+        var splitData = getNeoFormVersion()
+                .map(VersionUtils::hasSplitDataRuns)
+                .orElse(false) // Default to single run for backwards compatibility
+                .get();
+        if (splitData) {
+            runTypes.put("clientData", new UserDevRunType(
+                    true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
+            ));
+            runTypes.put("serverData", new UserDevRunType(
+                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
+            ));
+        } else {
+            runTypes.put("data", new UserDevRunType(
+                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
+            ));
+        }
+
+        return new UserDevConfig(runTypes);
     }
 
     private void writeJvmArguments(UserDevRunType runConfig) throws IOException {

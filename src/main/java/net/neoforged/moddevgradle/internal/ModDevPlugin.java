@@ -309,7 +309,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 userDevConfigOnly,
                 modulePath -> modulePath.getDependencies().addLater(modulePathDependency),
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
-                downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
+                downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile),
+                extension.getNeoFormVersion()
         );
 
         setupJarJar(project);
@@ -478,7 +479,8 @@ public class ModDevPlugin implements Plugin<Project> {
                           Object runTemplatesSourceFile,
                           Consumer<Configuration> configureModulePath,
                           Consumer<Configuration> configureLegacyClasspath,
-                          Provider<RegularFile> assetPropertiesFile
+                          Provider<RegularFile> assetPropertiesFile,
+                          Provider<String> neoFormVersion
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
@@ -499,7 +501,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureModulePath,
                     configureLegacyClasspath,
                     assetPropertiesFile,
-                    devLaunchConfig
+                    devLaunchConfig,
+                    neoFormVersion
             );
             prepareRunTasks.put(run, prepareRunTask);
         });
@@ -521,7 +524,8 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
-            Configuration devLaunchConfig
+            Configuration devLaunchConfig,
+            Provider<String> neoFormVersion
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
@@ -553,7 +557,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
             spec.attributes(attributes -> {
                 attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
-                    var name = t.equals("client") || t.equals("data") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                    var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
                     return project.getObjects().named(MinecraftDistribution.class, name);
                 }));
                 setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
@@ -590,6 +594,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
+            task.getNeoFormVersion().set(neoFormVersion);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
