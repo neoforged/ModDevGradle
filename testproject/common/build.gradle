@@ -7,7 +7,9 @@ plugins {
 }
 
 neoForge {
-    neoFormVersion = "1.21-20240613.152323"
+    enableModding {
+        neoFormVersion = "1.21-20240613.152323"
+    }
 
     accessTransformers {
         from(project.file('accesstransformer.cfg'))
