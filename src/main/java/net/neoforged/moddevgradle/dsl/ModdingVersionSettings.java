@@ -2,7 +2,6 @@ package net.neoforged.moddevgradle.dsl;
 
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.SourceSet;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class ModdingVersionSettings {
@@ -11,6 +10,14 @@ public abstract class ModdingVersionSettings {
 
     @Nullable
     private String neoFormVersion;
+
+    public @Nullable String getNeoForgeVersion() {
+        return neoForgeVersion;
+    }
+
+    public @Nullable String getNeoFormVersion() {
+        return neoFormVersion;
+    }
 
     /**
      * NeoForge version number. You have to set either this or {@link #setNeoFormVersion}.
@@ -33,9 +40,4 @@ public abstract class ModdingVersionSettings {
      * Defaults to the main source set, but can also be set to an empty list.
      */
     public abstract ListProperty<SourceSet> getEnabledSourceSets();
-
-    @ApiStatus.Internal
-    public ImmutableModdingVersions toImmutable() {
-        return new ImmutableModdingVersions(neoForgeVersion, neoFormVersion);
-    }
 }

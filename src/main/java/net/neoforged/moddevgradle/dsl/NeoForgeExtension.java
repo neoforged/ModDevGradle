@@ -54,21 +54,14 @@ public abstract class NeoForgeExtension {
         var modDevPlugin = project.getPlugins().getPlugin(ModDevPlugin.class);
 
         var settings = project.getObjects().newInstance(ModdingVersionSettings.class);
-        // By default enable modding deps only for the main source set
+        // By default, enable modding deps only for the main source set
         settings.getEnabledSourceSets().convention(project.provider(() -> {
             var sourceSets = ExtensionUtils.getSourceSets(project);
             return List.of(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
         }));
         customizer.execute(settings);
 
-        var versions = settings.toImmutable();
-
-        modDevPlugin.enableModding(
-                project,
-                settings.getEnabledSourceSets().get(),
-                versions.neoForgeVersion(),
-                versions.neoFormVersion()
-        );
+        modDevPlugin.enableModding(project, settings);
     }
 
     /**

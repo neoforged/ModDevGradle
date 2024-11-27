@@ -5,6 +5,7 @@ import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
+import net.neoforged.moddevgradle.dsl.ModdingVersionSettings;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -148,18 +149,101 @@ public class ModDevPlugin implements Plugin<Project> {
         setupJarJar(project);
     }
 
-    public void enableModding(Project project,
-                              List<SourceSet> sourceSets,
-                              @Nullable String neoForgeVersion,
-                              @Nullable String neoFormVersion) {
+    public void enableModding(Project project, ModdingVersionSettings settings) {
+        enableModding(
+                project,
+                settings.getEnabledSourceSets().get(),
+                getModdingDependencies(project, settings)
+        );
+    }
+
+    static ModdingDependencies getModdingDependencies(Project project, ModdingVersionSettings settings) {
+
+        var neoForgeVersion = settings.getNeoForgeVersion();
+        var neoFormVersion = settings.getNeoFormVersion();
         if (neoForgeVersion == null && neoFormVersion == null) {
-            throw new IllegalArgumentException("You must specify at least a NeoForge and/or a NeoForm version for vanilla mode");
+            throw new IllegalArgumentException("You must specify at least a NeoForge or a NeoForm version for vanilla-only mode");
         }
 
         var dependencyFactory = project.getDependencyFactory();
 
-        var neoForgeModule = neoForgeVersion != null ? dependencyFactory.create("net.neoforged:neoforge:" + neoForgeVersion) : null;
-        var neoFormModule = neoFormVersion != null ? dependencyFactory.create("net.neoforged:neoform:" + neoFormVersion) : null;
+        ModuleDependency neoForgeModule = null;
+        ModuleDependency modulePathDependency = null;
+        ModuleDependency runTypesDataDependency = null;
+        ModuleDependency testFixturesDependency = null;
+        String moddingPlatformDataDependencyNotation = null;
+        if (neoForgeVersion != null) {
+            neoForgeModule = dependencyFactory.create("net.neoforged:neoforge:" + neoForgeVersion);
+            moddingPlatformDataDependencyNotation = "net.neoforged:neoforge:" + neoForgeVersion + ":userdev";
+            runTypesDataDependency = neoForgeModule.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
+            ;
+            modulePathDependency = neoForgeModule.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
+                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+            testFixturesDependency = neoForgeModule.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures"));
+        }
+
+        ModuleDependency neoFormModule = null;
+        String recompilableMinecraftWorkflowDataDependencyNotation = null;
+        if (neoFormVersion != null) {
+            neoFormModule = dependencyFactory.create("net.neoforged:neoform:" + neoFormVersion);
+            recompilableMinecraftWorkflowDataDependencyNotation = "net.neoforged:neoform:" + neoFormVersion + "@zip";
+        }
+
+        // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
+        // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
+        ModuleDependency neoForgeModDevLibrariesDependency;
+        String artifactFilenamePrefix;
+        if (neoForgeModule != null) {
+            neoForgeModDevLibrariesDependency = neoForgeModule.copy()
+                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
+
+            artifactFilenamePrefix = "neoforge-" + neoForgeVersion;
+        } else {
+            neoForgeModDevLibrariesDependency = neoFormModule.copy()
+                    .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
+            artifactFilenamePrefix = "vanilla-" + neoFormVersion;
+        }
+        return new ModdingDependencies(
+                neoForgeModule,
+                moddingPlatformDataDependencyNotation,
+                modulePathDependency,
+                runTypesDataDependency,
+                testFixturesDependency,
+                neoFormModule,
+                recompilableMinecraftWorkflowDataDependencyNotation,
+                artifactFilenamePrefix,
+                neoForgeModDevLibrariesDependency
+        );
+    }
+
+    /**
+     * @param gameLibrariesDependency A module dependency that represents the library dependencies of the game.
+     *                                This module can be depended on with different usage attributes, which allow it
+     *                                to expose different sets of libraries for use in compiling code or at runtime
+     *                                (apiElements vs. runtimeElements).
+     */
+    record ModdingDependencies(
+            @Nullable ModuleDependency moddingPlatformDependency,
+            @Nullable String moddingPlatformDataDependencyNotation,
+            @Nullable ModuleDependency modulePathDependency,
+            @Nullable ModuleDependency runTypesConfigDependency,
+            @Nullable ModuleDependency testFixturesDependency,
+            @Nullable ModuleDependency recompilableMinecraftWorkflowDependency,
+            @Nullable String recompilableMinecraftWorkflowDataDependencyNotation,
+            String artifactFilenamePrefix,
+            ModuleDependency gameLibrariesDependency
+    ) {
+    }
+
+    private void enableModding(Project project,
+                              List<SourceSet> sourceSets,
+                               ModdingDependencies moddingDependencies) {
+
+        var dependencyFactory = project.getDependencyFactory();
 
         var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
@@ -173,18 +257,7 @@ public class ModDevPlugin implements Plugin<Project> {
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = layout.getBuildDirectory().dir("moddev");
 
-        // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
-        // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
-        ModuleDependency neoForgeModDevLibrariesDependency;
-        if (neoForgeModule != null) {
-            neoForgeModDevLibrariesDependency = neoForgeModule.copy()
-                    .capabilities(caps1 -> caps1.requireCapability("net.neoforged:neoforge-dependencies"));
-        } else {
-            neoForgeModDevLibrariesDependency = neoFormModule.copy()
-                    .capabilities(caps1 -> caps1.requireCapability("net.neoforged:neoform-dependencies"));
-        }
-
-        var createManifestConfigurations = configureArtifactManifestConfigurations(project, neoForgeModule, neoFormModule);
+        var createManifestConfigurations = configureArtifactManifestConfigurations(project, moddingDependencies);
 
         // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
@@ -214,12 +287,7 @@ public class ModDevPlugin implements Plugin<Project> {
             var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> minecraftArtifactsDir.map(artifactDir -> {
                 // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                String prefix;
-                if (neoForgeVersion != null) {
-                    prefix = "neoforge-" + neoForgeVersion;
-                } else {
-                    prefix = "vanilla-" + neoFormVersion;
-                }
+                String prefix = moddingDependencies.artifactFilenamePrefix();
                 return artifactDir.file(prefix + "-minecraft" + suffix + ".jar");
             });
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
@@ -227,8 +295,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
             task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
 
-            task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(neoForgeVersion));
-            task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(neoFormVersion));
+            task.getNeoForgeArtifact().set(moddingDependencies.moddingPlatformDataDependencyNotation());
+            task.getNeoFormArtifact().set(moddingDependencies.recompilableMinecraftWorkflowDataDependencyNotation());
             task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
         });
         ideIntegration.runTaskOnProjectSync(createArtifacts);
@@ -243,8 +311,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.addArtifactsToManifest(configuration);
             }
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
-            task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(neoForgeVersion));
-            task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(neoFormVersion));
+            task.getNeoForgeArtifact().set(moddingDependencies.moddingPlatformDataDependencyNotation());
+            task.getNeoFormArtifact().set(moddingDependencies.recompilableMinecraftWorkflowDataDependencyNotation());
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
@@ -265,7 +333,7 @@ public class ModDevPlugin implements Plugin<Project> {
             config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
             // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
-            config.getDependencies().add(neoForgeModDevLibrariesDependency);
+            config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         var compileDependencies = configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
@@ -273,7 +341,7 @@ public class ModDevPlugin implements Plugin<Project> {
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            config.getDependencies().add(neoForgeModDevLibrariesDependency);
+            config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         for (var sourceSet : sourceSets) {
@@ -292,15 +360,13 @@ public class ModDevPlugin implements Plugin<Project> {
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
         @Nullable Configuration userDevConfigOnly;
-        if (neoForgeModule != null) {
+        if (moddingDependencies.runTypesConfigDependency() != null) {
             userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
                 spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
                 spec.setTransitive(false);
-                spec.getDependencies().add(neoForgeModule.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"))
-                );
+                spec.getDependencies().add(moddingDependencies.runTypesConfigDependency());
             });
         } else {
             userDevConfigOnly = null;
@@ -311,20 +377,11 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
 
-            spec.getDependencies().add(neoForgeModDevLibrariesDependency);
+            spec.getDependencies().add(moddingDependencies.gameLibrariesDependency());
             addClientResources(project, spec, createArtifacts);
         });
 
-        ModuleDependency modulePathDependency;
-        if (neoForgeModule != null) {
-            modulePathDependency = neoForgeModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
-                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-        } else {
-            modulePathDependency = null; // When using only Vanilla
-        }
-
+        ModuleDependency modulePathDependency = moddingDependencies.modulePathDependency();
         setupRuns(
                 project,
                 Branding.MDG,
@@ -338,25 +395,24 @@ public class ModDevPlugin implements Plugin<Project> {
                 },
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile),
-                project.provider(() -> neoFormVersion)
+                project.provider(moddingDependencies::recompilableMinecraftWorkflowDependency).map(ModuleDependency::getVersion)
         );
 
         configureTesting = () -> {
             // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
             configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
                 configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-                configuration.getDependencies().add(neoForgeModDevLibrariesDependency);
+                configuration.getDependencies().add(moddingDependencies.gameLibrariesDependency());
             });
 
             // Test fixtures only exist when not running in Vanilla mode
             Configuration testFixtures;
-            if (neoForgeModule != null) {
+            if (moddingDependencies.testFixturesDependency() != null) {
                 testFixtures = configurations.create("neoForgeTestFixtures", config -> {
                     config.setDescription("Additional JUnit helpers provided by NeoForge");
                     config.setCanBeResolved(false);
                     config.setCanBeConsumed(false);
-                    config.getDependencies().add(neoForgeModule.copy()
-                            .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures")));
+                    config.getDependencies().add(moddingDependencies.testFixturesDependency());
                 });
             } else {
                 testFixtures = null;
@@ -383,7 +439,7 @@ public class ModDevPlugin implements Plugin<Project> {
                         }
                     },
                     spec -> {
-                        spec.getDependencies().add(neoForgeModDevLibrariesDependency);
+                        spec.getDependencies().add(moddingDependencies.gameLibrariesDependency());
                         addClientResources(project, spec, createArtifacts);
                     },
                     downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
@@ -411,31 +467,18 @@ public class ModDevPlugin implements Plugin<Project> {
         );
     }
 
-    @Nullable
-    private static String getNeoFormDataDependencyNotation(@Nullable String neoFormVersion) {
-        if (neoFormVersion == null) {
-            return null;
-        }
-        return "net.neoforged:neoform:" + neoFormVersion + "@zip";
-    }
-
-    @Nullable
-    private static String getNeoForgeUserDevDependencyNotation(@Nullable String neoForgeVersion) {
-        if (neoForgeVersion == null) {
-            return null;
-        }
-        return "net.neoforged:neoforge:" + neoForgeVersion + ":userdev";
-    }
-
     /**
      * Collects all dependencies needed by the NeoFormRuntime
      */
-    private List<Configuration> configureArtifactManifestConfigurations(Project project, @Nullable ModuleDependency neoForgeModule, @Nullable ModuleDependency neoFormModule) {
+    private List<Configuration> configureArtifactManifestConfigurations(Project project, ModdingDependencies moddingDependencies) {
         var configurations = project.getConfigurations();
 
         var configurationPrefix = "neoFormRuntimeDependencies";
 
         var result = new ArrayList<Configuration>();
+
+        var neoForgeModule = moddingDependencies.moddingPlatformDependency();
+        var neoFormModule = moddingDependencies.recompilableMinecraftWorkflowDependency();
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
