@@ -304,8 +304,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // This defines the module path for runs
         // NOTE: When running in vanilla mode, this provider is undefined and will not result in an actual dependency
-        var modulePathDependency = extension.getVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+        var modulePathDependency = extension.getNeoForgeArtifact().map(artifactId -> {
+            return dependencyFactory.create(artifactId)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
                     })
@@ -338,8 +338,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 config.setDescription("Additional JUnit helpers provided by NeoForge");
                 config.setCanBeResolved(false);
                 config.setCanBeConsumed(false);
-                config.getDependencies().addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                config.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                    return dependencyFactory.create(artifact)
                             .capabilities(caps -> {
                                 caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
                             });
