@@ -30,6 +30,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             repo.setUrl(URI.create("https://maven.minecraftforge.net/"));
         });
 
+        // This module is for supporting NeoForge 1.20.1, which is technically the same as Legacy Forge 1.20.1
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
         project.getDependencies().getComponents().withModule("net.minecraftforge:forge", LegacyForgeMetadataTransform.class);
         project.getDependencies().getComponents().withModule("de.oceanlabs.mcp:mcp_config", McpMetadataTransform.class);
