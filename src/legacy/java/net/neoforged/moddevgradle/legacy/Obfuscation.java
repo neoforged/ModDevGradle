@@ -98,7 +98,7 @@ public abstract class Obfuscation {
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
-                        constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
+                        constraints.add(parent.getName(), project.project(projectDependency.getPath()), c -> {
                             c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
                         });
                     });

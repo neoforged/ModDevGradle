@@ -6,17 +6,6 @@ plugins {
 group = 'com.example.legacy'
 version = '1.0.0'
 
-repositories {
-    mavenLocal()
-    maven {
-        name 'cursemaven'
-        url 'https://cursemaven.com'
-        content {
-            includeGroup "curse.maven"
-        }
-    }
-}
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
