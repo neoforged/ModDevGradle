@@ -1,5 +1,5 @@
-# ModDevGradle Legacy Plugin
-ModDevGradle has a secondary plugin (ID: `net.neoforged.moddevgradle.legacy`, released alongside the normal plugin with the same version)
+# ModDevGradle Legacy Forge Plugin
+ModDevGradle has a secondary plugin (ID: `net.neoforged.moddev.legacyforge`, released alongside the normal plugin with the same version)
 that adds support for developing mods against MinecraftForge and Vanilla Minecraft versions 1.17 up to 1.20.1.  
 
 The legacy plugin is an "addon" plugin, meaning it operates on top of the normal plugin. This means that the APIs normally used
@@ -10,7 +10,7 @@ An example `build.gradle` file for developing a mod against MinecraftForge for 1
 ```groovy
 plugins {
     // Apply the plugin. You can find the latest version at https://projects.neoforged.net/neoforged/ModDevGradle
-    id 'net.neoforged.moddev.legacy' version '2.0.28-beta'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.28-beta'
 }
 
 neoForge {

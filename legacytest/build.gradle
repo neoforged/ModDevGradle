@@ -1,6 +1,6 @@
 plugins {
     id 'maven-publish'
-    id 'net.neoforged.moddev.legacy'
+    id 'net.neoforged.moddev.legacyforge'
 }
 
 group = 'com.example.legacy'

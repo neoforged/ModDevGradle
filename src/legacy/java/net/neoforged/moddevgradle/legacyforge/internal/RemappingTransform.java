@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacy;
+package net.neoforged.moddevgradle.legacyforge.internal;
 
 import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
@@ -22,7 +22,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 
 @CacheableTransform
-public abstract class RemappingTransform implements TransformAction<RemappingTransform.Parameters> {
+abstract class RemappingTransform implements TransformAction<RemappingTransform.Parameters> {
     @InputArtifact
     @PathSensitive(PathSensitivity.NONE)
     public abstract Provider<FileSystemLocation> getInputArtifact();
@@ -33,6 +33,10 @@ public abstract class RemappingTransform implements TransformAction<RemappingTra
 
     @Inject
     protected abstract ExecOperations getExecOperations();
+
+    @Inject
+    public RemappingTransform() {
+    }
 
     @Override
     public void transform(TransformOutputs outputs) {

@@ -196,10 +196,10 @@ gradlePlugin {
             description = "This plugin helps you create Minecraft mods using the NeoForge platform"
             tags = ["minecraft", "neoforge", "java", "mod"]
         }
-        legacy {
-            id = 'net.neoforged.moddev.legacy'
-            implementationClass = 'net.neoforged.moddevgradle.boot.LegacyModDevPlugin'
-            displayName = "NeoForge Legacy Mod Development Plugin"
+        legacyforge {
+            id = 'net.neoforged.moddev.legacyforge'
+            implementationClass = 'net.neoforged.moddevgradle.boot.LegacyForgeModDevPlugin'
+            displayName = "Mod Development Plugin for Legacy Forge"
             description = "This plugin helps you create Minecraft mods using the Forge platform, up to 1.20.1"
             tags = ["minecraft", "neoforge", "forge", "java", "mod"]
         }

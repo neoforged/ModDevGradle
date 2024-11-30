@@ -1,5 +1,5 @@
 plugins {
-    id 'net.neoforged.moddev.legacy'
+    id 'net.neoforged.moddev.legacyforge'
 }
 
 repositories {
@@ -29,6 +29,7 @@ dependencies {
     }
     modRuntimeOnly('curse.maven:mekanism-268560:5662583')
     modImplementation('curse.maven:applied-energistics-2-223794:5641282')
+    modImplementation('curse.maven:gregtechceu-modern-890405:5641637')
 }
 
 neoForge {

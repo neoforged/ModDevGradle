@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacy;
+package net.neoforged.moddevgradle.legacyforge.internal;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;

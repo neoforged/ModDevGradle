@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacy;
+package net.neoforged.moddevgradle.legacyforge.internal;
 
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.file.ConfigurableFileCollection;

@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacy;
+package net.neoforged.moddevgradle.legacyforge.internal;
 
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
@@ -18,7 +18,7 @@ import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import javax.inject.Inject;
 import java.util.List;
 
-public abstract class Obfuscation {
+abstract class Obfuscation {
     private final Project project;
     final Provider<RegularFile> officialToSrg, mappingsCsv;
     final Configuration autoRenamingToolRuntime;
@@ -41,8 +41,9 @@ public abstract class Obfuscation {
      * @param configuration an action used to configure the rebfuscation task
      * @return a provider of the created task
      */
-    public TaskProvider<RemapJarTask> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar, SourceSet sourceSet, Action<RemapJarTask> configuration) {
-        var extraMappings = project.getExtensions().getByType(MixinExtension.class).getExtraMappingFiles();
+    public TaskProvider<RemapJarTask> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
+                                                  SourceSet sourceSet,
+                                                  Action<RemapJarTask> configuration) {
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJarTask.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
             task.getDestinationDirectory().convention(jar.flatMap(AbstractArchiveTask::getDestinationDirectory));
@@ -52,7 +53,6 @@ public abstract class Obfuscation {
             task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
             task.getParameters().from(this, RemapParameters.ToolType.ART);
-            task.getParameters().getMappings().from(extraMappings);
             configuration.execute(task);
         });
 
@@ -77,7 +77,7 @@ public abstract class Obfuscation {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.attributes(attributeContainer -> {
-                attributeContainer.attribute(LegacyModDevPlugin.REMAPPED, true);
+                attributeContainer.attribute(LegacyForgeModDevPlugin.REMAPPED, true);
             });
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
@@ -87,19 +87,19 @@ public abstract class Obfuscation {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
-                            c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
                         });
                     });
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
-                            c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
                         });
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), project.project(projectDependency.getPath()), c -> {
-                            c.attributes(a -> a.attribute(LegacyModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
                         });
                     });
                 }

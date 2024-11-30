@@ -1,8 +1,9 @@
-package net.neoforged.moddevgradle.legacy;
+package net.neoforged.moddevgradle.legacyforge.internal;
 
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
-import net.neoforged.moddevgradle.internal.LegacyInternal;
+import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
@@ -17,7 +18,7 @@ import java.net.URI;
 import java.util.Map;
 import java.util.stream.Stream;
 
-public class LegacyModDevPlugin implements Plugin<Project> {
+public class LegacyForgeModDevPlugin implements Plugin<Project> {
     public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
 
     @Override
@@ -56,7 +57,9 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         var mappingsCsv = modDevBuildDir.map(d -> d.file("intermediateToNamed.zip"));
 
         var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, namedToIntermediate, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
-        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate);
+
+        var extraMixinMappings = project.files();
+        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
             extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
@@ -67,7 +70,7 @@ public class LegacyModDevPlugin implements Plugin<Project> {
             extension.getAdditionalMinecraftArtifacts().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
             extension.getRuns().configureEach(run -> {
-                LegacyInternal.configureRun(project, run);
+                LegacyForgeFacade.configureRun(project, run);
 
                 // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
                 run.getSystemProperties().put("mixin.env.remapRefMap", "true");
@@ -80,7 +83,10 @@ public class LegacyModDevPlugin implements Plugin<Project> {
         var reobfJar = obf.reobfuscate(
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                 project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME),
-                remapJarTask -> remapJarTask.getArchiveClassifier().set("")
+                task -> {
+                    task.getArchiveClassifier().set("");
+                    task.getParameters().getMappings().from(extraMixinMappings);
+                }
         );
 
         project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class).configure(jar -> jar.getArchiveClassifier().set("dev"));
