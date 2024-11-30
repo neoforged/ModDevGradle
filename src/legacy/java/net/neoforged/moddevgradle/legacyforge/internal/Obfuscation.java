@@ -69,10 +69,10 @@ abstract class Obfuscation {
         jar.configure(jarTask -> jarTask.finalizedBy(reobf));
 
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-        for (var configurationNames : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
+        for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
             // Ensure that the published jar is the obfuscated jar, not the plain one
-            project.getArtifacts().add(configurationNames, reobf);
-            java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationNames), variant -> {
+            project.getArtifacts().add(configurationName, reobf);
+            java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationName), variant -> {
                 variant.getConfigurationVariant().getArtifacts().removeIf(artifact -> artifact.getFile().equals(jar.get().getArchiveFile().get().getAsFile()));
             });
         }
