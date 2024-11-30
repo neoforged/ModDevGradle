@@ -85,7 +85,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                 project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME),
                 task -> {
-                    task.getArchiveClassifier().set("");
                     task.getParameters().getMappings().from(extraMixinMappings);
                 }
         );
@@ -98,6 +97,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
+        // Newer FML versions also search for it on the java.class.path.
+        // MDG already adds cilent-extra, but the forge jar is missing.
         project.getConfigurations().getByName("additionalRuntimeClasspath")
                 .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));

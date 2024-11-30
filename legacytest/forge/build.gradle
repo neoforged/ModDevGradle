@@ -1,5 +1,6 @@
 plugins {
     id 'net.neoforged.moddev.legacyforge'
+    id 'maven-publish'
 }
 
 repositories {
@@ -47,6 +48,19 @@ neoForge {
     mods {
         myMod {
             sourceSet(sourceSets.main)
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url rootProject.file('repo')
         }
     }
 }
