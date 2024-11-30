@@ -6,13 +6,15 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -59,8 +61,9 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
     /**
      * Set to the desired Java runtime classpath.
      */
-    @Input
-    abstract ListProperty<String> getRuntimeClasspath();
+    @Classpath
+    @InputFiles
+    abstract ConfigurableFileCollection getRuntimeClasspath();
 
     @Input
     abstract Property<ModFoldersProvider> getModFolders();
@@ -122,7 +125,9 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
             return;
         }
 
-        var classpathFileList = String.join(File.pathSeparator, getRuntimeClasspath().get());
+        var classpathFileList = getRuntimeClasspath().getFiles().stream()
+                .map(File::getAbsolutePath)
+                .collect(Collectors.joining(File.pathSeparator));
 
         var lines = List.of(
                 "-classpath",

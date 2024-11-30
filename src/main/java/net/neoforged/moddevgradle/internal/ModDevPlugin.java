@@ -612,24 +612,12 @@ public class ModDevPlugin implements Plugin<Project> {
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
-        var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+        tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
             task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-            // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
-            // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
-            // We don't want to do that on IDE sync!
-            // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
-            //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
-            //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
-            //   depending on what order the tasks are executed.
-            // So we pass the absolute paths directly...
-            task.getRuntimeClasspath().set(project.provider(() -> {
-                return runtimeClasspathConfig.get().getFiles().stream()
-                        .map(File::getAbsolutePath)
-                        .toList();
-            }));
+            task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
             task.getLaunchScript().set(RunUtils.getLaunchScript(argFileDir, run));
             task.getClasspathArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.CLASSPATH));
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
@@ -637,7 +625,6 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getEnvironment().set(run.getEnvironment());
             task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
         });
-        ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
 
         tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
             task.setGroup(branding.publicTaskGroup());
