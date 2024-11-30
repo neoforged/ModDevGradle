@@ -38,7 +38,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -198,7 +197,7 @@ final class RunUtils {
     }
 
     public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod) {
-        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class, project);
+        var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod));
         return modFoldersProvider;
     }
@@ -293,18 +292,16 @@ record AssetProperties(String assetIndex, String assetsRoot) {
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
-    public ModFoldersProvider(Project project) {
-        getClassesArgument().set(project.provider(() -> {
-            var stringModFolderMap = getModFolders().get();
-            return stringModFolderMap.entrySet().stream()
-                    .<String>mapMulti((entry, output) -> {
-                        for (var directory : entry.getValue().getFolders()) {
-                            // Resources
-                            output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
-                        }
-                    })
-                    .collect(Collectors.joining(File.pathSeparator));
-        }));
+    public ModFoldersProvider() {
+        var classesArgument = getModFolders().map(map -> map.entrySet().stream()
+                .<String>mapMulti((entry, output) -> {
+                    for (var directory : entry.getValue().getFolders()) {
+                        // Resources
+                        output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                    }
+                })
+                .collect(Collectors.joining(File.pathSeparator)));
+        getClassesArgument().set(classesArgument);
     }
 
     @Nested

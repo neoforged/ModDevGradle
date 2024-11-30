@@ -6,6 +6,7 @@ import org.gradle.api.Action;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.DirectDependenciesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
+import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.model.ObjectFactory;
@@ -19,7 +20,7 @@ import javax.inject.Inject;
  * Example for NeoForm:
  * https://maven.neoforged.net/releases/net/neoforged/neoform/1.21-20240613.152323/neoform-1.21-20240613.152323.module
  */
-// @CacheableTransform
+@CacheableTransform
 class McpMetadataTransform extends LegacyMetadataTransform {
     @Inject
     public McpMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {

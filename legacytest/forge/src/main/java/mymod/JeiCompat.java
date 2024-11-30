@@ -15,6 +15,7 @@ public class JeiCompat implements IModPlugin {
 
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
+        // Calling this method tests that JEI was remapped correctly, since the method has an "ItemStack" argument
         registration.registerSubtypeInterpreter(Items.ALLIUM, (ingredient, context) -> "allium");
     }
 }

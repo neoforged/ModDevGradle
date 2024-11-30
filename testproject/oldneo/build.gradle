@@ -1,8 +1,0 @@
-
-plugins {
-    id 'net.neoforged.moddev'
-}
-
-neoForge {
-    version = "20.4.237"
-}

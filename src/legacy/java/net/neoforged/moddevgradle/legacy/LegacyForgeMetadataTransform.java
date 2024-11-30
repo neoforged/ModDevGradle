@@ -5,9 +5,9 @@ import com.google.gson.JsonObject;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.DirectDependenciesMetadata;
-import org.gradle.api.artifacts.DirectDependencyMetadata;
 import org.gradle.api.artifacts.MutableVariantFilesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
+import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.Usage;
@@ -15,7 +15,7 @@ import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
 
-// @CacheableTransform
+@CacheableTransform
 class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
     @Inject
     public LegacyForgeMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {
