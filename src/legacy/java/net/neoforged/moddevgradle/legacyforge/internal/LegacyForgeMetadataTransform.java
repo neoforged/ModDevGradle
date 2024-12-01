@@ -80,6 +80,7 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
                 capabilities.addCapability("net.neoforged", "neoforge-dependencies", id.getVersion());
             });
         });
+        // repurpose the existing runtime variant to be the equivalent of NeoForges modDevRuntimeElements
         details.withVariant("runtime", variantMetadata -> {
             variantMetadata.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
