@@ -16,7 +16,6 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 
 import javax.inject.Inject;
-import java.io.File;
 import java.util.List;
 
 abstract class Obfuscation {
@@ -43,34 +42,31 @@ abstract class Obfuscation {
      * @return a provider of the created task
      */
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
-                                              SourceSet sourceSet,
-                                              Action<RemapJar> configuration) {
+                                                  SourceSet sourceSet,
+                                                  Action<RemapJar> configuration) {
+
+
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
-            var jarFile = jar.flatMap(AbstractArchiveTask::getArchiveFile);
-            task.getInput().set(jarFile);
-            task.getOutput().convention(jarFile.flatMap(regularFile -> {
-                var f = regularFile.getAsFile();
-                String newFilename;
-                var extSep = f.getName().lastIndexOf('.');
-                if (extSep != -1) {
-                    newFilename = f.getName().substring(0, extSep)
-                            + "-reobf" + f.getName().substring(extSep);
-                } else {
-                    newFilename = f.getName() + "-reobf";
-                }
-                return jar.flatMap(AbstractArchiveTask::getDestinationDirectory)
-                        .map(dir -> dir.file(newFilename));
-            }));
+            task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
+            task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory());
+            task.getArchiveBaseName().convention(jar.flatMap(AbstractArchiveTask::getArchiveBaseName));
+            task.getArchiveVersion().convention(jar.flatMap(AbstractArchiveTask::getArchiveVersion));
+            task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier));
+            task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
             task.getParameters().from(this, RemapParameters.ToolType.ART);
             configuration.execute(task);
         });
 
-        jar.configure(jarTask -> jarTask.finalizedBy(reobf));
+        jar.configure(task -> {
+            task.finalizedBy(reobf);
+            // Move plain jars into a subdirectory to be able to maintain the same classifier for the reobfuscated version
+            task.getDestinationDirectory().set(task.getProject().getLayout().getBuildDirectory().dir("devlibs"));
+        });
 
+        // Replace the publication of the jar task with the reobfuscated jar
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
-            // Ensure that the published jar is the obfuscated jar, not the plain one
             project.getArtifacts().add(configurationName, reobf);
             java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationName), variant -> {
                 variant.getConfigurationVariant().getArtifacts().removeIf(artifact -> artifact.getFile().equals(jar.get().getArchiveFile().get().getAsFile()));

@@ -89,7 +89,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 }
         );
 
-        project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class).configure(jar -> jar.getArchiveClassifier().set("dev"));
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
