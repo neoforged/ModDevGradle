@@ -212,6 +212,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                 return split[2] + "-" + split[1];
                             })
                             .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
+                    //
                     (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
             ));
 
