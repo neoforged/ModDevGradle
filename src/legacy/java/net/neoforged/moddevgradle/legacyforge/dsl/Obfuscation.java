@@ -43,14 +43,14 @@ public abstract class Obfuscation {
     }
 
     @ApiStatus.Internal
-    public void configureSrgToNamedOperation(RemapOperation operation) {
+    public void configureNamedToSrgOperation(RemapOperation operation) {
         operation.getToolType().set(RemapOperation.ToolType.ART);
         operation.getToolClasspath().from(autoRenamingToolRuntime);
         operation.getMappings().from(officialToSrg);
     }
 
     @ApiStatus.Internal
-    public void configureNamedToSrgOperation(RemapOperation operation) {
+    public void configureSrgToNamedOperation(RemapOperation operation) {
         operation.getToolType().set(RemapOperation.ToolType.INSTALLER_TOOLS);
         operation.getToolClasspath().from(installerToolsRuntime);
         operation.getMappings().from(mappingsCsv);
@@ -76,7 +76,7 @@ public abstract class Obfuscation {
             task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier));
             task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
-            configureSrgToNamedOperation(task.getRemapOperation());
+            configureNamedToSrgOperation(task.getRemapOperation());
             configuration.execute(task);
         });
 

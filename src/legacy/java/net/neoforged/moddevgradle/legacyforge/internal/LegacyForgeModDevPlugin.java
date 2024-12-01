@@ -121,7 +121,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
             params.parameters(parameters -> {
-                obf.configureNamedToSrgOperation(parameters.getRemapOperation());
+                obf.configureSrgToNamedOperation(parameters.getRemapOperation());
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
