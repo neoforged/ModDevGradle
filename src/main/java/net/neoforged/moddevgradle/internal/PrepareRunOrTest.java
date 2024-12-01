@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionUtils;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.zip.ZipFile;
 
 /**
  * Performs preparation for running the game or running a test.
@@ -145,12 +147,35 @@ abstract class PrepareRunOrTest extends DefaultTask {
         if (getRunTypeTemplatesSource().isEmpty()) {
             runConfig = resolveRunType(getSimulatedUserDevConfigForVanilla());
         } else {
-            var userDevConfig = UserDevConfig.from(getRunTypeTemplatesSource().getSingleFile());
+            var userDevConfig = loadUserDevConfig(getRunTypeTemplatesSource().getSingleFile());
             runConfig = resolveRunType(userDevConfig);
         }
 
         writeJvmArguments(runConfig);
         writeProgramArguments(runConfig);
+    }
+
+    private UserDevConfig loadUserDevConfig(File userDevFile) {
+        // For backwards compatibility reasons we also support loading this from the userdev jar,
+        // for NeoForge and Forge versions that didn't publish the configuration as a separate JSON to Maven
+        if (userDevFile.getName().endsWith(".jar")) {
+            try (var zf = new ZipFile(userDevFile)) {
+                var configJson = zf.getEntry("config.json");
+                if (configJson != null) {
+                    try (var in = zf.getInputStream(configJson)) {
+                        return UserDevConfig.from(in);
+                    }
+                }
+            } catch (IOException e) {
+                throw new GradleException("Failed to read userdev config file from Jar-file " + userDevFile, e);
+            }
+        }
+
+        try (var in = Files.newInputStream(userDevFile.toPath())) {
+            return UserDevConfig.from(in);
+        } catch (Exception e) {
+            throw new GradleException("Failed to read userdev config file from " + userDevFile, e);
+        }
     }
 
     private UserDevConfig getSimulatedUserDevConfigForVanilla() {

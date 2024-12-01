@@ -38,6 +38,9 @@ public abstract class NeoForgeExtension {
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
         unitTest = project.getObjects().newInstance(UnitTest.class);
+        getNeoForgeArtifact().convention(getVersion().map(version -> "net.neoforged:neoforge:" + version));
+        getNeoFormArtifact().convention(getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version));
+
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
@@ -62,7 +65,8 @@ public abstract class NeoForgeExtension {
     }
 
     /**
-     * NeoForge version number. You have to set either this or {@link #getNeoFormVersion()}.
+     * NeoForge version number. You have to set either this, {@link #getNeoFormVersion()}
+     * or {@link #getNeoFormArtifact()}.
      */
     public abstract Property<String> getVersion();
 
@@ -70,8 +74,27 @@ public abstract class NeoForgeExtension {
      * You can set this property to a version of <a href="https://projects.neoforged.net/neoforged/neoform">NeoForm</a>
      * to either override the version used in the version of NeoForge you set, or to compile against
      * Vanilla artifacts that have no NeoForge code added.
+     * <p>
+     * This property is mutually exclusive with {@link #getNeoFormArtifact()}.
      */
     public abstract Property<String> getNeoFormVersion();
+
+    /**
+     * Is derived automatically from {@link #getVersion()}.
+     *
+     * @return Maven artifact coordinate (group:module:version)
+     */
+    public abstract Property<String> getNeoForgeArtifact();
+
+    /**
+     * Derived automatically from the {@link #getNeoFormVersion()}.
+     * You can override this property to use i.e. MCP for up to 1.20.1.
+     * <p>
+     * This property is mutually exclusive with {@link #getNeoForgeArtifact()}.
+     *
+     * @return Maven artifact coordinate (group:module:version)
+     */
+    public abstract Property<String> getNeoFormArtifact();
 
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.

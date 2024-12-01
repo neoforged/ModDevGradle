@@ -158,13 +158,14 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
         }
 
         // This is the actual main launch configuration that launches the game
+        var modFoldersProvider = getModFoldersProvider(project, run.getLoadedMods(), null);
         var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
-                        RunUtils.escapeJvmArg(getModFoldersProvider(project, run.getLoadedMods(), null).getArgument())
+                        RunUtils.escapeJvmArg(modFoldersProvider.getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .envVar(run.getEnvironment().get())
+                .envVar(RunUtils.replaceModClassesEnv(run, modFoldersProvider))
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         writeEclipseLaunchConfig(project, launchConfigName, config);

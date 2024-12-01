@@ -12,6 +12,7 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.MapProperty;
+import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.InputFiles;
@@ -30,6 +31,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -219,6 +221,22 @@ final class RunUtils {
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
     }
 
+    /**
+     * In the run model, the environment variable "MOD_CLASSES" is set to the gradle output folders by the legacy plugin,
+     * since MDG itself completely ignores run-type specific environment variables.
+     * To ensure that in IDE runs, the IDE output folders are used, we replace the MOD_CLASSES environment variable
+     * explicitly.
+     */
+    public static Map<String, String> replaceModClassesEnv(RunModel model, ModFoldersProvider modFoldersProvider) {
+        var vars = model.getEnvironment().get();
+        if (vars.containsKey("MOD_CLASSES")) {
+            final var copy = new HashMap<>(vars);
+            copy.put("MOD_CLASSES", modFoldersProvider.getClassesArgument().get());
+            return copy;
+        }
+        return vars;
+    }
+
     public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
                                                                           Provider<Set<ModModel>> modsProvider,
                                                                           @Nullable Provider<ModModel> testedMod) {
@@ -280,23 +298,26 @@ record AssetProperties(String assetIndex, String assetsRoot) {
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
     public ModFoldersProvider() {
+        var classesArgument = getModFolders().map(map -> map.entrySet().stream()
+                .<String>mapMulti((entry, output) -> {
+                    for (var directory : entry.getValue().getFolders()) {
+                        // Resources
+                        output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
+                    }
+                })
+                .collect(Collectors.joining(File.pathSeparator)));
+        getClassesArgument().set(classesArgument);
     }
 
     @Nested
     abstract MapProperty<String, ModFolder> getModFolders();
 
     @Internal
+    abstract Property<String> getClassesArgument();
+
+    @Internal
     public String getArgument() {
-        var stringModFolderMap = getModFolders().get();
-        return "-Dfml.modFolders=%s".formatted(
-                stringModFolderMap.entrySet().stream()
-                        .<String>mapMulti((entry, output) -> {
-                            for (var directory : entry.getValue().getFolders()) {
-                                // Resources
-                                output.accept(entry.getKey() + "%%" + directory.getAbsolutePath());
-                            }
-                        })
-                        .collect(Collectors.joining(File.pathSeparator)));
+        return "-Dfml.modFolders=%s".formatted(getClassesArgument().get());
     }
 
     @Override

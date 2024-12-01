@@ -70,6 +70,7 @@ sourceSets {
         compileClasspath += java8.output
         runtimeClasspath += java8.output
     }
+    legacy
 }
 
 configurations {
@@ -77,6 +78,7 @@ configurations {
     shaded
     // Place shaded dependencies into `compileOnly` so that they do not leak into our publications' dependencies.
     compileOnly.extendsFrom shaded
+    legacyCompileOnly.extendsFrom shaded
     testCompileOnly.extendsFrom shaded
     testRuntimeOnly.extendsFrom shaded
     shadowRuntimeElements {
@@ -123,6 +125,10 @@ dependencies {
     testImplementation gradleTestKit()
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    legacyImplementation(sourceSets.main.output)
+    legacyImplementation(sourceSets.java8.output)
+    legacyImplementation gradleApi()
 }
 
 java {
@@ -135,12 +141,14 @@ java {
 jar {
     archiveClassifier = 'slim'
     from sourceSets.java8.output
+    from sourceSets.legacy.output
 }
 
 shadowJar {
     archiveClassifier = "" // Required for the Plugin Publish Plugin to publish this jar
 
     from sourceSets.java8.output
+    from sourceSets.legacy.output
 
     configurations = [project.configurations.shaded]
     enableRelocation = true
@@ -188,6 +196,13 @@ gradlePlugin {
             description = "This plugin helps you create Minecraft mods using the NeoForge platform"
             tags = ["minecraft", "neoforge", "java", "mod"]
         }
+        legacyforge {
+            id = 'net.neoforged.moddev.legacyforge'
+            implementationClass = 'net.neoforged.moddevgradle.boot.LegacyForgeModDevPlugin'
+            displayName = "Mod Development Plugin for Legacy Forge"
+            description = "This plugin helps you create Minecraft mods using the Forge platform, up to 1.20.1"
+            tags = ["minecraft", "neoforge", "forge", "java", "mod"]
+        }
         repositories {
             id = 'net.neoforged.moddev.repositories'
             implementationClass = 'net.neoforged.moddevgradle.boot.RepositoriesPlugin'
@@ -212,21 +227,7 @@ artifacts {
 
 publishing {
     repositories {
-        maven {
-            name = 'NeoForge'
-            if (System.getenv('MAVEN_USER') && System.getenv('MAVEN_PASSWORD')) {
-                it.url = "https://maven.neoforged.net/releases/"
-                it.authentication {
-                    it.create('basic', BasicAuthentication)
-                }
-                it.credentials { credentials ->
-                    credentials.username = System.getenv('MAVEN_USER')
-                    credentials.password = System.getenv('MAVEN_PASSWORD')
-                }
-            } else {
-                it.url = 'file://' + file("repo").getAbsolutePath()
-            }
-        }
+        maven(gradleutils.publishingMaven)
     }
 }
 

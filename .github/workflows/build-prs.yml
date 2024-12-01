@@ -28,8 +28,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        project: [testproject, legacytest]
     runs-on: ${{ matrix.os }}
-    name: Test on ${{ matrix.os }}
+    name: Test ${{ matrix.project }} on ${{ matrix.os }}
     steps:
       - name: Checkout project sources
         uses: actions/checkout@v4
@@ -46,13 +47,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run build
-        run: ./gradlew build neoForgeIdeSync
-        working-directory: ./testproject
+        run: ./gradlew build neoForgeIdeSync publish
+        working-directory: ./${{ matrix.project }}
 
       - name: Ensure clean, build and test work in the same run
         run: ./gradlew clean build check
-        working-directory: ./testproject
+        working-directory: ./${{ matrix.project }}
 
       - name: Ensure runData runs
         run: ./gradlew runData
-        working-directory: ./testproject
+        working-directory: ./${{ matrix.project }}

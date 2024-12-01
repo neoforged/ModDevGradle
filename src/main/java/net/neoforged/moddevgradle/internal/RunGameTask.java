@@ -15,7 +15,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.util.HashMap;
 
 /**
  * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making

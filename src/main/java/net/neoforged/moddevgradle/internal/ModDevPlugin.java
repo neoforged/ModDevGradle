@@ -16,6 +16,7 @@ import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.Named;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -153,13 +154,13 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
-        var neoForgeModDevLibrariesDependency = extension.getVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+        var neoForgeModDevLibrariesDependency = extension.getNeoForgeArtifact().map(artifactId -> {
+            return dependencyFactory.create(artifactId)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
                     });
-        }).orElse(extension.getNeoFormVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoform:" + version)
+        }).orElse(extension.getNeoFormArtifact().map(artifact -> {
+            return dependencyFactory.create(artifact)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform-dependencies");
                     });
@@ -196,13 +197,26 @@ public class ModDevPlugin implements Plugin<Project> {
             Function<String, Provider<RegularFile>> jarPathFactory = suffix -> {
                 return minecraftArtifactsDir.zip(
                         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                        extension.getVersion().map(v -> "neoforge-" + v).orElse(extension.getNeoFormVersion().map(v -> "vanilla-" + v)),
+                        extension.getNeoForgeArtifact().map(art -> {
+                                    var split = art.split(":", 3);
+                                    return split[1] + "-" + split[2];
+                                })
+                                .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
                         (dir, prefix) -> dir.file(prefix + "-minecraft" + suffix + ".jar"));
             };
             task.getCompiledArtifact().set(jarPathFactory.apply(""));
             task.getCompiledWithSourcesArtifact().set(jarPathFactory.apply("-merged"));
             task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
-            task.getResourcesArtifact().set(jarPathFactory.apply("-resources-aka-client-extra"));
+            task.getResourcesArtifact().set(minecraftArtifactsDir.zip(
+                    extension.getNeoForgeArtifact().map(art -> {
+                                var split = art.split(":", 3);
+                                return split[2] + "-" + split[1];
+                            })
+                            .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
+                    // To support older versions of FML, which pick up the Minecraft jar by looking on the LCP for "forge-<version>",
+                    // we have to ensure client-extra does *not* start with "forge-".
+                    (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
+            ));
 
             task.getNeoForgeArtifact().set(getNeoForgeUserDevDependencyNotation(extension));
             task.getNeoFormArtifact().set(getNeoFormDataDependencyNotation(extension));
@@ -273,8 +287,8 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false);
-            spec.getDependencies().addLater(extension.getVersion().map(version -> {
-                return dependencyFactory.create("net.neoforged:neoforge:" + version)
+            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                return dependencyFactory.create(artifact)
                         .capabilities(caps -> {
                             caps.requireCapability("net.neoforged:neoforge-moddev-config");
                         });
@@ -292,8 +306,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // This defines the module path for runs
         // NOTE: When running in vanilla mode, this provider is undefined and will not result in an actual dependency
-        var modulePathDependency = extension.getVersion().map(version -> {
-            return dependencyFactory.create("net.neoforged:neoforge:" + version)
+        var modulePathDependency = extension.getNeoForgeArtifact().map(artifactId -> {
+            return dependencyFactory.create(artifactId)
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-moddev-module-path");
                     })
@@ -326,8 +340,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 config.setDescription("Additional JUnit helpers provided by NeoForge");
                 config.setCanBeResolved(false);
                 config.setCanBeConsumed(false);
-                config.getDependencies().addLater(extension.getVersion().map(version -> {
-                    return dependencyFactory.create("net.neoforged:neoforge:" + version)
+                config.getDependencies().addLater(extension.getNeoForgeArtifact().map(artifact -> {
+                    return dependencyFactory.create(artifact)
                             .capabilities(caps -> {
                                 caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures");
                             });
@@ -378,11 +392,11 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     private static Provider<String> getNeoFormDataDependencyNotation(NeoForgeExtension extension) {
-        return extension.getNeoFormVersion().map(version -> "net.neoforged:neoform:" + version + "@zip");
+        return extension.getNeoFormArtifact().map(art -> art + "@zip");
     }
 
     private static Provider<String> getNeoForgeUserDevDependencyNotation(NeoForgeExtension extension) {
-        return extension.getVersion().map(version -> "net.neoforged:neoforge:" + version + ":userdev");
+        return extension.getNeoForgeArtifact().map(art -> art + ":userdev");
     }
 
     /**
@@ -394,8 +408,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var configurationPrefix = "neoFormRuntimeDependencies";
 
-        Provider<ExternalModuleDependency> neoForgeDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoforge:" + version));
-        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormVersion().map(version -> dependencyFactory.create("net.neoforged:neoform:" + version));
+        Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
+        Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormArtifact().map(dependencyFactory::create);
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
@@ -490,6 +504,12 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
         });
 
+        // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
+        var createLaunchScriptsTask= project.getTasks().register("createLaunchScripts", Task.class, task -> {
+            task.setGroup(branding.publicTaskGroup());
+            task.setDescription("Creates batch files/shell scripts to launch the game from outside of Gradle (i.e. Renderdoc, NVidia Nsight, etc.)");
+        });
+
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         runs.all(run -> {
             var prepareRunTask = setupRunInGradle(
@@ -502,7 +522,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
-                    neoFormVersion
+                    neoFormVersion,
+                    createLaunchScriptsTask
             );
             prepareRunTasks.put(run, prepareRunTask);
         });
@@ -514,6 +535,7 @@ public class ModDevPlugin implements Plugin<Project> {
      *                                 to a single file that is
      * @param configureLegacyClasspath Callback to add entries to the legacy classpath.
      * @param assetPropertiesFile      File that contains the asset properties file produced by NFRT.
+     * @param createLaunchScriptsTask
      */
     private static TaskProvider<PrepareRun> setupRunInGradle(
             Project project,
@@ -525,8 +547,8 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Provider<String> neoFormVersion
-    ) {
+            Provider<String> neoFormVersion,
+            TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
@@ -598,24 +620,12 @@ public class ModDevPlugin implements Plugin<Project> {
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
-        var createLaunchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+        var launchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
             task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-            // Use a provider indirection to NOT capture a task dependency on the runtimeClasspath.
-            // Resolving the classpath could require compiling some code depending on the runtimeClasspath setup.
-            // We don't want to do that on IDE sync!
-            // In that case, we can't use an @InputFiles ConfigurableFileCollection or Gradle might complain:
-            //   Reason: Task ':createClient2LaunchScript' uses this output of task ':compileApiJava' without
-            //   declaring an explicit or implicit dependency. This can lead to incorrect results being produced,
-            //   depending on what order the tasks are executed.
-            // So we pass the absolute paths directly...
-            task.getRuntimeClasspath().set(project.provider(() -> {
-                return runtimeClasspathConfig.get().getFiles().stream()
-                        .map(File::getAbsolutePath)
-                        .toList();
-            }));
+            task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
             task.getLaunchScript().set(RunUtils.getLaunchScript(argFileDir, run));
             task.getClasspathArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.CLASSPATH));
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
@@ -623,7 +633,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getEnvironment().set(run.getEnvironment());
             task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
         });
-        ideIntegration.runTaskOnProjectSync(createLaunchScriptTask);
+        createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
 
         tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
             task.setGroup(branding.publicTaskGroup());
