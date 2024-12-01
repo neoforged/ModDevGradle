@@ -3,19 +3,21 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.Action;
+import org.gradle.api.artifacts.CacheableRule;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.DirectDependenciesMetadata;
 import org.gradle.api.artifacts.MutableVariantFilesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
-import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
+import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.model.ObjectFactory;
 
 import javax.inject.Inject;
+import java.util.List;
 
-@CacheableTransform
+@CacheableRule
 class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
     @Inject
     public LegacyForgeMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {
@@ -33,6 +35,7 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
         var id = details.getId();
 
         var userdevJarName = id.getName() + "-" + id.getVersion() + "-userdev.jar";
+        var universalJarName = id.getName() + "-" + id.getVersion() + "-universal.jar";
 
         Action<DirectDependenciesMetadata> vanillaDependencies = deps -> {
             deps.add("de.oceanlabs.mcp:mcp_config:" + id.getVersion().split("-")[0]);
@@ -80,14 +83,14 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
                 capabilities.addCapability("net.neoforged", "neoforge-dependencies", id.getVersion());
             });
         });
-        // repurpose the existing runtime variant to be the equivalent of NeoForges modDevRuntimeElements
-        details.withVariant("runtime", variantMetadata -> {
+        details.addVariant("modDevRuntimeElements", variantMetadata -> {
             variantMetadata.attributes(attributes -> {
                 attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
                 attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
                 attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
             });
             variantMetadata.withCapabilities(capabilities -> {
+                capabilities.removeCapability(id.getGroup(), id.getName());
                 capabilities.addCapability("net.neoforged", "neoforge-dependencies", id.getVersion());
             });
             variantMetadata.withDependencies(vanillaDependencies);
@@ -103,5 +106,25 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
                 }
             });
         });
+
+        details.addVariant("universalJar", variantMetadata -> {
+            variantMetadata.attributes(attributes -> {
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.class, Category.LIBRARY));
+                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.class, Bundling.EXTERNAL));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.class, LibraryElements.JAR));
+            });
+            variantMetadata.withFiles(metadata -> metadata.addFile(universalJarName, universalJarName));
+        });
+
+        // Use a fake capability to make it impossible for the implicit variants to be selected
+        for (var implicitVariantName : List.of("compile", "runtime")) {
+            details.withVariant(implicitVariantName, variant -> {
+                variant.withCapabilities(caps -> {
+                    caps.removeCapability(id.getGroup(), id.getName());
+                    caps.addCapability("___dummy___", "___dummy___", "___dummy___");
+                });
+            });
+        }
     }
 }

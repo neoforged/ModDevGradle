@@ -23,7 +23,6 @@ import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
-import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -465,7 +464,7 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
-            spec.getDependencies().addLater(extension.getNeoForgeArtifact().map(a -> a + ":universal").map(dependencyFactory::create)); // Universal Jar
+            spec.getDependencies().addLater(neoForgeDependency); // Universal Jar
             spec.getDependencies().addLater(neoForgeDependency.map(dependency -> dependency.copy()
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoforge-dependencies");
@@ -478,8 +477,6 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.attributes(attributes -> {
                 setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
                 setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
-                setNamedAttribute(attributes, Category.CATEGORY_ATTRIBUTE, Category.LIBRARY);
-                setNamedAttribute(attributes, LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, LibraryElements.JAR);
             });
         });
 

@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.Action;
+import org.gradle.api.artifacts.CacheableRule;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.DirectDependenciesMetadata;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
@@ -20,7 +21,7 @@ import javax.inject.Inject;
  * Example for NeoForm:
  * https://maven.neoforged.net/releases/net/neoforged/neoform/1.21-20240613.152323/neoform-1.21-20240613.152323.module
  */
-@CacheableTransform
+@CacheableRule
 class McpMetadataTransform extends LegacyMetadataTransform {
     @Inject
     public McpMetadataTransform(ObjectFactory objects, RepositoryResourceAccessor repositoryResourceAccessor) {
