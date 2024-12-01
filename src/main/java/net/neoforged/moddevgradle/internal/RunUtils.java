@@ -222,11 +222,17 @@ final class RunUtils {
         throw new IllegalArgumentException("Could not find project for source set " + someProject);
     }
 
-    public static Map<String, String> replaceModClassesEnv(RunModel model, Supplier<ModFoldersProvider> newProvider) {
+    /**
+     * In the run model, the environment variable "MOD_CLASSES" is set to the gradle output folders by the legacy plugin,
+     * since MDG itself completely ignores run-type specific environment variables.
+     * To ensure that in IDE runs, the IDE output folders are used, we replace the MOD_CLASSES environment variable
+     * explicitly.
+     */
+    public static Map<String, String> replaceModClassesEnv(RunModel model, ModFoldersProvider modFoldersProvider) {
         var vars = model.getEnvironment().get();
         if (vars.containsKey("MOD_CLASSES")) {
             final var copy = new HashMap<>(vars);
-            copy.put("MOD_CLASSES", newProvider.get().getClassesArgument().get());
+            copy.put("MOD_CLASSES", modFoldersProvider.getClassesArgument().get());
             return copy;
         }
         return vars;

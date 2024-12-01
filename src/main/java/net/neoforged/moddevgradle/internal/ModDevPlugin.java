@@ -16,6 +16,7 @@ import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.Named;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -212,7 +213,7 @@ public class ModDevPlugin implements Plugin<Project> {
                                 return split[2] + "-" + split[1];
                             })
                             .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
-                    // To support older versions of FML, that pick up the Minecraft jar by looking on the LCP for "forge-<version>",
+                    // To support older versions of FML, which pick up the Minecraft jar by looking on the LCP for "forge-<version>",
                     // we have to ensure client-extra does *not* start with "forge-".
                     (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
             ));
@@ -503,6 +504,12 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
         });
 
+        // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
+        var createLaunchScriptsTask= project.getTasks().register("createLaunchScripts", Task.class, task -> {
+            task.setGroup(branding.publicTaskGroup());
+            task.setDescription("Creates batch files/shell scripts to launch the game from outside of Gradle (i.e. Renderdoc, NVidia Nsight, etc.)");
+        });
+
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         runs.all(run -> {
             var prepareRunTask = setupRunInGradle(
@@ -515,7 +522,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
-                    neoFormVersion
+                    neoFormVersion,
+                    createLaunchScriptsTask
             );
             prepareRunTasks.put(run, prepareRunTask);
         });
@@ -527,6 +535,7 @@ public class ModDevPlugin implements Plugin<Project> {
      *                                 to a single file that is
      * @param configureLegacyClasspath Callback to add entries to the legacy classpath.
      * @param assetPropertiesFile      File that contains the asset properties file produced by NFRT.
+     * @param createLaunchScriptsTask
      */
     private static TaskProvider<PrepareRun> setupRunInGradle(
             Project project,
@@ -538,8 +547,8 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Provider<String> neoFormVersion
-    ) {
+            Provider<String> neoFormVersion,
+            TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
@@ -611,7 +620,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
-        tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
+        var launchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
@@ -624,6 +633,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getEnvironment().set(run.getEnvironment());
             task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
         });
+        createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
 
         tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
             task.setGroup(branding.publicTaskGroup());

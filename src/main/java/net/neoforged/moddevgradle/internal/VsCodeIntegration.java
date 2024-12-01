@@ -76,7 +76,7 @@ final class VsCodeIntegration extends EclipseIntegration {
                 .withArguments(List.of(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .withAdditionalJvmArgs(List.of(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()),
                         modFoldersProvider.getArgument()))
-                .withEnvironmentVariables(RunUtils.replaceModClassesEnv(run, () -> modFoldersProvider))
+                .withEnvironmentVariables(RunUtils.replaceModClassesEnv(run, modFoldersProvider))
                 .withMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS)
                 .withShortenCommandLine(ShortCmdBehaviour.NONE)
                 .withConsoleType(ConsoleType.INTERNAL_CONSOLE)

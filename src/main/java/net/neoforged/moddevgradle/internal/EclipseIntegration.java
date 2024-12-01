@@ -165,7 +165,7 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
                         RunUtils.escapeJvmArg(modFoldersProvider.getArgument())
                 )
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
-                .envVar(RunUtils.replaceModClassesEnv(run, () -> modFoldersProvider))
+                .envVar(RunUtils.replaceModClassesEnv(run, modFoldersProvider))
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         writeEclipseLaunchConfig(project, launchConfigName, config);
