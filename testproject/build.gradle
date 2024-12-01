@@ -1,5 +1,6 @@
 plugins {
     id 'net.neoforged.moddev'
+    id 'maven-publish'
 }
 
 evaluationDependsOn(":subproject") // Because of the sourceset reference
@@ -7,6 +8,8 @@ evaluationDependsOn(":subproject") // Because of the sourceset reference
 sourceSets {
     api
 }
+
+group = "mdgtestproject"
 
 dependencies {
     testImplementation(enforcedPlatform("org.junit:junit-bom:5.10.2"))
@@ -86,4 +89,17 @@ neoFormRuntime {
     useEclipseCompiler = true
     // enableCache = false
     // verbose = true
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url rootProject.file('repo')
+        }
+    }
 }

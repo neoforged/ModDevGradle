@@ -47,7 +47,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Run build
-        run: ./gradlew build neoForgeIdeSync
+        run: ./gradlew build neoForgeIdeSync publish
         working-directory: ./${{ matrix.project }}
 
       - name: Ensure clean, build and test work in the same run
