@@ -212,7 +212,8 @@ public class ModDevPlugin implements Plugin<Project> {
                                 return split[2] + "-" + split[1];
                             })
                             .orElse(extension.getNeoFormArtifact().map(v -> "vanilla-" + v.split(":", 3)[2])),
-                    //
+                    // To support older versions of FML, that pick up the Minecraft jar by looking on the LCP for "forge-<version>",
+                    // we have to ensure client-extra does *not* start with "forge-".
                     (dir, prefix) -> dir.file("client-extra-aka-minecraft-resources-" + prefix + ".jar")
             ));
 
