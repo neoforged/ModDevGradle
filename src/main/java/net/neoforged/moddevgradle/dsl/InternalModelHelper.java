@@ -1,7 +1,6 @@
 package net.neoforged.moddevgradle.dsl;
 
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import org.gradle.api.artifacts.Configuration;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 

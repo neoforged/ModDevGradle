@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacyforge.internal;
+package net.neoforged.moddevgradle.legacyforge.tasks;
 
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -23,34 +23,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-abstract class RemapParameters implements Serializable {
+public abstract class RemapOperation implements Serializable {
     @Inject
-    public RemapParameters() {}
-
-    @Classpath
-    @InputFiles
-    protected abstract ConfigurableFileCollection getToolClasspath();
-
-    @InputFiles
-    @PathSensitive(PathSensitivity.NONE)
-    public abstract ConfigurableFileCollection getMappings();
-
-    @Internal
-    public abstract RegularFileProperty getLogFile();
+    public RemapOperation() {}
 
     @Input
     public abstract Property<ToolType> getToolType();
 
-    public void from(Obfuscation reobfuscation, ToolType toolType) {
-        getToolType().set(toolType);
-        if (toolType == ToolType.ART) {
-            getToolClasspath().from(reobfuscation.autoRenamingToolRuntime);
-            getMappings().from(reobfuscation.officialToSrg);
-        } else {
-            getToolClasspath().from(reobfuscation.installerToolsRuntime);
-            getMappings().from(reobfuscation.mappingsCsv);
-        }
-    }
+    @Classpath
+    @InputFiles
+    public abstract ConfigurableFileCollection getToolClasspath();
+
+    @Internal
+    protected abstract RegularFileProperty getLogFile();
+
+    @InputFiles
+    @PathSensitive(PathSensitivity.NONE)
+    public abstract ConfigurableFileCollection getMappings();
 
     public void execute(ExecOperations operations, File input, File output, FileCollection libraries) throws IOException {
         final List<String> args = new ArrayList<>();

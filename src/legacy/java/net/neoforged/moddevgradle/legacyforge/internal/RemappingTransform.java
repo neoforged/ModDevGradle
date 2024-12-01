@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.InputArtifactDependencies;
@@ -9,7 +10,6 @@ import org.gradle.api.artifacts.transform.TransformParameters;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.FileSystemLocation;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.CompileClasspath;
 import org.gradle.api.tasks.InputFiles;
@@ -46,7 +46,7 @@ abstract class RemappingTransform implements TransformAction<RemappingTransform.
 
         var mappedFile = outputs.file(inputFile.getName());
         try {
-            getParameters().getParameters().get()
+            getParameters().getRemapOperation()
                     .execute(
                             getExecOperations(),
                             inputFile,
@@ -60,7 +60,7 @@ abstract class RemappingTransform implements TransformAction<RemappingTransform.
 
     public interface Parameters extends TransformParameters {
         @Nested
-        Property<RemapParameters> getParameters();
+        RemapOperation getRemapOperation();
 
         @InputFiles
         @PathSensitive(PathSensitivity.NONE)

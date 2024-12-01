@@ -4,6 +4,7 @@ import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
+import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
@@ -13,13 +14,18 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.tasks.Jar;
+import org.jetbrains.annotations.ApiStatus;
 
 import java.net.URI;
 import java.util.Map;
 import java.util.stream.Stream;
 
+@ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
     public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
+
+    public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
+    public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
 
     @Override
     public void apply(Project project) {
@@ -36,14 +42,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getDependencies().getComponents().withModule("de.oceanlabs.mcp:mcp_config", McpMetadataTransform.class);
 
         var depFactory = project.getDependencyFactory();
-        var autoRenamingToolRuntime = project.getConfigurations().create("autoRenamingToolRuntime", spec -> {
+        var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
             spec.setDescription("The AutoRenamingTool CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
             spec.getDependencies().add(depFactory.create("net.neoforged:AutoRenamingTool:2.0.4:all"));
         });
-        var installerToolsRuntime = project.getConfigurations().create("installerToolsRuntime", spec -> {
+        var installerToolsRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_INSTALLERTOOLS, spec -> {
             spec.setDescription("The InstallerTools CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -85,7 +91,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                 project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME),
                 task -> {
-                    task.getParameters().getMappings().from(extraMixinMappings);
+                    task.getRemapOperation().getMappings().from(extraMixinMappings);
                 }
         );
 
@@ -115,11 +121,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
             params.parameters(parameters -> {
-                parameters.getParameters().set(project.provider(() -> {
-                    var p = project.getObjects().newInstance(RemapParameters.class);
-                    p.from(obf, RemapParameters.ToolType.INSTALLER_TOOLS);
-                    return p;
-                }));
+                obf.configureInstallerToolsOperation(parameters.getRemapOperation());
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()

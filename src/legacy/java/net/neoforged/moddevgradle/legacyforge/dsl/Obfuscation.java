@@ -1,5 +1,8 @@
-package net.neoforged.moddevgradle.legacyforge.internal;
+package net.neoforged.moddevgradle.legacyforge.dsl;
 
+import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
+import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
+import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
@@ -14,18 +17,24 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
+import org.jetbrains.annotations.ApiStatus;
 
 import javax.inject.Inject;
 import java.util.List;
 
-abstract class Obfuscation {
+public abstract class Obfuscation {
     private final Project project;
-    final Provider<RegularFile> officialToSrg, mappingsCsv;
-    final Configuration autoRenamingToolRuntime;
-    final Configuration installerToolsRuntime;
+    private final Provider<RegularFile> officialToSrg;
+    private final Provider<RegularFile> mappingsCsv;
+    private final Configuration autoRenamingToolRuntime;
+    private final Configuration installerToolsRuntime;
 
     @Inject
-    public Obfuscation(Project project, Provider<RegularFile> officialToSrg, Provider<RegularFile> mappingsCsv, Configuration autoRenamingToolRuntime, Configuration installerToolsRuntime) {
+    public Obfuscation(Project project,
+                       Provider<RegularFile> officialToSrg,
+                       Provider<RegularFile> mappingsCsv,
+                       Configuration autoRenamingToolRuntime,
+                       Configuration installerToolsRuntime) {
         this.project = project;
         this.officialToSrg = officialToSrg;
         this.mappingsCsv = mappingsCsv;
@@ -33,8 +42,22 @@ abstract class Obfuscation {
         this.installerToolsRuntime = installerToolsRuntime;
     }
 
+    @ApiStatus.Internal
+    public void configureAutoRenamingToolOperation(RemapOperation operation) {
+        operation.getToolType().set(RemapOperation.ToolType.ART);
+        operation.getToolClasspath().from(autoRenamingToolRuntime);
+        operation.getMappings().from(officialToSrg);
+    }
+
+    @ApiStatus.Internal
+    public void configureInstallerToolsOperation(RemapOperation operation) {
+        operation.getToolType().set(RemapOperation.ToolType.INSTALLER_TOOLS);
+        operation.getToolClasspath().from(installerToolsRuntime);
+        operation.getMappings().from(mappingsCsv);
+    }
+
     /**
-     * Create a configure a reobfuscation task.
+     * Create and configure a reobfuscation task.
      *
      * @param jar           the jar task to reobfuscate
      * @param sourceSet     the source set whose classpath to use when remapping inherited methods
@@ -42,9 +65,8 @@ abstract class Obfuscation {
      * @return a provider of the created task
      */
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
-                                                  SourceSet sourceSet,
-                                                  Action<RemapJar> configuration) {
-
+                                              SourceSet sourceSet,
+                                              Action<RemapJar> configuration) {
 
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
@@ -54,7 +76,7 @@ abstract class Obfuscation {
             task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier));
             task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
-            task.getParameters().from(this, RemapParameters.ToolType.ART);
+            configureAutoRenamingToolOperation(task.getRemapOperation());
             configuration.execute(task);
         });
 
@@ -78,6 +100,7 @@ abstract class Obfuscation {
 
     /**
      * Creates a configuration that will remap its dependencies, and adds it as a children of the provided {@code parent}.
+     * The created configuration uses the name of its parent capitalized and prefixed by "mod".
      */
     public Configuration createRemappingConfiguration(Configuration parent) {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {

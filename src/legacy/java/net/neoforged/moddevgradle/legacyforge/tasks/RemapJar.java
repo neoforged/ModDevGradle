@@ -1,4 +1,4 @@
-package net.neoforged.moddevgradle.legacyforge.internal;
+package net.neoforged.moddevgradle.legacyforge.tasks;
 
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -16,14 +16,10 @@ import java.io.IOException;
 /**
  * Task used to remap a jar using AutoRenamingTool.
  */
-abstract class RemapJar extends Jar {
+public abstract class RemapJar extends Jar {
 
     @Nested
-    protected abstract RemapParameters getParameters();
-
-    @Inject
-    public RemapJar() {
-    }
+    public abstract RemapOperation getRemapOperation();
 
     /**
      * The libraries to use for inheritance data during the renaming process.
@@ -38,9 +34,12 @@ abstract class RemapJar extends Jar {
     @Inject
     protected abstract ExecOperations getExecOperations();
 
+    @Inject
+    public RemapJar() {
+    }
+
     @TaskAction
     public void remap() throws IOException {
-
-        getParameters().execute(getExecOperations(), getInput().getAsFile().get(), getArchiveFile().get().getAsFile(), getLibraries());
+        getRemapOperation().execute(getExecOperations(), getInput().getAsFile().get(), getArchiveFile().get().getAsFile(), getLibraries());
     }
 }
