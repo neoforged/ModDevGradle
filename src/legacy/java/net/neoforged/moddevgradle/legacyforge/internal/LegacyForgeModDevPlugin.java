@@ -40,6 +40,9 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
         project.getDependencies().getComponents().withModule("net.minecraftforge:forge", LegacyForgeMetadataTransform.class);
         project.getDependencies().getComponents().withModule("de.oceanlabs.mcp:mcp_config", McpMetadataTransform.class);
+        // For legacy versions we need to relax the strict version requirements imposed by the minecraft-dependencies,
+        // since Forge upgrades especially log4j2, but we have no way of fixing its metadata fully (besides doing it statically).
+        project.getDependencies().getComponents().withModule("net.neoforged:minecraft-dependencies", NonStrictDependencyTransform.class);
 
         var depFactory = project.getDependencyFactory();
         var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
