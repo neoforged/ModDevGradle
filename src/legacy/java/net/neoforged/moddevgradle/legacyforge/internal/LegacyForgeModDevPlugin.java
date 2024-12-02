@@ -3,6 +3,8 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
+import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
 import org.gradle.api.Plugin;
@@ -29,12 +31,12 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
-        project.getPlugins().apply(ModDevPlugin.class);
-
         project.getRepositories().maven(repo -> {
             repo.setName("MinecraftForge");
             repo.setUrl(URI.create("https://maven.minecraftforge.net/"));
         });
+
+        project.getExtensions().create("legacyForge", LegacyForgeExtension.class, project);
 
         // This module is for supporting NeoForge 1.20.1, which is technically the same as Legacy Forge 1.20.1
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
@@ -43,6 +45,9 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         // For legacy versions we need to relax the strict version requirements imposed by the minecraft-dependencies,
         // since Forge upgrades especially log4j2, but we have no way of fixing its metadata fully (besides doing it statically).
         project.getDependencies().getComponents().withModule("net.neoforged:minecraft-dependencies", NonStrictDependencyTransform.class);
+    }
+
+    public void enableModding(Project project, LegacyForgeModdingSettings settings) {
 
         var depFactory = project.getDependencyFactory();
         var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
@@ -72,8 +77,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {
-            extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
-            extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
+            // TODO extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
+            // TODO extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
 
             extension.getAdditionalMinecraftArtifacts().put("namedToIntermediaryMapping", namedToIntermediate.map(RegularFile::getAsFile));
             extension.getAdditionalMinecraftArtifacts().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
