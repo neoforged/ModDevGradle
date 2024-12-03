@@ -364,7 +364,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 spec.setCanBeConsumed(false);
                 spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 spec.attributes(attributes -> {
-                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") || t.equals("data") ? "client" : "server"));
+                    attributes.attributeProvider(ATTRIBUTE_DISTRIBUTION, type.map(t -> t.equals("client") || t.equals("data") || t.equals("clientData") ? "client" : "server"));
                     attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
                 });
                 spec.withDependencies(set -> {
@@ -402,6 +402,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 task.getProgramArguments().set(run.getProgramArguments());
                 task.getJvmArguments().set(run.getJvmArguments());
                 task.getGameLogLevel().set(run.getLogLevel());
+                task.getNeoFormVersion().set(extension.getNeoFormVersion());
                 task.dependsOn(run.getTasksBefore());
             });
             prepareRunTasks.put(run, prepareRunTask);
