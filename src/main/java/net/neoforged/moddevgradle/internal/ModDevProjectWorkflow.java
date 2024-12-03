@@ -3,7 +3,6 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
-import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
@@ -15,6 +14,7 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.artifacts.dsl.DependencyFactory;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
@@ -26,9 +26,7 @@ import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
@@ -44,6 +42,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -71,8 +70,8 @@ public class ModDevProjectWorkflow {
      */
     public static final String CONFIGURATION_COMPILE_DEPENDENCIES = "neoForgeCompileDependencies";
 
-    private static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
-    private static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
+    public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
+    public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
 
     private final Project project;
 
@@ -85,6 +84,16 @@ public class ModDevProjectWorkflow {
     private final ProjectLayout layout;
     private final TaskContainer tasks;
     private final Branding branding;
+    @Nullable
+    private final ModuleDependency modulePathDependency;
+    @Nullable
+    private final ModuleDependency testFixturesDependency;
+    private final ModuleDependency gameLibrariesDependency;
+    private final DependencyFactory dependencyFactory;
+    private final TaskProvider<DownloadAssets> downloadAssets;
+    private final TaskProvider<CreateMinecraftArtifacts> createArtifacts;
+    private Provider<ConfigurableFileCollection> minecraftClassesArtifact;
+    private final @Nullable Configuration userDevConfigOnly;
 
     /**
      * @param gameLibrariesDependency A module dependency that represents the library dependencies of the game.
@@ -108,9 +117,11 @@ public class ModDevProjectWorkflow {
         this.configurations = project.getConfigurations();
         this.layout = project.getLayout();
         this.tasks = project.getTasks();
+        this.dependencyFactory = project.getDependencyFactory();
         this.branding = branding;
-
-        var dependencyFactory = project.getDependencyFactory();
+        this.modulePathDependency = modulePathDependency;
+        this.testFixturesDependency = testFixturesDependency;
+        this.gameLibrariesDependency = gameLibrariesDependency;
 
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
 
@@ -131,11 +142,11 @@ public class ModDevProjectWorkflow {
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
             spec.setTransitive(false); // Expect a single result
-            spec.getDependencies().addLater(parchment.getParchmentArtifact().map(project.getDependencyFactory()::create));
+            spec.getDependencies().addLater(parchment.getParchmentArtifact().map(dependencyFactory::create));
         });
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
+        createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
             for (var configuration : createManifestConfigurations) {
@@ -167,7 +178,7 @@ public class ModDevProjectWorkflow {
         });
         ideIntegration.runTaskOnProjectSync(createArtifacts);
 
-        var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
+        downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
             // Not in the internal group in case someone wants to "preload" the asset before they go offline
             task.setGroup(branding.publicTaskGroup());
             task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
@@ -183,7 +194,6 @@ public class ModDevProjectWorkflow {
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
-        Provider<ConfigurableFileCollection> minecraftClassesArtifact;
         if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact()));
         } else {
@@ -220,7 +230,6 @@ public class ModDevProjectWorkflow {
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        @Nullable Configuration userDevConfigOnly;
         if (runTypesConfigDependency != null) {
             userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
                 spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
@@ -269,7 +278,13 @@ public class ModDevProjectWorkflow {
         }
     }
 
-    public void configureTesting() {
+    public static ModDevProjectWorkflow get(Project project) {
+        // TODO: Give better errors when this is not set yet
+        return ExtensionUtils.getExtension(project, ModDevProjectWorkflow.EXTENSION_NAME, ModDevProjectWorkflow.class);
+    }
+
+    public void configureTesting(Provider<ModModel> testedMod,
+                                 Provider<Set<ModModel>> loadedMods) {
         // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
         configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
             configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
@@ -301,8 +316,8 @@ public class ModDevProjectWorkflow {
                 branding,
                 userDevConfigOnly,
                 tasks.named("test", Test.class),
-                extension.getUnitTest().getLoadedMods(),
-                extension.getUnitTest().getTestedMod(),
+                loadedMods,
+                testedMod,
                 modDevBuildDir,
                 modulePath -> {
                     if (modulePathDependency != null) {
@@ -318,10 +333,10 @@ public class ModDevProjectWorkflow {
     }
 
     // FML searches for client resources on the legacy classpath
-    private static void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
+    private void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
         // FML searches for client resources on the legacy classpath
         spec.getDependencies().add(
-                project.getDependencyFactory().create(
+                dependencyFactory.create(
                         project.files(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact))
                 )
         );
@@ -430,12 +445,13 @@ public class ModDevProjectWorkflow {
                           Provider<RegularFile> assetPropertiesFile,
                           Provider<String> neoFormVersion
     ) {
+        var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
 
         // Create a configuration to resolve DevLaunch without leaking it to consumers
         var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
             spec.setDescription("This configuration is used to inject DevLaunch into the runtime classpaths of runs.");
-            spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
+            spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
         });
 
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
@@ -602,8 +618,8 @@ public class ModDevProjectWorkflow {
                               Branding branding,
                               Object runTemplatesSourceFile,
                               TaskProvider<Test> testTask,
-                              SetProperty<ModModel> loadedMods,
-                              Property<ModModel> testedMod,
+                              Provider<Set<ModModel>> loadedMods,
+                              Provider<ModModel> testedMod,
                               Provider<Directory> argFileDir,
                               Consumer<Configuration> configureModulePath,
                               Consumer<Configuration> configureLegacyClasspath,

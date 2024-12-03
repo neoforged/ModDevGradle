@@ -4,7 +4,6 @@ import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
-import net.neoforged.moddevgradle.dsl.UnitTest;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.NamedDomainObjectContainer;
@@ -22,7 +21,6 @@ public abstract class ModDevExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
-    private final UnitTest unitTest;
 
     private final DataFileCollection accessTransformers;
     private final DataFileCollection interfaceInjectionData;
@@ -34,11 +32,9 @@ public abstract class ModDevExtension {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
-        unitTest = project.getObjects().newInstance(UnitTest.class);
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
-        unitTest.getLoadedMods().convention(getMods());
     }
 
     @Deprecated(forRemoval = true)
@@ -123,15 +119,6 @@ public abstract class ModDevExtension {
     public void parchment(Action<Parchment> action) {
         action.execute(parchment);
     }
-
-    public UnitTest getUnitTest() {
-        return unitTest;
-    }
-
-    public void unitTest(Action<UnitTest> action) {
-        action.execute(unitTest);
-    }
-
 
     /**
      * The tasks to be run when the IDE reloads the Gradle project.

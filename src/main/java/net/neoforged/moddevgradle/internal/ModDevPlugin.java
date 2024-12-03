@@ -1,26 +1,17 @@
 package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
-import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.ModdingVersionSettings;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
-import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ConfigurablePublishArtifact;
-import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.attributes.Category;
-import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.plugins.JavaLibraryPlugin;
-import org.gradle.api.tasks.SourceSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.Map;
-import java.util.function.Consumer;
 
 /**
  * The main plugin class.
@@ -43,41 +34,12 @@ public class ModDevPlugin implements Plugin<Project> {
             LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
         }
 
-        // Create an access transformer configuration
-        var accessTransformers = dataFileConfiguration(
-                project,
-                CONFIGURATION_ACCESS_TRANSFORMERS,
-                "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
-                "accesstransformer"
-        );
-        accessTransformers.extension.getFiles().convention(project.provider(() -> {
-            var collection = project.getObjects().fileCollection();
-
-            // Only return this when it actually exists
-            var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
-            for (var resources : mainSourceSet.getResources().getSrcDirs()) {
-                var defaultPath = new File(resources, "META-INF/accesstransformer.cfg");
-                if (project.file(defaultPath).exists()) {
-                    return collection.from(defaultPath.getAbsolutePath());
-                }
-            }
-
-            return collection;
-        }));
-
-        // Create a configuration for grabbing interface injection data
-        var interfaceInjectionData = dataFileConfiguration(
-                project,
-                CONFIGURATION_INTERFACE_INJECTION_DATA,
-                "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
-                "interfaceinjection"
-        );
-
+        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
         var extension = project.getExtensions().create(
                 NeoForgeExtension.NAME,
                 NeoForgeExtension.class,
-                accessTransformers.extension,
-                interfaceInjectionData.extension
+                dataFileCollections.accessTransformers().extension(),
+                dataFileCollections.interfaceInjectionData().extension()
         );
         IdeIntegration.of(project, Branding.MDG).runTaskOnProjectSync(extension.getIdeSyncTasks());
     }
@@ -150,62 +112,5 @@ public class ModDevPlugin implements Plugin<Project> {
                 neoForgeModDevLibrariesDependency,
                 extension
         );
-    }
-
-    record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
-    }
-
-    private static DataFileCollectionWrapper dataFileConfiguration(Project project, String name, String description, String category) {
-        var configuration = project.getConfigurations().create(name, spec -> {
-            spec.setDescription(description);
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            spec.attributes(attributes -> setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, category));
-        });
-
-        var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
-            spec.setDescription("Published data files for " + name);
-            spec.setCanBeConsumed(true);
-            spec.setCanBeResolved(false);
-            spec.attributes(attributes -> setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, category));
-        });
-
-        // Set up the variant publishing conditionally
-        var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-        java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
-            // This should be invoked lazily, so checking if the artifacts are empty is fine:
-            // "The details object used to determine what to do with a configuration variant **when publishing**."
-            if (variant.getConfigurationVariant().getArtifacts().isEmpty()) {
-                variant.skip();
-            }
-        });
-
-        var depFactory = project.getDependencyFactory();
-        Consumer<Object> publishCallback = new Consumer<>() {
-            ConfigurablePublishArtifact firstArtifact;
-            int artifactCount;
-
-            @Override
-            public void accept(Object artifactNotation) {
-                elementsConfiguration.getDependencies().add(depFactory.create(project.files(artifactNotation)));
-                project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation, artifact -> {
-                    if (firstArtifact == null) {
-                        firstArtifact = artifact;
-                        artifact.setClassifier(category);
-                        artifactCount = 1;
-                    } else {
-                        if (artifactCount == 1) {
-                            firstArtifact.setClassifier(category + artifactCount);
-                        }
-                        artifact.setClassifier(category + (++artifactCount));
-                    }
-                });
-            }
-        };
-
-        var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
-        configuration.getDependencies().add(depFactory.create(extension.getFiles()));
-
-        return new DataFileCollectionWrapper(extension, configuration);
     }
 }

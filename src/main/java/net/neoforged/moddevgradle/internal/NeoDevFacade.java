@@ -13,6 +13,7 @@ import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -34,7 +35,7 @@ public final class NeoDevFacade {
                                  Consumer<Configuration> configureAdditionalClasspath,
                                  Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevPlugin.setupRuns(
+        ModDevProjectWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -56,7 +57,7 @@ public final class NeoDevFacade {
                                  Provider<RegularFile> assetPropertiesFile,
                                  Provider<String> neoFormVersion
     ) {
-        ModDevPlugin.setupRuns(
+        ModDevProjectWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -73,13 +74,13 @@ public final class NeoDevFacade {
                                      Provider<Directory> argFileDir,
                                      TaskProvider<Test> testTask,
                                      Object runTemplatesSourceFile,
-                                     SetProperty<ModModel> loadedMods,
-                                     Property<ModModel> testedMod,
+                                     Provider<Set<ModModel>> loadedMods,
+                                     Provider<ModModel> testedMod,
                                      Consumer<Configuration> configureModulePath,
                                      Consumer<Configuration> configureAdditionalClasspath,
                                      Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevPlugin.setupTestTask(
+        ModDevProjectWorkflow.setupTestTask(
                 project,
                 Branding.NEODEV,
                 runTemplatesSourceFile,

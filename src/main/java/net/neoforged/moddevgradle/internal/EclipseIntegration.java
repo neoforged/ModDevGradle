@@ -11,9 +11,7 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.Classpath;
@@ -86,8 +84,8 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
     }
 
     @Override
-    public void configureTesting(SetProperty<ModModel> loadedMods,
-                                 Property<ModModel> testedMod,
+    public void configureTesting(Provider<Set<ModModel>> loadedMods,
+                                 Provider<ModModel> testedMod,
                                  Provider<Directory> runArgsDir,
                                  File gameDirectory,
                                  Provider<RegularFile> programArgsFile,

@@ -1,17 +1,24 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
+import net.neoforged.moddevgradle.internal.Branding;
+import net.neoforged.moddevgradle.internal.DataFileCollectionFactory;
+import net.neoforged.moddevgradle.internal.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
-import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.internal.ModDevExtension;
+import net.neoforged.moddevgradle.internal.ModDevProjectWorkflow;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
+import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
@@ -31,12 +38,24 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
+        project.getPlugins().apply(JavaLibraryPlugin.class);
+        project.getPlugins().apply(NeoFormRuntimePlugin.class);
+        project.getPlugins().apply(MinecraftDependenciesPlugin.class);
+        project.getPlugins().apply(JarJarPlugin.class);
+
         project.getRepositories().maven(repo -> {
             repo.setName("MinecraftForge");
             repo.setUrl(URI.create("https://maven.minecraftforge.net/"));
         });
 
-        project.getExtensions().create("legacyForge", LegacyForgeExtension.class, project);
+        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
+        project.getExtensions().create(
+                "legacyForge",
+                LegacyForgeExtension.class,
+                project,
+                dataFileCollections.accessTransformers().extension(),
+                dataFileCollections.interfaceInjectionData().extension()
+        );
 
         // This module is for supporting NeoForge 1.20.1, which is technically the same as Legacy Forge 1.20.1
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
@@ -47,7 +66,22 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getDependencies().getComponents().withModule("net.neoforged:minecraft-dependencies", NonStrictDependencyTransform.class);
     }
 
-    public void enableModding(Project project, LegacyForgeModdingSettings settings) {
+    public void enableModding(Project project, LegacyForgeModdingSettings settings, ModDevExtension extension) {
+
+        var workflow = new ModDevProjectWorkflow(
+                project,
+                Branding.MDG,
+                neoForgeModule,
+                moddingPlatformDataDependencyNotation,
+                modulePathDependency,
+                runTypesDataDependency,
+                testFixturesDependency,
+                neoFormModule,
+                recompilableMinecraftWorkflowDataDependencyNotation,
+                artifactFilenamePrefix,
+                neoForgeModDevLibrariesDependency,
+                extension
+        );
 
         var depFactory = project.getDependencyFactory();
         var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
@@ -76,23 +110,21 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var extraMixinMappings = project.files();
         var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
 
-        project.getExtensions().configure(NeoForgeExtension.class, extension -> {
-            // TODO extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
-            // TODO extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
+        // TODO extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
+        // TODO extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
 
-            extension.getAdditionalMinecraftArtifacts().put("namedToIntermediaryMapping", namedToIntermediate.map(RegularFile::getAsFile));
-            extension.getAdditionalMinecraftArtifacts().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
-            extension.getAdditionalMinecraftArtifacts().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
+        extension.getAdditionalMinecraftArtifacts().put("namedToIntermediaryMapping", namedToIntermediate.map(RegularFile::getAsFile));
+        extension.getAdditionalMinecraftArtifacts().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
+        extension.getAdditionalMinecraftArtifacts().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
-            extension.getRuns().configureEach(run -> {
-                LegacyForgeFacade.configureRun(project, run);
+        extension.getRuns().configureEach(run -> {
+            LegacyForgeFacade.configureRun(project, run);
 
-                // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
-                run.getSystemProperties().put("mixin.env.remapRefMap", "true");
-                run.getSystemProperties().put("mixin.env.refMapRemappingFile", intermediateToNamed.map(f -> f.getAsFile().getAbsolutePath()));
+            // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
+            run.getSystemProperties().put("mixin.env.remapRefMap", "true");
+            run.getSystemProperties().put("mixin.env.refMapRemappingFile", intermediateToNamed.map(f -> f.getAsFile().getAbsolutePath()));
 
-                run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
-            });
+            run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
         });
 
         var reobfJar = obf.reobfuscate(
@@ -106,14 +138,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
-        project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES)
+        project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES)
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
         // Newer FML versions also search for it on the java.class.path.
         // MDG already adds cilent-extra, but the forge jar is missing.
         project.getConfigurations().getByName("additionalRuntimeClasspath")
-                .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
+                .extendsFrom(project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
         project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
@@ -124,7 +156,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeDeclared(false);
             spec.setCanBeResolved(true);
-            spec.extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES));
+            spec.extendsFrom(project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES));
         });
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
