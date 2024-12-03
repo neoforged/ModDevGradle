@@ -119,6 +119,7 @@ public abstract class Obfuscation {
                             c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
                         });
                     });
+                    externalModuleDependency.setTransitive(false);
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
@@ -131,6 +132,7 @@ public abstract class Obfuscation {
                             c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
                         });
                     });
+                    projectDependency.setTransitive(false);
                 }
             }));
         });

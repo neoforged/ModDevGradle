@@ -68,9 +68,12 @@ obfuscation {
 
 When reobfuscating a jar, it will be replaced in publications with the obfuscated version to avoid publishing jars that aren't mapped to SRG.
 
-## Remapping mod dependencies
+## Remapping Mod Dependencies
 As published mods are using intermediary mappings, you must remap them to official mappings before being able to use them as a dependencies.  
-ModDevGradle creates configurations that will automatically remap dependencies added to them from SRG mappings to official mappings.  
+ModDevGradle creates configurations that will automatically remap dependencies added to them from SRG mappings to official mappings.
+
+**IMPORTANT:** These configurations are not transitive, you will have to manually add transitive dependencies of the mods you are adding.
+
 The following configurations are created automatically and are children of the configurations without the `mod` prefix:
 - `modImplementation`
 - `modRuntimeOnly`
