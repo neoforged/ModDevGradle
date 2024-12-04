@@ -92,6 +92,7 @@ public class ModDevProjectWorkflow {
     private final DependencyFactory dependencyFactory;
     private final TaskProvider<DownloadAssets> downloadAssets;
     private final TaskProvider<CreateMinecraftArtifacts> createArtifacts;
+    private final Configuration additionalClasspath;
     private Provider<ConfigurableFileCollection> minecraftClassesArtifact;
     private final @Nullable Configuration userDevConfigOnly;
 
@@ -242,7 +243,7 @@ public class ModDevProjectWorkflow {
             userDevConfigOnly = null;
         }
 
-        var additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
+        additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
             spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -702,6 +703,21 @@ public class ModDevProjectWorkflow {
         });
 
         ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
+    }
+
+    public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, Provider<RegularFile> path) {
+        createArtifacts.configure(task -> task.getAdditionalResults().put(id, path.map(RegularFile::getAsFile)));
+        return project.getLayout().file(
+                createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id))
+        );
+    }
+
+    public Configuration getRuntimeDependencies() {
+        return runtimeDependencies;
+    }
+
+    public Configuration getAdditionalClasspath() {
+        return additionalClasspath;
     }
 
     public void addToSourceSet(SourceSet sourceSet) {

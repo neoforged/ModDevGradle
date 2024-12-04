@@ -37,11 +37,6 @@ public abstract class ModDevExtension {
         getValidateAccessTransformers().convention(false);
     }
 
-    @Deprecated(forRemoval = true)
-    public void setVersion(Object any) {
-        throw new InvalidUserCodeException("Please use enableModding { neoForgeVersion = ... } instead of the version property.");
-    }
-
     /**
      * The list of additional access transformers that should be applied to the Minecraft source code.
      * <p>

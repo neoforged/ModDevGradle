@@ -1,29 +1,31 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
-import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.DataFileCollectionFactory;
 import net.neoforged.moddevgradle.internal.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
-import net.neoforged.moddevgradle.internal.ModDevExtension;
 import net.neoforged.moddevgradle.internal.ModDevProjectWorkflow;
+import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
-import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.tasks.Jar;
 import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.Map;
@@ -31,6 +33,8 @@ import java.util.stream.Stream;
 
 @ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
+    private static final Logger LOG = LoggerFactory.getLogger(LegacyForgeModDevPlugin.class);
+
     public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
 
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
@@ -43,19 +47,19 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getPlugins().apply(MinecraftDependenciesPlugin.class);
         project.getPlugins().apply(JarJarPlugin.class);
 
+        // TODO: Introduce a LegacyRepositoryPLugin to still allow repo management in settings.gradle
+        // Do not apply the repositories automatically if they have been applied at the settings-level.
+        // It's still possible to apply them manually, though.
+        if (!project.getGradle().getPlugins().hasPlugin(RepositoriesPlugin.class)) {
+            project.getPlugins().apply(RepositoriesPlugin.class);
+        } else {
+            LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
+        }
+
         project.getRepositories().maven(repo -> {
             repo.setName("MinecraftForge");
             repo.setUrl(URI.create("https://maven.minecraftforge.net/"));
         });
-
-        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
-        project.getExtensions().create(
-                "legacyForge",
-                LegacyForgeExtension.class,
-                project,
-                dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension()
-        );
 
         // This module is for supporting NeoForge 1.20.1, which is technically the same as Legacy Forge 1.20.1
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);
@@ -64,24 +68,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         // For legacy versions we need to relax the strict version requirements imposed by the minecraft-dependencies,
         // since Forge upgrades especially log4j2, but we have no way of fixing its metadata fully (besides doing it statically).
         project.getDependencies().getComponents().withModule("net.neoforged:minecraft-dependencies", NonStrictDependencyTransform.class);
-    }
-
-    public void enableModding(Project project, LegacyForgeModdingSettings settings, ModDevExtension extension) {
-
-        var workflow = new ModDevProjectWorkflow(
-                project,
-                Branding.MDG,
-                neoForgeModule,
-                moddingPlatformDataDependencyNotation,
-                modulePathDependency,
-                runTypesDataDependency,
-                testFixturesDependency,
-                neoFormModule,
-                recompilableMinecraftWorkflowDataDependencyNotation,
-                artifactFilenamePrefix,
-                neoForgeModDevLibrariesDependency,
-                extension
-        );
 
         var depFactory = project.getDependencyFactory();
         var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
@@ -99,23 +85,92 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.7:fatjar"));
         });
 
+        var obf = project.getObjects().newInstance(Obfuscation.class, project, autoRenamingToolRuntime, installerToolsRuntime);
+        configureDependencyRemapping(project, obf);
+
+        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
+        project.getExtensions().create(
+                "legacyForge",
+                LegacyForgeExtension.class,
+                project,
+                dataFileCollections.accessTransformers().extension(),
+                dataFileCollections.interfaceInjectionData().extension(),
+                obf
+        );
+    }
+
+    public void enableModding(Project project, LegacyForgeModdingSettings settings, LegacyForgeExtension extension) {
+        var depFactory = project.getDependencyFactory();
+
+        var forgeVersion = settings.getForgeVersion();
+        var neoForgeVersion = settings.getNeoForgeVersion();
+        var mcpVersion = settings.getMcpVersion();
+
+        ModuleDependency platformModule = null;
+        ModuleDependency recompilableMinecraftWorkflowDependency = null;
+        String recompilableMinecraftWorkflowDataDependencyNotation = null;
+        ModuleDependency modulePathDependency = null;
+        ModuleDependency runTypesDataDependency = null;
+        ModuleDependency librariesDependency;
+        String moddingPlatformDataDependencyNotation = null;
+        String artifactFilenamePrefix;
+        if (forgeVersion != null || neoForgeVersion != null) {
+            // All settings are mutually exclusive
+            if (forgeVersion != null && neoForgeVersion != null || mcpVersion != null) {
+                throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
+            }
+
+            String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
+
+            platformModule = depFactory.create(groupId + ":forge:" + forgeVersion);
+            moddingPlatformDataDependencyNotation = groupId + ":forge:" + forgeVersion + ":userdev";
+            runTypesDataDependency = platformModule.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
+            modulePathDependency = platformModule.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
+                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+            artifactFilenamePrefix = "forge-" + forgeVersion;
+            librariesDependency = platformModule.copy()
+                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
+        } else if (mcpVersion != null) {
+            recompilableMinecraftWorkflowDataDependencyNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
+            recompilableMinecraftWorkflowDependency = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
+            librariesDependency = recompilableMinecraftWorkflowDependency.copy()
+                    .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
+            artifactFilenamePrefix = "vanilla-" + mcpVersion;
+        } else {
+            throw new InvalidUserCodeException("You must specify a Forge, NeoForge or MCP version");
+        }
+
+        var workflow = new ModDevProjectWorkflow(
+                project,
+                Branding.MDG,
+                platformModule,
+                moddingPlatformDataDependencyNotation,
+                modulePathDependency,
+                runTypesDataDependency,
+                null /* no support for test fixtures */,
+                recompilableMinecraftWorkflowDependency,
+                recompilableMinecraftWorkflowDataDependencyNotation,
+                artifactFilenamePrefix,
+                librariesDependency,
+                extension
+        );
+
+        var obf = extension.getObfuscation();
+
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
-        var namedToIntermediate = modDevBuildDir.map(d -> d.file("namedToIntermediate.tsrg"));
-        var intermediateToNamed = modDevBuildDir.map(d -> d.file("intermediateToNamed.srg"));
-        var mappingsCsv = modDevBuildDir.map(d -> d.file("intermediateToNamed.zip"));
+        var namedToIntermediate = workflow.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", modDevBuildDir.map(d -> d.file("namedToIntermediate.tsrg")));
+        var intermediateToNamed = workflow.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", modDevBuildDir.map(d -> d.file("intermediateToNamed.srg")));
+        var mappingsCsv = workflow.requestAdditionalMinecraftArtifact("csvMapping", modDevBuildDir.map(d -> d.file("intermediateToNamed.zip")));
 
-        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, namedToIntermediate, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
+        obf.getSrgToNamedMappings().set(namedToIntermediate); // TODO: Instead use the additional artifacts task dependency
+        obf.getSrgToNamedMappings().set(mappingsCsv); // TODO: Instead use the additional artifacts task dependency
 
         var extraMixinMappings = project.files();
         var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
-
-        // TODO extension.getNeoForgeArtifact().set(extension.getVersion().map(version -> "net.minecraftforge:forge:" + version));
-        // TODO extension.getNeoFormArtifact().set(extension.getNeoFormVersion().map(version -> "de.oceanlabs.mcp:mcp_config:" + version));
-
-        extension.getAdditionalMinecraftArtifacts().put("namedToIntermediaryMapping", namedToIntermediate.map(RegularFile::getAsFile));
-        extension.getAdditionalMinecraftArtifacts().put("intermediaryToNamedMapping", intermediateToNamed.map(RegularFile::getAsFile));
-        extension.getAdditionalMinecraftArtifacts().put("csvMapping", mappingsCsv.map(RegularFile::getAsFile));
 
         extension.getRuns().configureEach(run -> {
             LegacyForgeFacade.configureRun(project, run);
@@ -138,25 +193,22 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
-        project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES)
+        workflow.getRuntimeDependencies()
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
         // Newer FML versions also search for it on the java.class.path.
         // MDG already adds cilent-extra, but the forge jar is missing.
-        project.getConfigurations().getByName("additionalRuntimeClasspath")
-                .extendsFrom(project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES))
+        workflow.getAdditionalClasspath()
+                .extendsFrom(workflow.getRuntimeDependencies())
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
-
-        project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
-        project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
             spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");
             spec.setCanBeConsumed(false);
             spec.setCanBeDeclared(false);
             spec.setCanBeResolved(true);
-            spec.extendsFrom(project.getConfigurations().getByName(ModDevProjectWorkflow.CONFIGURATION_RUNTIME_DEPENDENCIES));
+            spec.extendsFrom(workflow.getRuntimeDependencies());
         });
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
@@ -171,6 +223,11 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                     .attribute(REMAPPED, true)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
+    }
+
+    private static void configureDependencyRemapping(Project project, Obfuscation obf) {
+        project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
+        project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));

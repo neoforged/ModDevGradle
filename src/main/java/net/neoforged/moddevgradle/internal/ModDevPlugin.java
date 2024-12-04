@@ -67,7 +67,6 @@ public class ModDevPlugin implements Plugin<Project> {
             moddingPlatformDataDependencyNotation = "net.neoforged:neoforge:" + neoForgeVersion + ":userdev";
             runTypesDataDependency = neoForgeModule.copy()
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
-            ;
             modulePathDependency = neoForgeModule.copy()
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
                     // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.

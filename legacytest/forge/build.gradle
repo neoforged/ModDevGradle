@@ -35,7 +35,7 @@ dependencies {
     // modImplementation('curse.maven:gregtechceu-modern-890405:5641637')
 }
 
-neoForge {
+legacyForge {
     version = '1.18.2-40.2.21'
     runs {
         client {
