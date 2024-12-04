@@ -91,6 +91,41 @@ obfuscation {
 }
 ```
 
+## Mixins
+
+You need to create so-called "refmaps" for Mixin, which convert the names you used to declare injection points and reference other parts of Minecraft code to the names used at runtime (SRG).
+
+This is usually done by including the Mixin annotation processor in your build:
+
+```groovy
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    // If you have additional source sets that contain Mixins, you also need to apply the AP to those
+    // For example if you have a "client" source set:
+    clientAnnotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+```
+
+You need to let the AP know about your Mixin configuration files, and how you'd like your refmap to be named for each 
+of the source sets that contain mixins:
+
+```groovy
+mixin {
+    add sourceSets.main, 'mixins.mymod.refmap.json'
+    config 'mixins.mymod.json' // This can be done for multiple configs
+}
+```
+
+Please note, you also have to add the `MixinConfigs` attribute to your Jar manifest for your Mixins to load in production. Such as this way:
+
+```groovy
+jar {
+    manifest.attributes([
+        "MixinConfigs": "mixinextras.init.mixins.json"
+    ])
+}
+```
+
 ## Effects of applying the legacy plugin
 When applied, the legacy plugin will change the base NeoForm and NeoForge artifact coordinates of the `neoForge` extension to
 `de.oceanlabs.mcp:mcp_config` and `net.minecraftforge:forge`.  
