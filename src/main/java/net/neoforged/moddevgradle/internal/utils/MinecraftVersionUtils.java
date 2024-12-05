@@ -13,6 +13,21 @@ public final class MinecraftVersionUtils {
     }
 
     /**
+     * Tries to get the version capabilities from a given version number of one of the following modules:
+     * <ul>
+     *     <li>Vanilla Minecraft Version</li>
+     *     <li>MCP Version (which is a Vanilla Minecraft Version)</li>
+     *     <li>NeoForm Version (which corresponds to Vanilla Minecraft Version followed by a separator and additional info)</li>
+     *     <li>NeoForge Version</li>
+     *     <li>Minecraft Forge Version</li>
+     * </ul>
+     *
+     */
+    public static VersionCapabilities fromVersion(String version) {
+        
+    }
+
+    /**
      * Checks whether the provided NeoForm version should have split client and server data runs.
      */
     public static boolean hasSplitDataRuns(String neoFormVersion) {
