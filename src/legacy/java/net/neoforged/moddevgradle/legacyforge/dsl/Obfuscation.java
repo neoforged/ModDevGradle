@@ -108,10 +108,14 @@ public abstract class Obfuscation {
             spec.attributes(attributeContainer -> {
                 attributeContainer.attribute(LegacyForgeModDevPlugin.REMAPPED, true);
             });
+            spec.setCanBeConsumed(false);
+            spec.setCanBeResolved(false);
+            spec.setTransitive(false);
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
             // If the parent were to request remapped deps, we'd be remapping everything in it.
-            // Therefore we use a slight "hack" that imposes a constraint over all dependencies in this configuration: to be remapped
+            // Therefore, we use a slight "hack" that imposes a constraint over all dependencies in this configuration: to be remapped.
+            // Additionally, we force dependencies to be non-transitive since we cannot apply the attribute hack to transitive dependencies.
             spec.withDependencies(dependencies -> dependencies.forEach(dep -> {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
                     project.getDependencies().constraints(constraints -> {
