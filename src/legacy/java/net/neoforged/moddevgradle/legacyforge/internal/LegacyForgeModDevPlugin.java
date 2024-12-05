@@ -1,12 +1,15 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
+import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.DataFileCollectionFactory;
 import net.neoforged.moddevgradle.internal.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
-import net.neoforged.moddevgradle.internal.ModDevProjectWorkflow;
+import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
+import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
+import net.neoforged.moddevgradle.internal.WorkflowArtifact;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
@@ -108,12 +111,12 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         ModuleDependency platformModule = null;
         ModuleDependency recompilableMinecraftWorkflowDependency = null;
-        String recompilableMinecraftWorkflowDataDependencyNotation = null;
+        String recompilableMinecraftDataDependencyNotation = null;
         ModuleDependency modulePathDependency = null;
         ModuleDependency runTypesDataDependency = null;
         ModuleDependency librariesDependency;
         String moddingPlatformDataDependencyNotation = null;
-        String artifactFilenamePrefix;
+        ArtifactNamingStrategy artifactNamingStrategy;
         if (forgeVersion != null || neoForgeVersion != null) {
             // All settings are mutually exclusive
             if (forgeVersion != null && neoForgeVersion != null || mcpVersion != null) {
@@ -130,44 +133,71 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
                     // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
                     .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            artifactFilenamePrefix = "forge-" + forgeVersion;
             librariesDependency = platformModule.copy()
                     .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
+
+            var artifactPrefix = "forge-" + forgeVersion;
+            // We have to ensure that client resources are named "client-extra" and *do not* contain forge-<version>
+            // otherwise FML might pick up the client resources as the main Minecraft jar.
+            artifactNamingStrategy = (artifact) -> {
+                if (artifact == WorkflowArtifact.CLIENT_RESOURCES) {
+                    return "client-extra-" + forgeVersion + ".jar";
+                } else {
+                    return artifactPrefix + artifact.defaultSuffix + ".jar";
+                }
+            };
+
         } else if (mcpVersion != null) {
-            recompilableMinecraftWorkflowDataDependencyNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
+            recompilableMinecraftDataDependencyNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
             recompilableMinecraftWorkflowDependency = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             librariesDependency = recompilableMinecraftWorkflowDependency.copy()
                     .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
-            artifactFilenamePrefix = "vanilla-" + mcpVersion;
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
         } else {
             throw new InvalidUserCodeException("You must specify a Forge, NeoForge or MCP version");
         }
 
-        var workflow = new ModDevProjectWorkflow(
+        var version = getMinecraftVersion(forgeVersion, mcpVersion);
+
+        var configurations = project.getConfigurations();
+
+        var artifacts = ModDevArtifactsWorkflow.create(
                 project,
                 Branding.MDG,
+                extension,
                 platformModule,
                 moddingPlatformDataDependencyNotation,
+                recompilableMinecraftWorkflowDependency,
+                recompilableMinecraftDataDependencyNotation,
+                librariesDependency,
+                artifactNamingStrategy,
+                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_ACCESS_TRANSFORMERS),
+                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                version.javaVersion()
+        );
+
+        var runs = ModDevRunWorkflow.create(
+                project,
+                Branding.MDG,
+                artifacts,
                 modulePathDependency,
                 runTypesDataDependency,
-                null /* no support for test fixtures */,
-                recompilableMinecraftWorkflowDependency,
-                recompilableMinecraftWorkflowDataDependencyNotation,
-                artifactFilenamePrefix,
-                librariesDependency,
-                extension
+                null /* no support for test fixtures */
         );
+
+        for (var sourceSet : settings.getEnabledSourceSets().get()) {
+            artifacts.addToSourceSet(sourceSet.getName());
+        }
 
         var obf = extension.getObfuscation();
 
         // We use this directory to store intermediate files used during moddev
-        var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
-        var namedToIntermediate = workflow.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", modDevBuildDir.map(d -> d.file("namedToIntermediate.tsrg")));
-        var intermediateToNamed = workflow.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", modDevBuildDir.map(d -> d.file("intermediateToNamed.srg")));
-        var mappingsCsv = workflow.requestAdditionalMinecraftArtifact("csvMapping", modDevBuildDir.map(d -> d.file("intermediateToNamed.zip")));
+        var namedToIntermediate = artifacts.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", "namedToIntermediate.tsrg");
+        var intermediateToNamed = artifacts.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", "intermediateToNamed.srg");
+        var mappingsCsv = artifacts.requestAdditionalMinecraftArtifact("csvMapping", "intermediateToNamed.zip");
 
-        obf.getSrgToNamedMappings().set(namedToIntermediate); // TODO: Instead use the additional artifacts task dependency
-        obf.getSrgToNamedMappings().set(mappingsCsv); // TODO: Instead use the additional artifacts task dependency
+        obf.getNamedToSrgMappings().set(namedToIntermediate);
+        obf.getSrgToNamedMappings().set(mappingsCsv);
 
         var extraMixinMappings = project.files();
         var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
@@ -193,14 +223,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
-        workflow.getRuntimeDependencies()
+        artifactsWorkflow.getRuntimeDependencies()
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
         // Newer FML versions also search for it on the java.class.path.
         // MDG already adds cilent-extra, but the forge jar is missing.
-        workflow.getAdditionalClasspath()
-                .extendsFrom(workflow.getRuntimeDependencies())
+        artifactsWorkflow.getAdditionalClasspath()
+                .extendsFrom(artifactsWorkflow.getRuntimeDependencies())
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
@@ -208,7 +238,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeDeclared(false);
             spec.setCanBeResolved(true);
-            spec.extendsFrom(workflow.getRuntimeDependencies());
+            spec.extendsFrom(artifactsWorkflow.getRuntimeDependencies());
         });
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
@@ -223,6 +253,17 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                     .attribute(REMAPPED, true)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
+    }
+
+    private static MinecraftVersion getMinecraftVersion(String forgeVersion, String mcpVersion) {
+        for (var minecraftVersion : MinecraftVersion.SUPPORTED_VERSIONS) {
+            if (forgeVersion != null && forgeVersion.startsWith(minecraftVersion.id() + "-")) {
+                return minecraftVersion;
+            } else if (mcpVersion != null && mcpVersion.equals(minecraftVersion.id())) {
+                return minecraftVersion;
+            }
+        }
+        return MinecraftVersion.latestSupported();
     }
 
     private static void configureDependencyRemapping(Project project, Obfuscation obf) {

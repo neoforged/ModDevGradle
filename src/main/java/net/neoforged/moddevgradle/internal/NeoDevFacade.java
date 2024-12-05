@@ -7,9 +7,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
 
@@ -35,7 +33,7 @@ public final class NeoDevFacade {
                                  Consumer<Configuration> configureAdditionalClasspath,
                                  Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevProjectWorkflow.setupRuns(
+        ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -57,7 +55,7 @@ public final class NeoDevFacade {
                                  Provider<RegularFile> assetPropertiesFile,
                                  Provider<String> neoFormVersion
     ) {
-        ModDevProjectWorkflow.setupRuns(
+        ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -80,7 +78,7 @@ public final class NeoDevFacade {
                                      Consumer<Configuration> configureAdditionalClasspath,
                                      Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevProjectWorkflow.setupTestTask(
+        ModDevRunWorkflow.setupTestTask(
                 project,
                 Branding.NEODEV,
                 runTemplatesSourceFile,

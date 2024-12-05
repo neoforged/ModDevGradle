@@ -85,19 +85,19 @@ public class ModDevPlugin implements Plugin<Project> {
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
         ModuleDependency neoForgeModDevLibrariesDependency;
-        String artifactFilenamePrefix;
+        ArtifactNamingStrategy artifactNamingStrategy;
         if (neoForgeModule != null) {
             neoForgeModDevLibrariesDependency = neoForgeModule.copy()
                     .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
 
-            artifactFilenamePrefix = "neoforge-" + neoForgeVersion;
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("neoforge-" + neoForgeVersion);
         } else {
             neoForgeModDevLibrariesDependency = neoFormModule.copy()
                     .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
-            artifactFilenamePrefix = "vanilla-" + neoFormVersion;
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + neoFormVersion);
         }
 
-        new ModDevProjectWorkflow(
+        var workflow = new ModDevRunWorkflow(
                 project,
                 Branding.MDG,
                 neoForgeModule,
@@ -107,9 +107,13 @@ public class ModDevPlugin implements Plugin<Project> {
                 testFixturesDependency,
                 neoFormModule,
                 recompilableMinecraftWorkflowDataDependencyNotation,
-                artifactFilenamePrefix,
+                artifactNamingStrategy,
                 neoForgeModDevLibrariesDependency,
-                extension
+                extension,
+                21
         );
+        for (var sourceSet : settings.getEnabledSourceSets().get()) {
+            workflow.addToSourceSet(sourceSet);
+        }
     }
 }

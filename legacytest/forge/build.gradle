@@ -36,7 +36,7 @@ dependencies {
 }
 
 legacyForge {
-    version = '1.18.2-40.2.21'
+    version = '1.20.1-47.3.12'
     runs {
         client {
             client()

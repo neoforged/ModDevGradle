@@ -8,49 +8,42 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.DomainObjectCollection;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.ConfigurationContainer;
 import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.artifacts.dsl.DependencyFactory;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
-import org.gradle.api.attributes.Category;
-import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
-import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.plugins.jvm.JvmTestSuite;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
-import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
+import org.gradle.testing.base.TestingExtension;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * After modding has been enabled, this will be attached as an extension to the project.
  */
-public class ModDevProjectWorkflow {
-    public static final String EXTENSION_NAME = "modDevProjectWorkflow";
+public class ModDevRunWorkflow {
+    private static final String EXTENSION_NAME = "__internal_modDevRunWorkflow";
 
     /**
      * This must be relative to the project directory since we can only set this to the same project-relative
@@ -58,42 +51,15 @@ public class ModDevProjectWorkflow {
      */
     static final String JUNIT_GAME_DIR = "build/minecraft-junit";
 
-    /**
-     * Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
-     * We cannot use "runtimeOnly", since the contents of that are published.
-     */
-    public static final String CONFIGURATION_RUNTIME_DEPENDENCIES = "neoForgeRuntimeDependencies";
-
-    /**
-     * Name of the configuration in which we place the required dependencies to develop mods for use in the compile-classpath.
-     * While compile only is not published, we also use a configuration here to be consistent.
-     */
-    public static final String CONFIGURATION_COMPILE_DEPENDENCIES = "neoForgeCompileDependencies";
-
-    public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
-    public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
-
     private final Project project;
-
-    private final IdeIntegration ideIntegration;
-
-    private final Provider<Directory> modDevBuildDir;
-    private final Configuration compileDependencies;
-    private final Configuration runtimeDependencies;
-    private final ConfigurationContainer configurations;
-    private final ProjectLayout layout;
-    private final TaskContainer tasks;
     private final Branding branding;
+    private final ModDevArtifactsWorkflow artifactsWorkflow;
     @Nullable
     private final ModuleDependency modulePathDependency;
     @Nullable
     private final ModuleDependency testFixturesDependency;
     private final ModuleDependency gameLibrariesDependency;
-    private final DependencyFactory dependencyFactory;
-    private final TaskProvider<DownloadAssets> downloadAssets;
-    private final TaskProvider<CreateMinecraftArtifacts> createArtifacts;
     private final Configuration additionalClasspath;
-    private Provider<ConfigurableFileCollection> minecraftClassesArtifact;
     private final @Nullable Configuration userDevConfigOnly;
 
     /**
@@ -102,137 +68,27 @@ public class ModDevProjectWorkflow {
      *                                to expose different sets of libraries for use in compiling code or at runtime
      *                                (apiElements vs. runtimeElements).
      */
-    public ModDevProjectWorkflow(Project project,
-                                 Branding branding,
-                                 @Nullable ModuleDependency moddingPlatformDependency,
-                                 @Nullable String moddingPlatformDataDependencyNotation,
-                                 @Nullable ModuleDependency modulePathDependency,
-                                 @Nullable ModuleDependency runTypesConfigDependency,
-                                 @Nullable ModuleDependency testFixturesDependency,
-                                 @Nullable ModuleDependency recompilableMinecraftWorkflowDependency,
-                                 @Nullable String recompilableMinecraftWorkflowDataDependencyNotation,
-                                 String artifactFilenamePrefix,
-                                 ModuleDependency gameLibrariesDependency,
-                                 ModDevExtension extension) {
+    private ModDevRunWorkflow(Project project,
+                              Branding branding,
+                              ModDevArtifactsWorkflow artifactsWorkflow,
+                              @Nullable ModuleDependency modulePathDependency,
+                              @Nullable ModuleDependency runTypesConfigDependency,
+                              @Nullable ModuleDependency testFixturesDependency,
+                              ModuleDependency gameLibrariesDependency,
+                              DomainObjectCollection<RunModel> runs) {
         this.project = project;
-        this.configurations = project.getConfigurations();
-        this.layout = project.getLayout();
-        this.tasks = project.getTasks();
-        this.dependencyFactory = project.getDependencyFactory();
         this.branding = branding;
+        this.artifactsWorkflow = artifactsWorkflow;
         this.modulePathDependency = modulePathDependency;
         this.testFixturesDependency = testFixturesDependency;
         this.gameLibrariesDependency = gameLibrariesDependency;
 
-        var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
-
-        ideIntegration = IdeIntegration.of(project, branding);
-
-        // We use this directory to store intermediate files used during moddev
-        modDevBuildDir = layout.getBuildDirectory().dir("moddev");
-
-        var createManifestConfigurations = configureArtifactManifestConfigurations(
-                moddingPlatformDependency,
-                recompilableMinecraftWorkflowDependency
-        );
-
-        // Add a filtered parchment repository automatically if enabled
-        var parchment = extension.getParchment();
-        var parchmentData = configurations.create("parchmentData", spec -> {
-            spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.setTransitive(false); // Expect a single result
-            spec.getDependencies().addLater(parchment.getParchmentArtifact().map(dependencyFactory::create));
-        });
-
-        // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
-            task.setGroup(branding.internalTaskGroup());
-            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
-            for (var configuration : createManifestConfigurations) {
-                task.addArtifactsToManifest(configuration);
-            }
-
-            task.getAccessTransformers().from(configurations.getByName(CONFIGURATION_ACCESS_TRANSFORMERS));
-            task.getInterfaceInjectionData().from(configurations.getByName(CONFIGURATION_INTERFACE_INJECTION_DATA));
-            task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
-            task.getParchmentData().from(parchmentData);
-            task.getParchmentEnabled().set(parchment.getEnabled());
-            task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
-
-            var minecraftArtifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
-            Function<String, Provider<RegularFile>> jarPathFactory = suffix -> minecraftArtifactsDir.map(artifactDir -> {
-                // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-                return artifactDir.file(artifactFilenamePrefix + "-minecraft" + suffix + ".jar");
-            });
-            task.getCompiledArtifact().set(jarPathFactory.apply(""));
-            task.getCompiledWithSourcesArtifact().set(jarPathFactory.apply("-merged"));
-            task.getSourcesArtifact().set(jarPathFactory.apply("-sources"));
-            task.getResourcesArtifact().set(minecraftArtifactsDir.map(dir -> {
-                return dir.file("client-extra-aka-minecraft-resources-" + artifactFilenamePrefix + ".jar");
-            }));
-
-            task.getNeoForgeArtifact().set(moddingPlatformDataDependencyNotation);
-            task.getNeoFormArtifact().set(recompilableMinecraftWorkflowDataDependencyNotation);
-            task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
-        });
-        ideIntegration.runTaskOnProjectSync(createArtifacts);
-
-        downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
-            // Not in the internal group in case someone wants to "preload" the asset before they go offline
-            task.setGroup(branding.publicTaskGroup());
-            task.setDescription("Downloads the Minecraft assets and asset index needed to run a Minecraft client or generate client-side resources.");
-            // While downloadAssets does not require *all* of the dependencies, it does need NeoForge/NeoForm to benefit
-            // from any caching/overrides applied to these dependencies in Gradle
-            for (var configuration : createManifestConfigurations) {
-                task.addArtifactsToManifest(configuration);
-            }
-            task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
-            task.getNeoForgeArtifact().set(moddingPlatformDataDependencyNotation);
-            task.getNeoFormArtifact().set(recompilableMinecraftWorkflowDataDependencyNotation);
-        });
-
-        // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
-        // Otherwise, attaching sources is a pain for IJ users.
-        if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact()));
-        } else {
-            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
-        }
-
-        runtimeDependencies = configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
-            config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
-            config.setCanBeResolved(false);
-            config.setCanBeConsumed(false);
-
-            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
-            // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
-            // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
-            config.getDependencies().add(gameLibrariesDependency);
-        });
-
-        compileDependencies = configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
-            config.setDescription("The compile-time dependencies to develop a mod for NeoForge, including Minecraft classes.");
-            config.setCanBeResolved(false);
-            config.setCanBeConsumed(false);
-            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            config.getDependencies().add(gameLibrariesDependency);
-        });
-
-        // Try to give people at least a fighting chance to run on the correct java version
-        var toolchainSpec = javaExtension.getToolchain();
-        try {
-            toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
-        } catch (IllegalStateException e) {
-            // We tried our best
-        }
+        var configurations = project.getConfigurations();
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
         if (runTypesConfigDependency != null) {
-            userDevConfigOnly = project.getConfigurations().create("neoForgeConfigOnly", spec -> {
+            userDevConfigOnly = configurations.create("neoForgeConfigOnly", spec -> {
                 spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
@@ -240,6 +96,8 @@ public class ModDevProjectWorkflow {
                 spec.getDependencies().add(runTypesConfigDependency);
             });
         } else {
+            // Create an implicit configuration
+
             userDevConfigOnly = null;
         }
 
@@ -249,14 +107,14 @@ public class ModDevProjectWorkflow {
             spec.setCanBeConsumed(false);
 
             spec.getDependencies().add(gameLibrariesDependency);
-            addClientResources(project, spec, createArtifacts);
+            addClientResources(project, spec, artifactsWorkflow.createArtifacts());
         });
 
         setupRuns(
                 project,
                 branding,
                 modDevBuildDir,
-                extension.getRuns(),
+                runs,
                 userDevConfigOnly,
                 modulePath -> {
                     if (modulePathDependency != null) {
@@ -264,73 +122,79 @@ public class ModDevProjectWorkflow {
                     }
                 },
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
-                downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile),
+                artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                 project.provider(() -> recompilableMinecraftWorkflowDependency).map(ModuleDependency::getVersion)
         );
-
-        // For IDEs that support it, link the source/binary artifacts if we use separated ones
-        if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            ideIntegration.attachSources(
-                    Map.of(
-                            createArtifacts.get().getCompiledArtifact(),
-                            createArtifacts.get().getSourcesArtifact()
-                    )
-            );
-        }
     }
 
-    public static ModDevProjectWorkflow get(Project project) {
-        // TODO: Give better errors when this is not set yet
-        return ExtensionUtils.getExtension(project, ModDevProjectWorkflow.EXTENSION_NAME, ModDevProjectWorkflow.class);
+    public static ModDevRunWorkflow get(Project project) {
+        var workflow = ExtensionUtils.findExtension(project, EXTENSION_NAME, ModDevRunWorkflow.class);
+        if (workflow == null) {
+            throw new InvalidUserCodeException("Please enable the modding plugin first by setting a version");
+        }
+        return workflow;
     }
 
-    public void configureTesting(Provider<ModModel> testedMod,
-                                 Provider<Set<ModModel>> loadedMods) {
-        // Weirdly enough, testCompileOnly extends from compileOnlyApi, and not compileOnly
-        configurations.named(JavaPlugin.TEST_COMPILE_ONLY_CONFIGURATION_NAME).configure(configuration -> {
-            configuration.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            configuration.getDependencies().add(gameLibrariesDependency);
-        });
-
-        // Test fixtures only exist when not running in Vanilla mode
-        Configuration testFixtures;
-        if (testFixturesDependency != null) {
-            testFixtures = configurations.create("neoForgeTestFixtures", config -> {
-                config.setDescription("Additional JUnit helpers provided by NeoForge");
-                config.setCanBeResolved(false);
-                config.setCanBeConsumed(false);
-                config.getDependencies().add(testFixturesDependency);
-            });
-        } else {
-            testFixtures = null;
-        }
-
-        configurations.getByName(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, files -> {
-            files.extendsFrom(configurations.getByName(CONFIGURATION_RUNTIME_DEPENDENCIES));
-            if (testFixtures != null) {
-                files.extendsFrom(testFixtures);
-            }
-        });
-
-        setupTestTask(
+    public static ModDevRunWorkflow create(Project project,
+                                           Branding branding,
+                                           ModDevArtifactsWorkflow artifactsWorkflow,
+                                           @Nullable ModuleDependency modulePathDependency,
+                                           @Nullable ModuleDependency runTypesConfigDependency,
+                                           @Nullable ModuleDependency testFixturesDependency,
+                                           ModuleDependency gameLibrariesDependency) {
+        var workflow = new ModDevRunWorkflow(
                 project,
                 branding,
-                userDevConfigOnly,
-                tasks.named("test", Test.class),
-                loadedMods,
-                testedMod,
-                modDevBuildDir,
-                modulePath -> {
-                    if (modulePathDependency != null) {
-                        modulePath.getDependencies().add(modulePathDependency);
-                    }
-                },
-                spec -> {
-                    spec.getDependencies().add(gameLibrariesDependency);
-                    addClientResources(project, spec, createArtifacts);
-                },
-                downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile)
+                artifactsWorkflow,
+                modulePathDependency,
+                runTypesConfigDependency,
+                testFixturesDependency,
+                gameLibrariesDependency
         );
+
+        project.getExtensions().add(EXTENSION_NAME, workflow);
+
+        return workflow;
+    }
+
+    public void configureTesting(Provider<ModModel> testedMod, Provider<Set<ModModel>> loadedMods) {
+        var testing = project.getExtensions().getByType(TestingExtension.class);
+        var testSuite = (JvmTestSuite) testing.getSuites().getByName("test");
+        var testSourceSet = testSuite.getSources();
+
+        var artifactsWorkflow = ModDevArtifactsWorkflow.get(project);
+        artifactsWorkflow.addToSourceSet(testSourceSet.getName());
+
+        var configurations = project.getConfigurations();
+
+        // If test fixtures are available for the current workflow, add them to runtime only
+        if (testFixturesDependency != null) {
+            configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName(), configuration -> {
+                configuration.getDependencies().add(testFixturesDependency);
+            });
+        }
+
+        for (var target : testSuite.getTargets()) {
+            setupTestTask(
+                    project,
+                    branding,
+                    userDevConfigOnly,
+                    target.getTestTask(),
+                    loadedMods,
+                    testedMod,
+                    artifactsWorkflow.modDevBuildDir(),
+                    modulePath -> {
+                        if (modulePathDependency != null) {
+                            modulePath.getDependencies().add(modulePathDependency);
+                        }
+                    },
+                    legacyClassPath -> {
+                        legacyClassPath.getDependencies().add(gameLibrariesDependency);
+                        addClientResources(project, legacyClassPath, createArtifacts);
+                    },
+                    artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile)
+            );
+        }
     }
 
     // FML searches for client resources on the legacy classpath
@@ -343,108 +207,15 @@ public class ModDevProjectWorkflow {
         );
     }
 
-    /**
-     * Collects all dependencies needed by the NeoFormRuntime
-     */
-    private List<Configuration> configureArtifactManifestConfigurations(
-            @Nullable ModuleDependency moddingPlatformDependency,
-            @Nullable ModuleDependency recompilableMinecraftWorkflowDependency
-    ) {
-        var configurations = project.getConfigurations();
-
-        var configurationPrefix = "neoFormRuntimeDependencies";
-
-        var result = new ArrayList<Configuration>();
-
-        // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
-        // What constitutes incompatible cannot be overridden on a per-configuration basis.
-        var neoForgeClassesAndData = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
-            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            if (moddingPlatformDependency != null) {
-                spec.getDependencies().add(moddingPlatformDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-bundle")));
-            }
-
-            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            if (recompilableMinecraftWorkflowDependency != null) {
-                spec.getDependencies().add(recompilableMinecraftWorkflowDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoform")));
-            }
-        });
-        result.add(neoForgeClassesAndData);
-
-        if (moddingPlatformDependency != null) {
-            var neoForgeSources = configurations.create(configurationPrefix + "NeoForgeSources", spec -> {
-                spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
-                spec.setCanBeConsumed(false);
-                spec.setCanBeResolved(true);
-                spec.getDependencies().add(moddingPlatformDependency);
-                spec.attributes(attributes -> {
-                    setNamedAttribute(project, attributes, Category.CATEGORY_ATTRIBUTE, Category.DOCUMENTATION);
-                    setNamedAttribute(project, attributes, DocsType.DOCS_TYPE_ATTRIBUTE, DocsType.SOURCES);
-                });
-            });
-            result.add(neoForgeSources);
-        }
-
-        // Compile-time dependencies used by NeoForm, NeoForge and Minecraft.
-        // Also includes any classes referenced by compiled Minecraft code (used by decompilers, renamers, etc.)
-        var compileClasspath = configurations.create(configurationPrefix + "CompileClasspath", spec -> {
-            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            if (moddingPlatformDependency != null) {
-                spec.getDependencies().add(moddingPlatformDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-dependencies")));
-            }
-            if (recompilableMinecraftWorkflowDependency != null) {
-                // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-                spec.getDependencies().add(recompilableMinecraftWorkflowDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoform-dependencies")));
-            }
-            spec.attributes(attributes -> {
-                setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_API);
-                setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
-            });
-        });
-        result.add(compileClasspath);
-
-        // Runtime-time dependencies used by NeoForm, NeoForge and Minecraft.
-        var runtimeClasspath = configurations.create(configurationPrefix + "RuntimeClasspath", spec -> {
-            spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
-            spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
-            if (moddingPlatformDependency != null) {
-                spec.getDependencies().add(moddingPlatformDependency); // Universal Jar
-                spec.getDependencies().add(moddingPlatformDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-dependencies")));
-            }
-            // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
-            if (recompilableMinecraftWorkflowDependency != null) {
-                spec.getDependencies().add(recompilableMinecraftWorkflowDependency.copy()
-                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoform-dependencies")));
-            }
-            spec.attributes(attributes -> {
-                setNamedAttribute(attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
-                setNamedAttribute(attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
-            });
-        });
-        result.add(runtimeClasspath);
-
-        return result;
-    }
-
-    static void setupRuns(Project project,
-                          Branding branding,
-                          Provider<Directory> argFileDir,
-                          DomainObjectCollection<RunModel> runs,
-                          Object runTemplatesSourceFile,
-                          Consumer<Configuration> configureModulePath,
-                          Consumer<Configuration> configureLegacyClasspath,
-                          Provider<RegularFile> assetPropertiesFile,
-                          Provider<String> neoFormVersion
+    static void setupRuns(
+            Project project,
+            Branding branding,
+            Provider<Directory> argFileDir,
+            DomainObjectCollection<RunModel> runs,
+            Object runTemplatesSourceFile,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureLegacyClasspath,
+            Provider<RegularFile> assetPropertiesFile
     ) {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -705,13 +476,6 @@ public class ModDevProjectWorkflow {
         ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
     }
 
-    public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, Provider<RegularFile> path) {
-        createArtifacts.configure(task -> task.getAdditionalResults().put(id, path.map(RegularFile::getAsFile)));
-        return project.getLayout().file(
-                createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id))
-        );
-    }
-
     public Configuration getRuntimeDependencies() {
         return runtimeDependencies;
     }
@@ -723,10 +487,6 @@ public class ModDevProjectWorkflow {
     public void addToSourceSet(SourceSet sourceSet) {
         configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
         configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
-    }
-
-    private <T extends Named> void setNamedAttribute(AttributeContainer attributes, Attribute<T> attribute, String value) {
-        attributes.attribute(attribute, project.getObjects().named(attribute.getType(), value));
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {

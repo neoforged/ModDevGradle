@@ -1,12 +1,12 @@
 package net.neoforged.moddevgradle.internal;
 
-import net.neoforged.moddevgradle.internal.utils.VersionUtils;
+import net.neoforged.moddevgradle.internal.utils.MinecraftVersionUtils;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class VersionUtilsTest {
+public class MinecraftVersionUtilsTest {
     @ParameterizedTest()
     @CsvSource({
             "1.21.4,true",
@@ -26,7 +26,7 @@ public class VersionUtilsTest {
             "1.22-pre1,true"
     })
     public void testSplitDataRunsCorrectness(String neoFormVersion, boolean splitDataRuns) {
-        assertThat(VersionUtils.hasSplitDataRuns(neoFormVersion))
+        assertThat(MinecraftVersionUtils.hasSplitDataRuns(neoFormVersion))
                 .isEqualTo(splitDataRuns);
     }
 
@@ -43,7 +43,7 @@ public class VersionUtilsTest {
             "24242",
     })
     public void testSplitDataRunsDoesNotCrash(String neoFormVersion) {
-        assertThat(VersionUtils.hasSplitDataRuns(neoFormVersion))
+        assertThat(MinecraftVersionUtils.hasSplitDataRuns(neoFormVersion))
                 .isTrue();
     }
 }

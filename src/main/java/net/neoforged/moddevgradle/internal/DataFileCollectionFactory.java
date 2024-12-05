@@ -15,6 +15,10 @@ import java.util.function.Consumer;
 
 @ApiStatus.Internal
 public final class DataFileCollectionFactory {
+    public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
+
+    public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
+
     private DataFileCollectionFactory() {
     }
 
@@ -29,7 +33,7 @@ public final class DataFileCollectionFactory {
         // Create an access transformer configuration
         var accessTransformers = DataFileCollectionFactory.create(
                 project,
-                ModDevProjectWorkflow.CONFIGURATION_ACCESS_TRANSFORMERS,
+                ModDevRunWorkflow.CONFIGURATION_ACCESS_TRANSFORMERS,
                 "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
                 "accesstransformer"
         );
@@ -51,7 +55,7 @@ public final class DataFileCollectionFactory {
         // Create a configuration for grabbing interface injection data
         var interfaceInjectionData = DataFileCollectionFactory.create(
                 project,
-                ModDevProjectWorkflow.CONFIGURATION_INTERFACE_INJECTION_DATA,
+                ModDevRunWorkflow.CONFIGURATION_INTERFACE_INJECTION_DATA,
                 "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
                 "interfaceinjection"
         );

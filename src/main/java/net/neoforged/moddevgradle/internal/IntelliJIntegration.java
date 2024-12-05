@@ -139,7 +139,7 @@ final class IntelliJIntegration extends IdeIntegration {
             if (intelliJRunConfigurations != null) {
                 intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
                     // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
-                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevProjectWorkflow.JUNIT_GAME_DIR);
+                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevRunWorkflow.JUNIT_GAME_DIR);
                     jUnitDefaults.setVmParameters(
                             // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
                             // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments
