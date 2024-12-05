@@ -121,7 +121,7 @@ Please note, you also have to add the `MixinConfigs` attribute to your Jar manif
 ```groovy
 jar {
     manifest.attributes([
-        "MixinConfigs": "mixinextras.init.mixins.json"
+        "MixinConfigs": "mixins.mymod.json"
     ])
 }
 ```
