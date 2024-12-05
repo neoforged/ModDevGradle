@@ -70,7 +70,7 @@ public abstract class Obfuscation {
 
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
-            task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory());
+            task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory().dir("libs"));
             task.getArchiveBaseName().convention(jar.flatMap(AbstractArchiveTask::getArchiveBaseName));
             task.getArchiveVersion().convention(jar.flatMap(AbstractArchiveTask::getArchiveVersion));
             task.getArchiveClassifier().convention(jar.flatMap(AbstractArchiveTask::getArchiveClassifier));
