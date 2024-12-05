@@ -57,7 +57,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
-            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.7:fatjar"));
+            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.10:fatjar"));
         });
 
         // We use this directory to store intermediate files used during moddev
