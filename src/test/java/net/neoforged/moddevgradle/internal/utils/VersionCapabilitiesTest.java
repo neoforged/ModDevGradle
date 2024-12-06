@@ -72,6 +72,26 @@ public class VersionCapabilitiesTest {
 
     @ParameterizedTest()
     @CsvSource({
+            // This checks that a separator must follow the prefix match since this matches the 1.20.1 prefix, but
+            // should not be recognized as such.
+            "1.20.12-20200101202020,",
+            "1.20.1-20200101202020,1.20.1",
+            "1.20.1,1.20.1",
+            "1.20.1-rc1,1.20.1-rc1",
+    })
+    public void testNeoFormVersionParsing(String neoFormVersion, String minecraftVersion) {
+        var idx = VersionCapabilities.indexOfNeoFormVersion(neoFormVersion);
+        String actual;
+        if (idx == -1) {
+            actual = null;
+        } else {
+            actual = MinecraftVersionList.VERSIONS.get(idx);
+        }
+        assertEquals(minecraftVersion, actual);
+    }
+
+    @ParameterizedTest()
+    @CsvSource({
             "1.21.4,true",
             "1.21.4-pre1-20241120.190508,true",
             "1.21.3,false",
