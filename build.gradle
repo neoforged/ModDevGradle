@@ -104,7 +104,7 @@ configurations {
             attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
             attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, "changelog"))
         }
-        project.components.findByName("java").addVariantsFromConfiguration(it) { }
+        project.components.findByName("java").addVariantsFromConfiguration(it) {}
     }
 }
 
@@ -190,7 +190,7 @@ tasks.withType(GenerateModuleMetadata).configureEach {
 
 gradlePlugin {
     website = 'https://github.com/neoforged/ModDevGradle'
-    vcsUrl  = 'https://github.com/neoforged/ModDevGradle.git'
+    vcsUrl = 'https://github.com/neoforged/ModDevGradle.git'
 
     plugins {
         moddev {
@@ -243,13 +243,68 @@ tasks.withType(PluginUnderTestMetadata).configureEach {
     it.inputs.file(shadowJar.archiveFile)
 }
 
+abstract class GenerateVersionOrder extends DefaultTask {
+    @OutputFile
+    abstract RegularFileProperty getOutput()
+
+    @TaskAction
+    void run() {
+        final json = new JsonSlurper()
+        final manifest = json.parse('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'.toURL())
+        List<String> versions = manifest.versions.collect { it.id }
+
+        Comparator<String> BY_LENGTH_REVERSED = Comparator.comparingInt { it.length() }.reversed()
+        var indicesByLength = versions.stream().sorted(BY_LENGTH_REVERSED).map(versions::indexOf).map(String::valueOf).toList()
+
+        final clazz = """
+package net.neoforged.moddevgradle.internal.generated;
+
+import java.util.List;
+
+public final class MinecraftVersionList {
+    private MinecraftVersionList() {
+    }
+
+    /**
+     * Released Minecraft Versions as of ${java.time.Instant.now()} from latest to oldest.
+     */
+    public static final List<String> VERSIONS = List.of("${versions.join("\", \"")}");
+
+    // Indices into VERSIONS sorted by descending length of the version id
+    private static final int[] BY_LENGTH = {${indicesByLength.join(", ")}};
+
+    /**
+     * Finds the index of the longest matching prefix or -1 if none match.
+     * Prefix matches must terminate with one of the given separator characters to be found valid. 
+     */
+    public static int indexOfByPrefix(String version, String separators) {
+      for (var versionIdx : BY_LENGTH) {
+        var versionText = VERSIONS.get(versionIdx);
+        if (version.startsWith(versionText) && (versionText.length() == version.length() || separators.indexOf(version.charAt(versionText.length())) != -1)) {
+          return versionIdx;
+        }
+      }
+      return -1;
+    }
+}
+"""
+        output.get().asFile.write(clazz)
+    }
+}
+
+tasks.register('generateVersionOrder', GenerateVersionOrder) {
+    output = project.file('src/generated/java/net/neoforged/moddevgradle/internal/generated/MinecraftVersionList.java')
+    group = 'build'
+    description = "Generates a listing of known Minecraft versions for the purposes of Version comparison"
+}
+
 abstract class GenerateRepoFilter extends DefaultTask {
     @OutputFile
     abstract RegularFileProperty getOutput()
 
     @EqualsAndHashCode
     @TupleConstructor
-    static class Artifact implements Comparable<Artifact>  {
+    static class Artifact implements Comparable<Artifact> {
         String group, module
 
         @Override

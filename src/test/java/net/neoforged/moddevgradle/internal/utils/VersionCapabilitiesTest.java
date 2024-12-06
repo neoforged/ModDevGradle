@@ -1,0 +1,112 @@
+package net.neoforged.moddevgradle.internal.utils;
+
+import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class VersionCapabilitiesTest {
+    @ParameterizedTest()
+    @CsvSource({
+            "1.21.4,21",
+            "1.21.4-pre1-20241120.190508,21",
+            "1.21.3,21",
+            "24w45a,21",
+            "24w44a,21",
+            "1.21.3-pre1,21",
+            "25w01a,21",
+            "23w07a,17",
+            "1.20,17",
+            "1.20-pre1,17",
+            "1.21,21",
+            "1.21-pre1-20240529.150918,21",
+            "1.21-pre1,21",
+            "1.22,21",
+            "1.22-pre1,21",
+            "1.0,8",
+            "1.14.2 Pre-Release 2,8",
+            "21w19a,16",
+    })
+    public void testJavaVersion(String neoFormVersion, int javaVersion) {
+        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).javaVersion())
+                .isEqualTo(javaVersion);
+    }
+
+    @ParameterizedTest()
+    @CsvSource({
+            "21.4.8-beta,1.21.4",
+            "21.4.10-beta-pr-1744-gh-1582,1.21.4",
+            "21.4.10,1.21.4",
+            "26.1.10,",
+    })
+    public void testNeoForgeVersionParsing(String neoForgeVersion, String minecraftVersion) {
+        var idx = VersionCapabilities.indexOfNeoForgeVersion(neoForgeVersion);
+        String actual;
+        if (idx == -1) {
+            actual = null;
+        } else {
+            actual = MinecraftVersionList.VERSIONS.get(idx);
+        }
+        assertEquals(minecraftVersion, actual);
+    }
+
+    @ParameterizedTest()
+    @CsvSource({
+            "1.7.2-10.12.2.1161-mc172,1.7.2",
+            "1.10-12.18.0.2000-1.10.0,1.10",
+            "1.12.2-14.23.5.2860,1.12.2",
+            "1.20.1-47.3.12,1.20.1",
+    })
+    public void testForgeVersionParsing(String forgeVersion, String minecraftVersion) {
+        var idx = VersionCapabilities.indexOfForgeVersion(forgeVersion);
+        String actual;
+        if (idx == -1) {
+            actual = null;
+        } else {
+            actual = MinecraftVersionList.VERSIONS.get(idx);
+        }
+        assertEquals(minecraftVersion, actual);
+    }
+
+    @ParameterizedTest()
+    @CsvSource({
+            "1.21.4,true",
+            "1.21.4-pre1-20241120.190508,true",
+            "1.21.3,false",
+            "24w45a,true",
+            "24w44a,false",
+            "1.21.3-pre1,false",
+            "25w01a,true",
+            "23w07a,false",
+            "1.20,false",
+            "1.20-pre1,false",
+            "1.21,false",
+            "1.21-pre1-20240529.150918,false",
+            "1.21-pre1,false",
+            "1.22,true",
+            "1.22-pre1,true"
+    })
+    public void testSplitDataRunsCorrectness(String neoFormVersion, boolean splitDataRuns) {
+        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).splitDataRuns())
+                .isEqualTo(splitDataRuns);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1",
+            "1.",
+            "1.21.",
+            "test",
+            "24w",
+            "24w5",
+            "24w50",
+            "2aw50",
+            "24242",
+    })
+    public void testSplitDataRunsDoesNotCrash(String neoFormVersion) {
+        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).splitDataRuns())
+                .isTrue();
+    }
+}

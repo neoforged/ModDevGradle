@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -43,7 +44,7 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                project.getObjects().property(String.class) // empty provider
+                project.getObjects().property(VersionCapabilities.class) // empty provider
         );
     }
 
@@ -65,7 +66,7 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                neoFormVersion
+                neoFormVersion.map(VersionCapabilities::ofNeoFormVersion)
         );
     }
 
