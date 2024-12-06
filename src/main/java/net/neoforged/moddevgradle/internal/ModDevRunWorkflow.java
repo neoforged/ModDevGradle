@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.DomainObjectCollection;
@@ -53,7 +54,6 @@ public class ModDevRunWorkflow {
 
     private final Project project;
     private final Branding branding;
-    private final ModDevArtifactsWorkflow artifactsWorkflow;
     @Nullable
     private final ModuleDependency modulePathDependency;
     @Nullable
@@ -75,10 +75,10 @@ public class ModDevRunWorkflow {
                               @Nullable ModuleDependency runTypesConfigDependency,
                               @Nullable ModuleDependency testFixturesDependency,
                               ModuleDependency gameLibrariesDependency,
-                              DomainObjectCollection<RunModel> runs) {
+                              DomainObjectCollection<RunModel> runs,
+                              VersionCapabilities versionCapabilities) {
         this.project = project;
         this.branding = branding;
-        this.artifactsWorkflow = artifactsWorkflow;
         this.modulePathDependency = modulePathDependency;
         this.testFixturesDependency = testFixturesDependency;
         this.gameLibrariesDependency = gameLibrariesDependency;
@@ -113,7 +113,7 @@ public class ModDevRunWorkflow {
         setupRuns(
                 project,
                 branding,
-                modDevBuildDir,
+                artifactsWorkflow.modDevBuildDir(),
                 runs,
                 userDevConfigOnly,
                 modulePath -> {
@@ -123,7 +123,7 @@ public class ModDevRunWorkflow {
                 },
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
-                project.provider(() -> recompilableMinecraftWorkflowDependency).map(ModuleDependency::getVersion)
+                project.provider(() -> versionCapabilities)
         );
     }
 
@@ -141,7 +141,9 @@ public class ModDevRunWorkflow {
                                            @Nullable ModuleDependency modulePathDependency,
                                            @Nullable ModuleDependency runTypesConfigDependency,
                                            @Nullable ModuleDependency testFixturesDependency,
-                                           ModuleDependency gameLibrariesDependency) {
+                                           ModuleDependency gameLibrariesDependency,
+                                           DomainObjectCollection<RunModel> runs,
+                                           VersionCapabilities versionCapabilites) {
         var workflow = new ModDevRunWorkflow(
                 project,
                 branding,
@@ -149,7 +151,9 @@ public class ModDevRunWorkflow {
                 modulePathDependency,
                 runTypesConfigDependency,
                 testFixturesDependency,
-                gameLibrariesDependency
+                gameLibrariesDependency,
+                runs,
+                versionCapabilites
         );
 
         project.getExtensions().add(EXTENSION_NAME, workflow);
@@ -190,7 +194,7 @@ public class ModDevRunWorkflow {
                     },
                     legacyClassPath -> {
                         legacyClassPath.getDependencies().add(gameLibrariesDependency);
-                        addClientResources(project, legacyClassPath, createArtifacts);
+                        addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
                     },
                     artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile)
             );
@@ -201,13 +205,13 @@ public class ModDevRunWorkflow {
     private void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
         // FML searches for client resources on the legacy classpath
         spec.getDependencies().add(
-                dependencyFactory.create(
+                project.getDependencyFactory().create(
                         project.files(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact))
                 )
         );
     }
 
-    static void setupRuns(
+    public static void setupRuns(
             Project project,
             Branding branding,
             Provider<Directory> argFileDir,
@@ -215,7 +219,8 @@ public class ModDevRunWorkflow {
             Object runTemplatesSourceFile,
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath,
-            Provider<RegularFile> assetPropertiesFile
+            Provider<RegularFile> assetPropertiesFile,
+            Provider<VersionCapabilities> versionCapabilities
     ) {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -244,7 +249,7 @@ public class ModDevRunWorkflow {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
-                    neoFormVersion,
+                    versionCapabilities,
                     createLaunchScriptsTask
             );
             prepareRunTasks.put(run, prepareRunTask);
@@ -257,7 +262,6 @@ public class ModDevRunWorkflow {
      *                                 to a single file that is
      * @param configureLegacyClasspath Callback to add entries to the legacy classpath.
      * @param assetPropertiesFile      File that contains the asset properties file produced by NFRT.
-     * @param createLaunchScriptsTask
      */
     private static TaskProvider<PrepareRun> setupRunInGradle(
             Project project,
@@ -269,7 +273,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Provider<String> neoFormVersion,
+            Provider<VersionCapabilities> versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
@@ -338,7 +342,7 @@ public class ModDevRunWorkflow {
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
-            task.getNeoFormVersion().set(neoFormVersion);
+            task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
@@ -476,17 +480,8 @@ public class ModDevRunWorkflow {
         ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
     }
 
-    public Configuration getRuntimeDependencies() {
-        return runtimeDependencies;
-    }
-
     public Configuration getAdditionalClasspath() {
         return additionalClasspath;
-    }
-
-    public void addToSourceSet(SourceSet sourceSet) {
-        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
-        configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {

@@ -10,6 +10,7 @@ import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import net.neoforged.moddevgradle.internal.WorkflowArtifact;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
@@ -117,6 +118,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         ModuleDependency librariesDependency;
         String moddingPlatformDataDependencyNotation = null;
         ArtifactNamingStrategy artifactNamingStrategy;
+        VersionCapabilities versionCapabilities;
         if (forgeVersion != null || neoForgeVersion != null) {
             // All settings are mutually exclusive
             if (forgeVersion != null && neoForgeVersion != null || mcpVersion != null) {
@@ -147,17 +149,18 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 }
             };
 
+            versionCapabilities = VersionCapabilities.ofForgeVersion(forgeVersion);
         } else if (mcpVersion != null) {
             recompilableMinecraftDataDependencyNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
             recompilableMinecraftWorkflowDependency = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             librariesDependency = recompilableMinecraftWorkflowDependency.copy()
                     .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
+
+            versionCapabilities = VersionCapabilities.ofMinecraftVersion(mcpVersion);
         } else {
             throw new InvalidUserCodeException("You must specify a Forge, NeoForge or MCP version");
         }
-
-        var version = getMinecraftVersion(forgeVersion, mcpVersion);
 
         var configurations = project.getConfigurations();
 
@@ -173,7 +176,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollectionFactory.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollectionFactory.CONFIGURATION_INTERFACE_INJECTION_DATA),
-                version.javaVersion()
+                versionCapabilities
         );
 
         var runs = ModDevRunWorkflow.create(
@@ -182,7 +185,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifacts,
                 modulePathDependency,
                 runTypesDataDependency,
-                null /* no support for test fixtures */
+                null /* no support for test fixtures */,
+                librariesDependency,
+                extension.getRuns(),
+                versionCapabilities
         );
 
         for (var sourceSet : settings.getEnabledSourceSets().get()) {
@@ -223,14 +229,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
-        artifactsWorkflow.getRuntimeDependencies()
+        artifacts.runtimeDependencies()
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         // Forge expects to find the Forge and client-extra jar on the legacy classpath
         // Newer FML versions also search for it on the java.class.path.
         // MDG already adds cilent-extra, but the forge jar is missing.
-        artifactsWorkflow.getAdditionalClasspath()
-                .extendsFrom(artifactsWorkflow.getRuntimeDependencies())
+        runs.getAdditionalClasspath()
+                .extendsFrom(artifacts.runtimeDependencies())
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
@@ -238,7 +244,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeDeclared(false);
             spec.setCanBeResolved(true);
-            spec.extendsFrom(artifactsWorkflow.getRuntimeDependencies());
+            spec.extendsFrom(artifacts.runtimeDependencies());
         });
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {

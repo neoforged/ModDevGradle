@@ -33,7 +33,7 @@ public final class DataFileCollectionFactory {
         // Create an access transformer configuration
         var accessTransformers = DataFileCollectionFactory.create(
                 project,
-                ModDevRunWorkflow.CONFIGURATION_ACCESS_TRANSFORMERS,
+                CONFIGURATION_ACCESS_TRANSFORMERS,
                 "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
                 "accesstransformer"
         );
@@ -55,7 +55,7 @@ public final class DataFileCollectionFactory {
         // Create a configuration for grabbing interface injection data
         var interfaceInjectionData = DataFileCollectionFactory.create(
                 project,
-                ModDevRunWorkflow.CONFIGURATION_INTERFACE_INJECTION_DATA,
+                CONFIGURATION_INTERFACE_INJECTION_DATA,
                 "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
                 "interfaceinjection"
         );

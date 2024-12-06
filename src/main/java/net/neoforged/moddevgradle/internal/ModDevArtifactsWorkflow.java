@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.Named;
@@ -61,7 +62,7 @@ public record ModDevArtifactsWorkflow(
                                                  ArtifactNamingStrategy artifactNamingStrategy,
                                                  Configuration accessTransformers,
                                                  Configuration interfaceInjectionData,
-                                                 int minecraftJavaVersion
+                                                 VersionCapabilities versionCapabilities
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
@@ -86,7 +87,7 @@ public record ModDevArtifactsWorkflow(
         // Try to give people at least a fighting chance to run on the correct java version
         var toolchainSpec = javaExtension.getToolchain();
         try {
-            toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(minecraftJavaVersion));
+            toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(versionCapabilities.javaVersion()));
         } catch (IllegalStateException e) {
             // We tried our best
         }
@@ -111,7 +112,7 @@ public record ModDevArtifactsWorkflow(
 
             // NFRT needs access to a JDK of the right version to be able to correctly decompile and recompile the code
             task.getJavaExecutable().set(javaToolchainService
-                    .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(minecraftJavaVersion)))
+                    .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
                     .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
             );
 

@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import net.neoforged.moddevgradle.internal.utils.MinecraftVersionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -97,10 +97,11 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     /**
      * Only used when {@link #getRunTypeTemplatesSource()} is empty,
-     * to know whether the associated Minecraft version requires one or two data runs.
+     * to know whether the associated Minecraft version has separate entrypoints for generating resource- and
+     * data packs.
      */
     @Input
-    public abstract Property<String> getNeoFormVersion();
+    public abstract Property<VersionCapabilities> getVersionCapabilities();
 
     private final ProgramArgsFormat programArgsFormat;
 
@@ -189,8 +190,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
         ));
 
-        var splitData = getNeoFormVersion()
-                .map(MinecraftVersionUtils::hasSplitDataRuns)
+        var splitData = getVersionCapabilities()
+                .map(VersionCapabilities::splitDataRuns)
                 .orElse(false) // Default to single run for backwards compatibility
                 .get();
         if (splitData) {

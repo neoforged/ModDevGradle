@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.dsl.ModdingVersionSettings;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -97,23 +98,40 @@ public class ModDevPlugin implements Plugin<Project> {
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + neoFormVersion);
         }
 
-        var workflow = new ModDevRunWorkflow(
+        var configurations = project.getConfigurations();
+
+        var versionCapabilities = neoForgeVersion != null ? VersionCapabilities.ofNeoForgeVersion(neoForgeVersion)
+                : VersionCapabilities.ofNeoFormVersion(neoFormVersion);
+
+        var artifacts = ModDevArtifactsWorkflow.create(
                 project,
                 Branding.MDG,
+                extension,
                 neoForgeModule,
                 moddingPlatformDataDependencyNotation,
+                neoFormModule,
+                recompilableMinecraftWorkflowDataDependencyNotation,
+                neoForgeModDevLibrariesDependency,
+                artifactNamingStrategy,
+                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_ACCESS_TRANSFORMERS),
+                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                versionCapabilities
+        );
+
+        for (var sourceSet : settings.getEnabledSourceSets().get()) {
+            artifacts.addToSourceSet(sourceSet.getName());
+        }
+
+        ModDevRunWorkflow.create(
+                project,
+                Branding.MDG,
+                artifacts,
                 modulePathDependency,
                 runTypesDataDependency,
                 testFixturesDependency,
-                neoFormModule,
-                recompilableMinecraftWorkflowDataDependencyNotation,
-                artifactNamingStrategy,
                 neoForgeModDevLibrariesDependency,
-                extension,
-                21
+                extension.getRuns(),
+                versionCapabilities
         );
-        for (var sourceSet : settings.getEnabledSourceSets().get()) {
-            workflow.addToSourceSet(sourceSet);
-        }
     }
 }
