@@ -4,6 +4,7 @@ import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.regex.Pattern;
 
 /**
@@ -11,7 +12,7 @@ import java.util.regex.Pattern;
  * @param javaVersion Which Java version Vanilla uses to compile and run.
  * @param splitDataRuns Whether Vanilla has separate main classes for generating client and server data.
  */
-public record VersionCapabilities(int javaVersion, boolean splitDataRuns) {
+public record VersionCapabilities(int javaVersion, boolean splitDataRuns) implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilities.class);
 
     private static final VersionCapabilities LATEST = new VersionCapabilities(21, true);
