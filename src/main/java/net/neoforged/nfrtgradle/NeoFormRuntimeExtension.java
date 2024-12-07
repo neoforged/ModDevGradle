@@ -13,7 +13,7 @@ import javax.inject.Inject;
 public abstract class NeoFormRuntimeExtension {
     public static final String NAME = "neoFormRuntime";
 
-    private static final String DEFAULT_NFRT_VERSION = "1.0.9";
+    private static final String DEFAULT_NFRT_VERSION = "1.0.12";
 
     @Inject
     public NeoFormRuntimeExtension(Project project) {
