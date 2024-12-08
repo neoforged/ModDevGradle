@@ -101,7 +101,6 @@ abstract class PrepareRunOrTest extends DefaultTask {
      * Defaults to latest.
      */
     @Input
-    @Optional
     public abstract Property<VersionCapabilities> getVersionCapabilities();
 
     private final ProgramArgsFormat programArgsFormat;
