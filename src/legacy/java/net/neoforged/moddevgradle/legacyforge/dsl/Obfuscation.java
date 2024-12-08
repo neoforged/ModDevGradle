@@ -61,7 +61,7 @@ public abstract class Obfuscation {
     }
 
     /**
-     * Create and configure a reobfuscation task.
+     * Create a reobfuscation task.
      *
      * @param jar           the jar task to reobfuscate
      * @param sourceSet     the source set whose classpath to use when remapping inherited methods
