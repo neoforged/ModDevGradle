@@ -7,6 +7,7 @@ import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
@@ -106,10 +107,17 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
-        // JarJar dependencies are packaged into the final jar and should be remapped
-        // this is especially important if they're obtained from cross-project dependencies
-        project.getConfigurations().getByName("jarJar").attributes(attributes -> {
-            attributes.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+        // JarJar cross-project dependencies are packaged into the final jar and should be remapped
+        // We must however do this without affecting external dependencies since those are usually already in the
+        // right namespace.
+        project.getConfigurations().getByName("jarJar").withDependencies(dependencies -> {
+            dependencies.forEach(dep -> {
+                if (dep instanceof ProjectDependency projectDependency) {
+                    projectDependency.attributes(a -> {
+                        a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+                    });
+                }
+            });
         });
 
         project.getDependencies().attributesSchema(schema -> schema.attribute(MinecraftMappings.ATTRIBUTE).getDisambiguationRules().add(MappingsDisambiguationRule.class));
