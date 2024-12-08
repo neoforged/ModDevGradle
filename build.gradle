@@ -71,6 +71,10 @@ sourceSets {
         runtimeClasspath += java8.output
     }
     legacy
+    test {
+        compileClasspath += legacy.output
+        runtimeClasspath += legacy.output
+    }
 }
 
 configurations {
