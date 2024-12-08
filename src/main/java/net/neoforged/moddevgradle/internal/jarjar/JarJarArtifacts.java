@@ -22,6 +22,8 @@ import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -35,6 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class JarJarArtifacts {
+    private static final Logger LOG = LoggerFactory.getLogger(JarJarArtifacts.class);
     private transient final SetProperty<ResolvedComponentResult> includedRootComponents;
     private transient final SetProperty<ResolvedArtifactResult> includedArtifacts;
 
@@ -93,6 +96,7 @@ public abstract class JarJarArtifacts {
         var data = new ArrayList<ResolvedJarJarArtifact>();
         var filesAdded = new HashSet<String>();
         for (ResolvedArtifactResult result : artifacts) {
+            LOG.debug("About to embed artifact {} ({})", result, result.getFile().getAbsolutePath());
             ResolvedVariantResult variant = result.getVariant();
 
             ArtifactIdentifier artifactIdentifier = capabilityOrModule(variant);

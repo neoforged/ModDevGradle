@@ -1,6 +1,6 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
-import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
+import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
@@ -11,7 +11,9 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ProjectDependency;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPlugin;
@@ -23,6 +25,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import javax.inject.Inject;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class ObfuscationExtension {
     private final Project project;
@@ -90,12 +93,12 @@ public abstract class ObfuscationExtension {
      *
      * @param jar           the jar task to reobfuscate
      * @param sourceSet     the source set whose classpath to use when remapping inherited methods
-     * @param configuration an action used to configure the rebfuscation task
+     * @param configureTask an action used to configure the rebfuscation task
      * @return a provider of the created task
      */
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
                                               SourceSet sourceSet,
-                                              Action<RemapJar> configuration) {
+                                              Action<RemapJar> configureTask) {
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
             task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory().dir("libs"));
@@ -106,7 +109,7 @@ public abstract class ObfuscationExtension {
             task.getLibraries().from(sourceSet.getCompileClasspath());
             configureNamedToSrgOperation(task.getRemapOperation());
             task.getRemapOperation().getMappings().from(extraMixinMappings);
-            configuration.execute(task);
+            configureTask.execute(task);
         });
 
         jar.configure(task -> {
@@ -116,15 +119,37 @@ public abstract class ObfuscationExtension {
         });
 
         // Replace the publication of the jar task with the reobfuscated jar
+        var configurations = project.getConfigurations();
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
-            project.getArtifacts().add(configurationName, reobf);
-            java.withVariantsFromConfiguration(project.getConfigurations().getByName(configurationName), variant -> {
-                variant.getConfigurationVariant().getArtifacts().removeIf(artifact -> artifact.getFile().equals(jar.get().getArchiveFile().get().getAsFile()));
+            var config = configurations.getByName(configurationName);
+            // Mark the original configuration as NAMED to be able to disambiguate between it and the reobfuscated jar,
+            // this is used for example by the JarJar configuration.
+            config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+
+            // Now create a reobf configuration
+            var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
+            reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
+            reobfConfig.getArtifacts().clear(); // If this is called multiple times...
+            for (var attribute : config.getAttributes().keySet()) {
+                copyAttribute(project, attribute, config, reobfConfig);
+            }
+            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+            project.getArtifacts().add(reobfConfig.getName(), reobf);
+
+            // Publish the reobf configuration instead of the original one to Maven
+            java.withVariantsFromConfiguration(config, ConfigurationVariantDetails::skip);
+            java.addVariantsFromConfiguration(reobfConfig, spec -> {
             });
         }
 
         return reobf;
+    }
+
+    private static <T> void copyAttribute(Project project, Attribute<T> attribute, Configuration fromConfig, Configuration toConfig) {
+        toConfig.getAttributes().attributeProvider(attribute, project.provider(() -> {
+            return Objects.requireNonNull(fromConfig.getAttributes().getAttribute(attribute));
+        }));
     }
 
     /**
@@ -135,7 +160,7 @@ public abstract class ObfuscationExtension {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.attributes(attributeContainer -> {
-                attributeContainer.attribute(LegacyForgeModDevPlugin.REMAPPED, true);
+                attributeContainer.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
             });
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(false);
@@ -149,20 +174,20 @@ public abstract class ObfuscationExtension {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
-                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
                         });
                     });
                     externalModuleDependency.setTransitive(false);
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
-                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
                         });
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
-                            c.attributes(a -> a.attribute(LegacyForgeModDevPlugin.REMAPPED, true));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
                         });
                     });
                     projectDependency.setTransitive(false);

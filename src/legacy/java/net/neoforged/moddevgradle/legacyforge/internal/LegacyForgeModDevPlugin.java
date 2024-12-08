@@ -21,8 +21,8 @@ import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
-import org.gradle.api.attributes.Attribute;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
@@ -43,8 +43,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
     public static final String MIXIN_EXTENSION = "mixin";
     public static final String OBFUSCATION_EXTENSION = "obfuscation";
     public static final String LEGACYFORGE_EXTENSION = "legacyForge";
-
-    public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
 
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
     public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
@@ -229,17 +227,37 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(REMAPPED, false)
+                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
-                    .attribute(REMAPPED, true)
+                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
     }
 
     private static void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
-        project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
-        project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
+        // JarJar cross-project dependencies are packaged into the final jar and should be remapped
+        // We must however do this without affecting external dependencies since those are usually already in the
+        // right namespace.
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        sourceSets.all(sourceSet -> {
+            var configurationName = sourceSet.getTaskName(null, "jarJar");
+            project.getConfigurations().getByName("jarJar").withDependencies(dependencies -> {
+                dependencies.forEach(dep -> {
+                    if (dep instanceof ProjectDependency projectDependency) {
+                        projectDependency.attributes(a -> {
+                            a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+                        });
+                    }
+                });
+            });
+        });
+
+        project.getDependencies().attributesSchema(schema -> schema.attribute(MinecraftMappings.ATTRIBUTE).getDisambiguationRules().add(MappingsDisambiguationRule.class));
+        project.getDependencies().getArtifactTypes().named("jar", a -> {
+            // By default all produced artifacts are NAMED
+            a.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+        });
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));

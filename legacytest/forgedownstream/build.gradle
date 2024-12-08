@@ -1,0 +1,62 @@
+import java.util.jar.JarFile
+
+plugins {
+    id 'net.neoforged.moddev.legacyforge'
+}
+
+configurations {
+    upstream {
+        transitive = false
+    }
+}
+
+dependencies {
+    jarJar(project(":forge"))
+    upstream(project(":forge"))
+}
+
+legacyForge {
+    version = '1.20.1-47.3.0'
+}
+
+var copyJarJar = tasks.register('copyJarJar', Copy) {
+    from(configurations.jarJar)
+    destinationDir = file("build/jarjartest")
+    Action<Copy> checkAction = task -> {
+        var content = task.destinationDir.listFiles()
+        if (content.length != 1) {
+            throw new GradleException("Expected a single file to resolve from jarJar, but got: " + content)
+        }
+        new JarFile(content[0]).withCloseable { jarFile ->
+            var s = new String(jarFile.getInputStream(jarFile.getEntry("mymod/MyMod.class")).readAllBytes(), "ASCII")
+            s = s.replaceAll("[^a-zA-Z0-9/._-]+", " ")
+            if (!s.contains("m_195834_") || s.contains("tryDetectVersion")) {
+                throw new GradleException("Expected the remapped method on DetectedVersion to be called: " + s)
+            }
+        }
+    }
+    doLast checkAction
+    outputs.upToDateWhen { false }
+}
+build.dependsOn copyJarJar
+
+var copyUpstream = tasks.register('copyUpstream', Copy) {
+    from(configurations.upstream)
+    destinationDir = file("build/upstreamtest")
+    Action<Copy> checkAction = task -> {
+        var content = task.destinationDir.listFiles()
+        if (content.length != 1) {
+            throw new GradleException("Expected a single file to resolve from upstream, but got: " + content)
+        }
+        new JarFile(content[0]).withCloseable { jarFile ->
+            var s = new String(jarFile.getInputStream(jarFile.getEntry("mymod/MyMod.class")).readAllBytes(), "ASCII")
+            s = s.replaceAll("[^a-zA-Z0-9/.-]", " ")
+            if (s.contains("m_195834_") || !s.contains("tryDetectVersion")) {
+                throw new GradleException("Expected the unremapped method on DetectedVersion to be called " + s)
+            }
+        }
+    }
+    doLast checkAction
+    outputs.upToDateWhen { false }
+}
+build.dependsOn copyUpstream

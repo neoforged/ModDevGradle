@@ -14,7 +14,7 @@ import org.jetbrains.annotations.ApiStatus;
 public class JarJarPlugin implements Plugin<Project> {
     @Override
     public void apply(Project project) {
-        SourceSetContainer sourceSets = ExtensionUtils.getExtension(project, "sourceSets", SourceSetContainer.class);
+        var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var jarJarTask = JarJar.registerWithConfiguration(project, sourceSet.getTaskName(null, "jarJar"));
             jarJarTask.configure(task -> task.setGroup(Branding.MDG.internalTaskGroup()));
