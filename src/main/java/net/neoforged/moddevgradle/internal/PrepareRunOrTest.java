@@ -101,6 +101,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
      * Defaults to latest.
      */
     @Input
+    @Optional
     public abstract Property<VersionCapabilities> getVersionCapabilities();
 
     private final ProgramArgsFormat programArgsFormat;
@@ -191,7 +192,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
         ));
 
-        if (getVersionCapabilities().get().splitDataRuns()) {
+        if (getVersionCapabilities().getOrElse(VersionCapabilities.latest()).splitDataRuns()) {
             runTypes.put("clientData", new UserDevRunType(
                     true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
             ));
