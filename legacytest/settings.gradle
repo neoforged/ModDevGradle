@@ -6,3 +6,4 @@ plugins {
 includeBuild '..'
 
 include 'forge'
+include 'forgedownstream'
