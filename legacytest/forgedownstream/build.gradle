@@ -1,11 +1,5 @@
 import java.util.jar.JarFile
 
-buildscript {
-    dependencies {
-        classpath 'org.ow2.asm:asm:9.7.1'
-    }
-}
-
 plugins {
     id 'net.neoforged.moddev.legacyforge'
 }
