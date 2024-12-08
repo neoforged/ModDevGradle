@@ -7,8 +7,8 @@ import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
-import org.gradle.api.attributes.Attribute;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
@@ -22,8 +22,6 @@ import java.util.stream.Stream;
 
 @ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
-    public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
-
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
     public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
 
@@ -109,8 +107,24 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 .extendsFrom(project.getConfigurations().getByName(ModDevPlugin.CONFIGURATION_RUNTIME_DEPENDENCIES))
                 .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
-        project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
-        project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
+        // JarJar cross-project dependencies are packaged into the final jar and should be remapped
+        // We must however do this without affecting external dependencies since those are usually already in the
+        // right namespace.
+        project.getConfigurations().getByName("jarJar").withDependencies(dependencies -> {
+            dependencies.forEach(dep -> {
+                if (dep instanceof ProjectDependency projectDependency) {
+                    projectDependency.attributes(a -> {
+                        a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+                    });
+                }
+            });
+        });
+
+        project.getDependencies().attributesSchema(schema -> schema.attribute(MinecraftMappings.ATTRIBUTE).getDisambiguationRules().add(MappingsDisambiguationRule.class));
+        project.getDependencies().getArtifactTypes().named("jar", a -> {
+            // By default all produced artifacts are NAMED
+            a.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+        });
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
             spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");
@@ -126,10 +140,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(REMAPPED, false)
+                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
-                    .attribute(REMAPPED, true)
+                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
 
