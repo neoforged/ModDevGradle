@@ -66,9 +66,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var intermediateToNamed = modDevBuildDir.map(d -> d.file("intermediateToNamed.srg"));
         var mappingsCsv = modDevBuildDir.map(d -> d.file("intermediateToNamed.zip"));
 
-        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, namedToIntermediate, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime);
-
+        // This collection is used to share the files added by mixin with the obfuscation extension
         var extraMixinMappings = project.files();
+
+        var obf = project.getExtensions().create("obfuscation", Obfuscation.class, project, namedToIntermediate, mappingsCsv, autoRenamingToolRuntime, installerToolsRuntime, extraMixinMappings);
         var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
 
         project.getExtensions().configure(NeoForgeExtension.class, extension -> {

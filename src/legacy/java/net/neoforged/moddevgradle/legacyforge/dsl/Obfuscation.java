@@ -11,6 +11,7 @@ import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
@@ -28,18 +29,21 @@ public abstract class Obfuscation {
     private final Provider<RegularFile> mappingsCsv;
     private final Configuration autoRenamingToolRuntime;
     private final Configuration installerToolsRuntime;
+    private final FileCollection extraMixinMappings;
 
     @Inject
     public Obfuscation(Project project,
                        Provider<RegularFile> officialToSrg,
                        Provider<RegularFile> mappingsCsv,
                        Configuration autoRenamingToolRuntime,
-                       Configuration installerToolsRuntime) {
+                       Configuration installerToolsRuntime,
+                       FileCollection extraMixinMappings) {
         this.project = project;
         this.officialToSrg = officialToSrg;
         this.mappingsCsv = mappingsCsv;
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
         this.installerToolsRuntime = installerToolsRuntime;
+        this.extraMixinMappings = extraMixinMappings;
     }
 
     @ApiStatus.Internal
@@ -54,6 +58,17 @@ public abstract class Obfuscation {
         operation.getToolType().set(RemapOperation.ToolType.INSTALLER_TOOLS);
         operation.getToolClasspath().from(installerToolsRuntime);
         operation.getMappings().from(mappingsCsv);
+    }
+
+    /**
+     * Create and configure a reobfuscation task.
+     *
+     * @param jar           the jar task to reobfuscate
+     * @param sourceSet     the source set whose classpath to use when remapping inherited methods
+     * @return a provider of the created task
+     */
+    public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar, SourceSet sourceSet) {
+        return reobfuscate(jar, sourceSet, ignored -> {});
     }
 
     /**
@@ -77,6 +92,7 @@ public abstract class Obfuscation {
             task.getArchiveAppendix().convention(jar.flatMap(AbstractArchiveTask::getArchiveAppendix));
             task.getLibraries().from(sourceSet.getCompileClasspath());
             configureNamedToSrgOperation(task.getRemapOperation());
+            task.getRemapOperation().getMappings().from(extraMixinMappings);
             configuration.execute(task);
         });
 
