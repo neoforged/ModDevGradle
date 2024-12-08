@@ -44,25 +44,22 @@ neoForge {
 ## Reobfuscating artifacts
 Forge used SRG mappings as intermediary mappings in 1.20.1 and below. While your mod is developed against the mappings provided
 by Mojang (known as official mappings), you need to reobfuscate it to SRG mappings for it to work in production.  
-Reobfuscation will automatically be configured for the `jar` task; the non-obfuscated jar will have a `-dev` classifier
+Reobfuscation will automatically be configured for the `jar` task; the non-obfuscated jar will be moved to `build/devlibs`
 and will not be published in favour of the reobfuscated variant. You should upload the `reobfJar` task's output when using a
-task to upload to a mod hosting platform, or otherwise the jar without a `-dev` classifier if you're uploading it manually.  
+task to upload to a mod hosting platform.
 
-You may reobfuscate other jar tasks using `obfuscation.reobfuscate(TaskProvider<AbstractArchiveTask>, SourceSet, Action<RemapJarTask>)`.  
+You may reobfuscate other jar tasks using `obfuscation.reobfuscate(TaskProvider<AbstractArchiveTask>, SourceSet, Action<RemapJarTask>)`.
+
 For instance, if you want to reobfuscate a `shadowJar` task:
 ```groovy
 shadowJar {
-    // Change the classifier of the shadow jar to be -dev-all as it's not mapped in intermediary and not usable for production
-    archiveClassifier = 'dev-all'
+    archiveClassifier = 'all'
 }
 
 obfuscation {
     // Reobfuscate the shadowJar task, using the classpath of the main sourceset for properly remapping inherited members
-    reobfuscate(tasks.named('shadowJar'), sourceSets.main) {
-        // Make the reobfuscated shadowJar have the all classifier
-        // You could also change it to an empty string if you want it to not have a classifier (in that case, you will also need to change the classifier of the slim `reobfJar` task
-        archiveClassifier = 'all'
-    }
+    // This will place the original shadow jar in build/devlibs while putting this reobfuscated version in build/libs
+    reobfuscate(tasks.named('shadowJar'), sourceSets.main)
 }
 ```
 
