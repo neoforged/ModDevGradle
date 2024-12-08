@@ -96,7 +96,7 @@ public abstract class JarJarArtifacts {
         var data = new ArrayList<ResolvedJarJarArtifact>();
         var filesAdded = new HashSet<String>();
         for (ResolvedArtifactResult result : artifacts) {
-            LOG.info("About to embed artifact {} ({})", result, result.getFile().getAbsolutePath());
+            LOG.debug("About to embed artifact {} ({})", result, result.getFile().getAbsolutePath());
             ResolvedVariantResult variant = result.getVariant();
 
             ArtifactIdentifier artifactIdentifier = capabilityOrModule(variant);
