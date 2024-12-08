@@ -8,6 +8,7 @@ import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
@@ -324,7 +325,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 modulePath -> modulePath.getDependencies().addLater(modulePathDependency),
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile),
-                extension.getNeoFormVersion()
+                extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion)
         );
 
         setupJarJar(project);
@@ -494,7 +495,7 @@ public class ModDevPlugin implements Plugin<Project> {
                           Consumer<Configuration> configureModulePath,
                           Consumer<Configuration> configureLegacyClasspath,
                           Provider<RegularFile> assetPropertiesFile,
-                          Provider<String> neoFormVersion
+                          Provider<VersionCapabilities> versionCapabilities
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
@@ -522,7 +523,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
-                    neoFormVersion,
+                    versionCapabilities,
                     createLaunchScriptsTask
             );
             prepareRunTasks.put(run, prepareRunTask);
@@ -547,7 +548,7 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Provider<String> neoFormVersion,
+            Provider<VersionCapabilities> versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
@@ -616,7 +617,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
-            task.getNeoFormVersion().set(neoFormVersion);
+            task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
