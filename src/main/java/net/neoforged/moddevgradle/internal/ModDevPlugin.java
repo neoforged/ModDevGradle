@@ -153,6 +153,10 @@ public class ModDevPlugin implements Plugin<Project> {
         ideIntegration.runTaskOnProjectSync(extension.getIdeSyncTasks());
         var dependencyFactory = project.getDependencyFactory();
 
+        Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(VersionCapabilities::ofForgeVersion)
+                .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion))
+                .orElse(VersionCapabilities.latest());
+
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
         var neoForgeModDevLibrariesDependency = extension.getNeoForgeArtifact().map(artifactId -> {
@@ -275,7 +279,7 @@ public class ModDevPlugin implements Plugin<Project> {
         project.afterEvaluate(ignored -> {
             var toolchainSpec = javaExtension.getToolchain();
             try {
-                toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(21));
+                toolchainSpec.getLanguageVersion().convention(versionCapabilities.map(VersionCapabilities::javaVersion).map(JavaLanguageVersion::of));
             } catch (IllegalStateException e) {
                 // We tried our best
             }
@@ -325,7 +329,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 modulePath -> modulePath.getDependencies().addLater(modulePathDependency),
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 downloadAssets.flatMap(DownloadAssets::getAssetPropertiesFile),
-                extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion)
+                versionCapabilities
         );
 
         setupJarJar(project);
@@ -506,7 +510,7 @@ public class ModDevPlugin implements Plugin<Project> {
         });
 
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
-        var createLaunchScriptsTask= project.getTasks().register("createLaunchScripts", Task.class, task -> {
+        var createLaunchScriptsTask = project.getTasks().register("createLaunchScripts", Task.class, task -> {
             task.setGroup(branding.publicTaskGroup());
             task.setDescription("Creates batch files/shell scripts to launch the game from outside of Gradle (i.e. Renderdoc, NVidia Nsight, etc.)");
         });

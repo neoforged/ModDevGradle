@@ -3,8 +3,11 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
+import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
@@ -14,6 +17,9 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.jvm.tasks.Jar;
+import org.gradle.jvm.toolchain.JavaLanguageVersion;
+import org.gradle.jvm.toolchain.JavaLauncher;
+import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.net.URI;
@@ -131,6 +137,24 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             params.getTo()
                     .attribute(REMAPPED, true)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
+        });
+
+        // Set the right Java version
+        project.getTasks().withType(CreateMinecraftArtifacts.class).configureEach(task -> {
+            var extension = ExtensionUtils.getExtension(project, NeoForgeExtension.NAME, NeoForgeExtension.class);
+            var toolchainService = ExtensionUtils.getExtension(project, "javaToolchains", JavaToolchainService.class);
+            task.getToolsJavaExecutable().set(
+                    toolchainService.launcherFor(spec -> {
+                                spec.getLanguageVersion().set(
+                                        extension.getVersion().map(VersionCapabilities::ofForgeVersion)
+                                                .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion))
+                                                .map(VersionCapabilities::javaVersion)
+                                                .map(JavaLanguageVersion::of)
+                                );
+                            })
+                            .map(JavaLauncher::getExecutablePath)
+                            .map(f -> f.getAsFile().getAbsolutePath())
+            );
         });
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));

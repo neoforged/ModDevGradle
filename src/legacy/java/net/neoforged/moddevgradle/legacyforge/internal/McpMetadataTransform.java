@@ -39,7 +39,10 @@ class McpMetadataTransform extends LegacyMetadataTransform {
 
         var zipDataName = id.getName() + "-" + id.getVersion() + ".zip";
 
-        var javaTarget = config.getAsJsonPrimitive("java_target").getAsInt();
+        // Very old versions did not specify this. Default to 8 in those cases.
+        var javaTarget = config.has("java_target")
+                ? config.getAsJsonPrimitive("java_target").getAsInt()
+                : 8;
 
         // a.k.a. "neoformData"
         // Primarily pulled to use for NFRT manifest
@@ -61,7 +64,8 @@ class McpMetadataTransform extends LegacyMetadataTransform {
             });
         });
 
-        dependencies(context, "mcpRuntimeElements", javaTarget, Usage.JAVA_RUNTIME, deps -> {});
+        dependencies(context, "mcpRuntimeElements", javaTarget, Usage.JAVA_RUNTIME, deps -> {
+        });
 
         dependencies(context, "mcpApiElements", javaTarget, Usage.JAVA_API, dependencies -> {
             var libraries = config.getAsJsonObject("libraries").getAsJsonArray("joined");
