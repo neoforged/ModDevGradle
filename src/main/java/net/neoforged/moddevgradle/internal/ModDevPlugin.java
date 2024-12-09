@@ -154,7 +154,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var dependencyFactory = project.getDependencyFactory();
 
         Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(VersionCapabilities::ofForgeVersion)
-                .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion));
+                .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion))
+                .orElse(VersionCapabilities.latest());
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
