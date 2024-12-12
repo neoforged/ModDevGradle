@@ -57,9 +57,12 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
         });
         details.addVariant("modDevModulePath", variantMetadata -> {
             variantMetadata.withDependencies(dependencies -> {
-                var modules = config.getAsJsonArray("modules");
-                for (JsonElement module : modules) {
-                    dependencies.add(module.getAsString());
+                // Support versions that do not declare modules
+                if (config.has("modules")) {
+                    var modules = config.getAsJsonArray("modules");
+                    for (JsonElement module : modules) {
+                        dependencies.add(module.getAsString());
+                    }
                 }
             });
             variantMetadata.withCapabilities(capabilities -> {
@@ -96,9 +99,12 @@ class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
             variantMetadata.withDependencies(vanillaDependencies);
             variantMetadata.withFiles(MutableVariantFilesMetadata::removeAllFiles);
             variantMetadata.withDependencies(dependencies -> {
-                var modules = config.getAsJsonArray("modules");
-                for (JsonElement module : modules) {
-                    dependencies.add(module.getAsString());
+                // Support versions that do not declare modules
+                if (config.has("modules")) {
+                    var modules = config.getAsJsonArray("modules");
+                    for (JsonElement module : modules) {
+                        dependencies.add(module.getAsString());
+                    }
                 }
                 var libraries = config.getAsJsonArray("libraries");
                 for (JsonElement library : libraries) {

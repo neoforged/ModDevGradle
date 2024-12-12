@@ -40,6 +40,15 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     }
 
     /**
+     * Path to the Java installation to use for running external tools with. This does not have to match
+     * NFRTs Java version. I.e. if running NFRT for MC 1.12, this would need to be Java 8, since the decompiler
+     * and other tools in that version were not updated to run with Java 21.
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getToolsJavaExecutable();
+
+    /**
      * Files added to this collection will be passed to NFRT via the {@code --access-transformer}
      * command line option.
      */
@@ -168,6 +177,11 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public void createArtifacts() {
         var args = new ArrayList<String>();
         args.add("run");
+
+        if (getToolsJavaExecutable().isPresent()) {
+            args.add("--java-executable");
+            args.add(getToolsJavaExecutable().get());
+        }
 
         for (var accessTransformer : getAccessTransformers().getFiles()) {
             args.add("--access-transformer");
