@@ -153,7 +153,7 @@ public class ModDevPlugin implements Plugin<Project> {
         ideIntegration.runTaskOnProjectSync(extension.getIdeSyncTasks());
         var dependencyFactory = project.getDependencyFactory();
 
-        Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(VersionCapabilities::ofForgeVersion)
+        Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(VersionCapabilities::ofNeoForgeVersion)
                 .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion))
                 .orElse(VersionCapabilities.latest());
 
