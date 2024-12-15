@@ -153,7 +153,8 @@ public class ModDevPlugin implements Plugin<Project> {
         ideIntegration.runTaskOnProjectSync(extension.getIdeSyncTasks());
         var dependencyFactory = project.getDependencyFactory();
 
-        Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(VersionCapabilities::ofNeoForgeVersion)
+        boolean isLegacy = project.getExtensions().getExtraProperties().has("legacy_hack_marker");
+        Provider<VersionCapabilities> versionCapabilities = extension.getVersion().map(!isLegacy ? VersionCapabilities::ofNeoForgeVersion : VersionCapabilities::ofForgeVersion)
                 .orElse(extension.getNeoFormVersion().map(VersionCapabilities::ofNeoFormVersion))
                 .orElse(VersionCapabilities.latest());
 

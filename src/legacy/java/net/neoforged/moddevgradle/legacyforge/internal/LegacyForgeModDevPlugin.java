@@ -35,6 +35,9 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
+        // Workaround to get moddev plugin to pick correct version parser
+        project.getExtensions().getExtraProperties().set("legacy_hack_marker", true);
+
         project.getPlugins().apply(ModDevPlugin.class);
 
         project.getRepositories().maven(repo -> {
