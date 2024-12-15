@@ -8,12 +8,11 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
 
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -35,7 +34,7 @@ public final class NeoDevFacade {
                                  Consumer<Configuration> configureAdditionalClasspath,
                                  Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevPlugin.setupRuns(
+        ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -44,8 +43,7 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                // This overload of the method was only used by NeoForge 1.21.3
-                project.provider(() -> VersionCapabilities.ofMinecraftVersion("1.21.3"))
+                project.getObjects().property(VersionCapabilities.class) // empty provider
         );
     }
 
@@ -58,7 +56,7 @@ public final class NeoDevFacade {
                                  Provider<RegularFile> assetPropertiesFile,
                                  Provider<String> neoFormVersion
     ) {
-        ModDevPlugin.setupRuns(
+        ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
                 argFileDir,
@@ -75,13 +73,13 @@ public final class NeoDevFacade {
                                      Provider<Directory> argFileDir,
                                      TaskProvider<Test> testTask,
                                      Object runTemplatesSourceFile,
-                                     SetProperty<ModModel> loadedMods,
-                                     Property<ModModel> testedMod,
+                                     Provider<Set<ModModel>> loadedMods,
+                                     Provider<ModModel> testedMod,
                                      Consumer<Configuration> configureModulePath,
                                      Consumer<Configuration> configureAdditionalClasspath,
                                      Provider<RegularFile> assetPropertiesFile
     ) {
-        ModDevPlugin.setupTestTask(
+        ModDevRunWorkflow.setupTestTask(
                 project,
                 Branding.NEODEV,
                 runTemplatesSourceFile,

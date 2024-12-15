@@ -279,5 +279,6 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         run(args);
     }
 
-    record RequestedResult(String id, File destination) {}
+    record RequestedResult(String id, File destination) {
+    }
 }

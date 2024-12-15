@@ -97,7 +97,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     /**
      * Only used when {@link #getRunTypeTemplatesSource()} is empty,
-     * to know whether the associated Minecraft version requires one or two data runs.
+     * to know whether the associated Minecraft version has separate entrypoints for generating resource- and
+     * data packs.
      * Defaults to latest.
      */
     @Input
