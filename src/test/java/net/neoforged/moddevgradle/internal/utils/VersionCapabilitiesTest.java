@@ -36,6 +36,7 @@ public class VersionCapabilitiesTest {
 
     @ParameterizedTest()
     @CsvSource({
+            "21.0.3-beta,1.21",
             "21.4.8-beta,1.21.4",
             "21.4.10-beta-pr-1744-gh-1582,1.21.4",
             "21.4.10,1.21.4",

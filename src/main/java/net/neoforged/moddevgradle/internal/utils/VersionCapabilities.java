@@ -67,7 +67,13 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns) implem
         if (!matcher.matches()) {
             return -1;
         }
-        return MinecraftVersionList.VERSIONS.indexOf("1." + matcher.group(1));
+
+        var mcVersion = "1." + matcher.group(1);
+        // Versions such as 21.0.0 are for Minecraft 1.21 and NOT 1.21.0, therefore we strip the trailing .0
+        if (mcVersion.endsWith(".0")) {
+            mcVersion = mcVersion.substring(0, mcVersion.length() - 2);
+        }
+        return MinecraftVersionList.VERSIONS.indexOf(mcVersion);
     }
 
     public static VersionCapabilities ofNeoForgeVersion(String version) {
