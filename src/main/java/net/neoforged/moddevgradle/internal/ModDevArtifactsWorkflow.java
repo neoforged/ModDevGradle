@@ -165,7 +165,6 @@ public record ModDevArtifactsWorkflow(
         var runtimeDependencies = configurations.create("modDevRuntimeDependencies", config -> {
             config.setDescription("The runtime dependencies to develop a mod for, including Minecraft classes and modding platform classes.");
             config.setCanBeResolved(false);
-            config.setCanBeDeclared(false);
             config.setCanBeConsumed(false);
 
             config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
@@ -180,7 +179,6 @@ public record ModDevArtifactsWorkflow(
         var compileDependencies = configurations.create("modDevCompileDependencies", config -> {
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
-            config.setCanBeDeclared(false);
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
             config.getDependencies().add(gameLibrariesDependency);

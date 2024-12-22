@@ -17,16 +17,12 @@ import java.util.List;
 public abstract class LegacyForgeExtension extends ModDevExtension {
     private final Project project;
 
-    private final Obfuscation obfuscation;
-
     @Inject
     public LegacyForgeExtension(Project project,
                                 DataFileCollection accessTransformers,
-                                DataFileCollection interfaceInjectionData,
-                                Obfuscation obfuscation) {
+                                DataFileCollection interfaceInjectionData) {
         super(project, accessTransformers, interfaceInjectionData);
         this.project = project;
-        this.obfuscation = obfuscation;
     }
 
     public void setVersion(String version) {
@@ -47,9 +43,5 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
         customizer.execute(settings);
 
         plugin.enableModding(project, settings, this);
-    }
-
-    public Obfuscation getObfuscation() {
-        return obfuscation;
     }
 }

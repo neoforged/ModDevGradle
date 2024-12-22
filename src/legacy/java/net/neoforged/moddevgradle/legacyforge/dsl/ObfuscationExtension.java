@@ -5,6 +5,7 @@ import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -14,6 +15,7 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
@@ -22,21 +24,27 @@ import org.jetbrains.annotations.ApiStatus;
 import javax.inject.Inject;
 import java.util.List;
 
-public abstract class Obfuscation {
+public abstract class ObfuscationExtension {
     private final Project project;
     private final Configuration autoRenamingToolRuntime;
     private final Configuration installerToolsRuntime;
     private final FileCollection extraMixinMappings;
 
     @Inject
-    public Obfuscation(Project project,
-                       Configuration autoRenamingToolRuntime,
-                       Configuration installerToolsRuntime,
-                       FileCollection extraMixinMappings) {
+    public ObfuscationExtension(Project project,
+                                Configuration autoRenamingToolRuntime,
+                                Configuration installerToolsRuntime,
+                                FileCollection extraMixinMappings) {
         this.project = project;
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
         this.installerToolsRuntime = installerToolsRuntime;
         this.extraMixinMappings = extraMixinMappings;
+    }
+
+    private <T> Provider<T> assertConfigured(Provider<T> provider) {
+        return provider.orElse(project.provider(() -> {
+            throw new InvalidUserCodeException("Please enable modding by setting legacyForge.version or calling legacyForge.enableModding()");
+        }));
     }
 
     /**
@@ -55,14 +63,14 @@ public abstract class Obfuscation {
     public void configureNamedToSrgOperation(RemapOperation operation) {
         operation.getToolType().set(RemapOperation.ToolType.ART);
         operation.getToolClasspath().from(autoRenamingToolRuntime);
-        operation.getMappings().from(getNamedToSrgMappings().get());
+        operation.getMappings().from(assertConfigured(getNamedToSrgMappings()));
     }
 
     @ApiStatus.Internal
     public void configureSrgToNamedOperation(RemapOperation operation) {
         operation.getToolType().set(RemapOperation.ToolType.INSTALLER_TOOLS);
         operation.getToolClasspath().from(installerToolsRuntime);
-        operation.getMappings().from(getSrgToNamedMappings().get());
+        operation.getMappings().from(assertConfigured(getSrgToNamedMappings()));
     }
 
     /**
@@ -88,7 +96,6 @@ public abstract class Obfuscation {
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
                                               SourceSet sourceSet,
                                               Action<RemapJar> configuration) {
-
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
             task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory().dir("libs"));

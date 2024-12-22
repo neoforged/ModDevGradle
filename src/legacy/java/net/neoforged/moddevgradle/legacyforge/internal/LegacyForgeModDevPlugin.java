@@ -10,11 +10,12 @@ import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import net.neoforged.moddevgradle.internal.WorkflowArtifact;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
-import net.neoforged.moddevgradle.legacyforge.dsl.Obfuscation;
+import net.neoforged.moddevgradle.legacyforge.dsl.ObfuscationExtension;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
@@ -38,6 +39,10 @@ import java.util.stream.Stream;
 @ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
     private static final Logger LOG = LoggerFactory.getLogger(LegacyForgeModDevPlugin.class);
+
+    public static final String MIXIN_EXTENSION = "mixin";
+    public static final String OBFUSCATION_EXTENSION = "obfuscation";
+    public static final String LEGACYFORGE_EXTENSION = "legacyForge";
 
     public static final Attribute<Boolean> REMAPPED = Attribute.of("net.neoforged.moddevgradle.legacy.remapped", Boolean.class);
 
@@ -89,17 +94,20 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.10:fatjar"));
         });
 
-        var obf = project.getObjects().newInstance(Obfuscation.class, project, autoRenamingToolRuntime, installerToolsRuntime);
+        // This collection is used to share the files added by mixin with the obfuscation extension
+        var extraMixinMappings = project.files();
+        var obf = project.getExtensions().create(OBFUSCATION_EXTENSION, ObfuscationExtension.class, project, autoRenamingToolRuntime, installerToolsRuntime, extraMixinMappings);
+        project.getExtensions().create(MIXIN_EXTENSION, MixinExtension.class, project, obf.getNamedToSrgMappings(), extraMixinMappings);
+
         configureDependencyRemapping(project, obf);
 
         var dataFileCollections = DataFileCollectionFactory.createDefault(project);
         project.getExtensions().create(
-                "legacyForge",
+                LEGACYFORGE_EXTENSION,
                 LegacyForgeExtension.class,
                 project,
                 dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension(),
-                obf
+                dataFileCollections.interfaceInjectionData().extension()
         );
     }
 
@@ -195,7 +203,9 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             artifacts.addToSourceSet(sourceSet.getName());
         }
 
-        var obf = extension.getObfuscation();
+        // Configure the mixin and obfuscation extensions
+        var mixin = ExtensionUtils.getExtension(project, MIXIN_EXTENSION, MixinExtension.class);
+        var obf = ExtensionUtils.getExtension(project, OBFUSCATION_EXTENSION, ObfuscationExtension.class);
 
         // We use this directory to store intermediate files used during moddev
         var namedToIntermediate = artifacts.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", "namedToIntermediate.tsrg");
@@ -203,11 +213,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var intermediateToNamed = artifacts.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", "intermediateToNamed.srg");
         obf.getSrgToNamedMappings().set(intermediateToNamed);
         var mappingsCsv = artifacts.requestAdditionalMinecraftArtifact("csvMapping", "intermediateToNamed.zip");
-
-        // This collection is used to share the files added by mixin with the obfuscation extension
-        var extraMixinMappings = project.files();
-
-        var mixin = project.getExtensions().create("mixin", MixinExtension.class, project, namedToIntermediate, extraMixinMappings);
 
         extension.getRuns().configureEach(run -> {
             LegacyForgeFacade.configureRun(project, run);
@@ -259,7 +264,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         });
     }
 
-    private static void configureDependencyRemapping(Project project, Obfuscation obf) {
+    private static void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
         project.getDependencies().attributesSchema(schema -> schema.attribute(REMAPPED));
         project.getDependencies().getArtifactTypes().named("jar", a -> a.getAttributes().attribute(REMAPPED, false));
 
