@@ -54,7 +54,7 @@ public abstract class ObfuscationExtension {
     public abstract RegularFileProperty getNamedToSrgMappings();
 
     /**
-     * Format is "mappings.csv"
+     * Format is a ZIP file containing CSV files with mapping data.
      */
     @ApiStatus.Internal
     public abstract RegularFileProperty getSrgToNamedMappings();

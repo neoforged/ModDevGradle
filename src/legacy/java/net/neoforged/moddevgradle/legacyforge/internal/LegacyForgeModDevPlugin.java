@@ -211,8 +211,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var namedToIntermediate = artifacts.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", "namedToIntermediate.tsrg");
         obf.getNamedToSrgMappings().set(namedToIntermediate);
         var intermediateToNamed = artifacts.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", "intermediateToNamed.srg");
-        obf.getSrgToNamedMappings().set(intermediateToNamed);
         var mappingsCsv = artifacts.requestAdditionalMinecraftArtifact("csvMapping", "intermediateToNamed.zip");
+        obf.getSrgToNamedMappings().set(mappingsCsv);
 
         extension.getRuns().configureEach(run -> {
             LegacyForgeFacade.configureRun(project, run);
