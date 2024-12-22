@@ -583,7 +583,7 @@ dependencies {
 ```
 
 ### Using Authenticated Minecraft Accounts
-Minecraft runs are normally not authenticated in a development environment.  
+Minecraft runs normally use an offline user profile in a development environment.  
 If you want to run the game with your real user profile, you may do so using [DevLogin](https://github.com/covers1624/DevLogin) by setting
 the `devLogin` property of a client run to `true`:
 

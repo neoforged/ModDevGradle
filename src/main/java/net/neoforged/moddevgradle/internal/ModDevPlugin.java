@@ -260,18 +260,15 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
+        var supplyDevLogin = project.provider(() -> extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false)));
+
         // Create a configuration to resolve DevLogin
         var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
             spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
             // We only add DevLogin as a default dependency to allow people to overwrite it
             spec.defaultDependencies(set -> {
                 // The dependency is added lazily to avoid adding it if no runs request it
-                spec.getDependencies().addAllLater(project.provider(() -> {
-                    if (extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false))) {
-                        return List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV));
-                    }
-                    return List.of();
-                }));
+                set.addAllLater(supplyDevLogin.map(supply -> supply ? List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
             });
         });
 

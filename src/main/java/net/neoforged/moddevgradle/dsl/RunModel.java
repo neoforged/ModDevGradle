@@ -252,6 +252,10 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract Property<SourceSet> getSourceSet();
 
+    /**
+     * Enables <a href="https://github.com/covers1624/DevLogin">DevLogin</a> which is used to log into an
+     * official Minecraft account in development environments.
+     */
     public abstract Property<Boolean> getDevLogin();
 
     @Override

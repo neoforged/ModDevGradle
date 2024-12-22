@@ -104,6 +104,9 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Optional
     public abstract Property<VersionCapabilities> getVersionCapabilities();
 
+    /**
+     * The property that decides whether DevLogin is enabled.
+     */
     @Input
     @Optional
     public abstract Property<Boolean> getDevLogin();
