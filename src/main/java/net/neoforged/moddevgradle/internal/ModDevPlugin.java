@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The main plugin class.
@@ -259,6 +260,21 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
+        // Create a configuration to resolve DevLogin
+        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
+            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
+            // We only add DevLogin as a default dependency to allow people to overwrite it
+            spec.defaultDependencies(set -> {
+                // The dependency is added lazily to avoid adding it if no runs request it
+                spec.getDependencies().addAllLater(project.provider(() -> {
+                    if (extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false))) {
+                        return List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV));
+                    }
+                    return List.of();
+                }));
+            });
+        });
+
         configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
@@ -269,6 +285,8 @@ public class ModDevPlugin implements Plugin<Project> {
             // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
+
+            config.extendsFrom(devLoginConfig);
         });
 
         configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
@@ -423,21 +441,6 @@ public class ModDevPlugin implements Plugin<Project> {
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormArtifact().map(dependencyFactory::create);
 
-        // Create a configuration to resolve DevLogin
-        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
-            // We only add DevLogin as a default dependency to allow people to overwrite it
-            spec.defaultDependencies(set -> {
-                // The dependency is added lazily to avoid adding it if no runs request it
-                set.addAllLater(project.provider(() -> {
-                    if (extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false))) {
-                        return List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV));
-                    }
-                    return List.of();
-                }));
-            });
-        });
-
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
         var neoForgeClassesAndData = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
@@ -454,8 +457,6 @@ public class ModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform");
                     })));
-
-            spec.extendsFrom(devLoginConfig);
         });
 
         // This configuration is empty when running in Vanilla-mode.
