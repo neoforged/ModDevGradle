@@ -173,7 +173,7 @@ public class ModDevRunWorkflow {
 
         // If test fixtures are available for the current workflow, add them to runtime only
         if (testFixturesDependency != null) {
-            configurations.getByName(testSourceSet.getRuntimeClasspathConfigurationName(), configuration -> {
+            configurations.getByName(testSourceSet.getRuntimeOnlyConfigurationName(), configuration -> {
                 configuration.getDependencies().add(testFixturesDependency);
             });
         }
