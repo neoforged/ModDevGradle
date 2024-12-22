@@ -108,7 +108,6 @@ abstract class PrepareRunOrTest extends DefaultTask {
      * The property that decides whether DevLogin is enabled.
      */
     @Input
-    @Optional
     public abstract Property<Boolean> getDevLogin();
 
     private final ProgramArgsFormat programArgsFormat;
@@ -162,18 +161,18 @@ abstract class PrepareRunOrTest extends DefaultTask {
         }
 
         var mainClass = resolveMainClass(runConfig);
-        var devLogin = getDevLogin().getOrElse(false);
+        var devLogin = getDevLogin().get();
 
         var sysProps = new LinkedHashMap<String, String>();
 
+        // When DevLogin is used, we swap out the main class with the DevLogin one, and add the actual main class as a system property
         if (devLogin && mainClass != null) {
             sysProps.put("devlogin.launch_target", mainClass);
+            mainClass = RunUtils.DEV_LOGIN_MAIN_CLASS;
         }
 
         writeJvmArguments(runConfig, sysProps);
-
-        // When DevLogin is used, we swap out the main class with the DevLogin one, and add the actual main class as a system property
-        writeProgramArguments(runConfig, devLogin ? RunUtils.DEV_LOGIN_MAIN_CLASS : mainClass);
+        writeProgramArguments(runConfig, mainClass);
     }
 
     private UserDevConfig loadUserDevConfig(File userDevFile) {

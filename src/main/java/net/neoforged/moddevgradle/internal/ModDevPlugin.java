@@ -260,16 +260,13 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var supplyDevLogin = project.provider(() -> extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false)));
+        var supplyDevLogin = project.provider(() -> extension.getRuns().stream().anyMatch(model -> model.getDevLogin().get()));
 
         // Create a configuration to resolve DevLogin
         var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
             spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
-            // We only add DevLogin as a default dependency to allow people to overwrite it
-            spec.defaultDependencies(set -> {
-                // The dependency is added lazily to avoid adding it if no runs request it
-                set.addAllLater(supplyDevLogin.map(supply -> supply ? List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
-            });
+            // The dependency is added lazily to avoid adding it if no runs request it
+            spec.getDependencies().addAllLater(supplyDevLogin.map(supply -> supply ? List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
         });
 
         configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
@@ -642,8 +639,8 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getMainClass().set(run.getMainClass());
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
-            task.getDevLogin().set(run.getDevLogin());
             task.getGameLogLevel().set(run.getLogLevel());
+            task.getDevLogin().set(run.getDevLogin());
             task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
