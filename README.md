@@ -584,7 +584,7 @@ dependencies {
 
 ### Using Authenticated Minecraft Accounts
 Minecraft runs are normally not authenticated in a development environment.  
-If you wish to have a run with an official authenticated account, you may do so using [DevLogin](https://github.com/covers1624/DevLogin) by setting
+If you want to run the game with your real user profile, you may do so using [DevLogin](https://github.com/covers1624/DevLogin) by setting
 the `devLogin` property of a client run to `true`:
 
 ```groovy
