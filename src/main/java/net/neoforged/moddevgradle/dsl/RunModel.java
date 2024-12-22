@@ -56,6 +56,7 @@ public abstract class RunModel implements Named, Dependencies {
         });
 
         getLogLevel().convention(Level.INFO);
+        getDevLogin().convention(false);
 
         // Build a nicer name for the IDE run configuration
         boolean isSubProject = project.getRootProject() != project;

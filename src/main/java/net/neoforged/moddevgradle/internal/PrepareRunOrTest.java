@@ -104,6 +104,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Optional
     public abstract Property<VersionCapabilities> getVersionCapabilities();
 
+    @Input
+    @Optional
     public abstract Property<Boolean> getDevLogin();
 
     private final ProgramArgsFormat programArgsFormat;
@@ -111,6 +113,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
     protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
         this.programArgsFormat = programArgsFormat;
         getVersionCapabilities().convention(VersionCapabilities.latest());
+        getDevLogin().convention(false);
     }
 
     protected abstract UserDevRunType resolveRunType(UserDevConfig userDevConfig);
