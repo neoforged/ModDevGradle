@@ -423,6 +423,21 @@ public class ModDevPlugin implements Plugin<Project> {
         Provider<ExternalModuleDependency> neoForgeDependency = extension.getNeoForgeArtifact().map(dependencyFactory::create);
         Provider<ExternalModuleDependency> neoFormDependency = extension.getNeoFormArtifact().map(dependencyFactory::create);
 
+        // Create a configuration to resolve DevLogin
+        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
+            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
+            // We only add DevLogin as a default dependency to allow people to overwrite it
+            spec.defaultDependencies(set -> {
+                // The dependency is added lazily to avoid adding it if no runs request it
+                set.addAllLater(project.provider(() -> {
+                    if (extension.getRuns().stream().anyMatch(model -> model.getDevLogin().getOrElse(false))) {
+                        return List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV));
+                    }
+                    return List.of();
+                }));
+            });
+        });
+
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
         var neoForgeClassesAndData = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
@@ -439,6 +454,8 @@ public class ModDevPlugin implements Plugin<Project> {
                     .capabilities(caps -> {
                         caps.requireCapability("net.neoforged:neoform");
                     })));
+
+            spec.extendsFrom(devLoginConfig);
         });
 
         // This configuration is empty when running in Vanilla-mode.
@@ -516,15 +533,6 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
         });
 
-        // Create a configuration to resolve DevLogin which runs will extend only when needed
-        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpaths of runs only when needed.");
-            // We only add DevLogin as a default dependency to allow people to overwrite it
-            spec.defaultDependencies(set -> {
-                set.add(project.getDependencyFactory().create(RunUtils.DEV_LOGIN_GAV));
-            });
-        });
-
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
         var createLaunchScriptsTask = project.getTasks().register("createLaunchScripts", Task.class, task -> {
             task.setGroup(branding.publicTaskGroup());
@@ -543,7 +551,6 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
-                    devLoginConfig,
                     versionCapabilities,
                     createLaunchScriptsTask
             );
@@ -569,7 +576,6 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Configuration devLoginConfig,
             Provider<VersionCapabilities> versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -582,12 +588,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
         project.afterEvaluate(ignored -> {
-            var runtimeCp = runtimeClasspathConfig.get();
-            runtimeCp.extendsFrom(devLaunchConfig);
-
-            if (run.getDevLogin().getOrElse(false)) {
-                runtimeCp.extendsFrom(devLoginConfig);
-            }
+            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
         });
 
         var type = RunUtils.getRequiredType(project, run);

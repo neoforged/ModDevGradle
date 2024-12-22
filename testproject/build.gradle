@@ -42,6 +42,10 @@ neoForge {
             client()
             programArguments.addAll('--username', 'Dev2')
         }
+        clientAuth {
+            client()
+            devLogin = true
+        }
         gradleOnlyClient {
             client()
             programArguments.addAll('--username', 'Dev3')
