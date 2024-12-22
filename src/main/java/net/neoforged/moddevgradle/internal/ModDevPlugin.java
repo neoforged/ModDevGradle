@@ -516,6 +516,15 @@ public class ModDevPlugin implements Plugin<Project> {
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
         });
 
+        // Create a configuration to resolve DevLogin which runs will extend only when needed
+        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
+            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpaths of runs only when needed.");
+            // We only add DevLogin as a default dependency to allow people to overwrite it
+            spec.defaultDependencies(set -> {
+                set.add(project.getDependencyFactory().create(RunUtils.DEV_LOGIN_GAV));
+            });
+        });
+
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
         var createLaunchScriptsTask = project.getTasks().register("createLaunchScripts", Task.class, task -> {
             task.setGroup(branding.publicTaskGroup());
@@ -534,6 +543,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     configureLegacyClasspath,
                     assetPropertiesFile,
                     devLaunchConfig,
+                    devLoginConfig,
                     versionCapabilities,
                     createLaunchScriptsTask
             );
@@ -559,6 +569,7 @@ public class ModDevPlugin implements Plugin<Project> {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
+            Configuration devLoginConfig,
             Provider<VersionCapabilities> versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -571,7 +582,12 @@ public class ModDevPlugin implements Plugin<Project> {
 
         // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
         project.afterEvaluate(ignored -> {
-            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
+            var runtimeCp = runtimeClasspathConfig.get();
+            runtimeCp.extendsFrom(devLaunchConfig);
+
+            if (run.getDevLogin().getOrElse(false)) {
+                runtimeCp.extendsFrom(devLoginConfig);
+            }
         });
 
         var type = RunUtils.getRequiredType(project, run);
@@ -627,6 +643,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getMainClass().set(run.getMainClass());
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
+            task.getDevLogin().set(run.getDevLogin());
             task.getGameLogLevel().set(run.getLogLevel());
             task.getVersionCapabilities().set(versionCapabilities);
         });

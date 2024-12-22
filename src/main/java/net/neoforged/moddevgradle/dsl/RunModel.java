@@ -251,6 +251,8 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public abstract Property<SourceSet> getSourceSet();
 
+    public abstract Property<Boolean> getDevLogin();
+
     @Override
     public String toString() {
         return "Run[" + getName() + "]";

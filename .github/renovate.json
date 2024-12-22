@@ -15,6 +15,16 @@
         "DEFAULT_NFRT_VERSION\\s*=\\s*\"(?<currentValue>[\\d\\.\\-a-z]+)\""
       ],
       "datasourceTemplate": "maven"
+    },
+    {
+      "customType": "regex",
+      "fileMatch": [
+        "RunUtils\\.java$"
+      ],
+      "matchStrings": [
+        "String\\s+[A-Z_]+\\s*=\\s*\"(?<depName>[\\w:\\.-]+):(?<currentValue>[\\d\\.]+)(:(?<depClassifier>[a-z]+))?\"\\s*;\\s*\\/\\/\\s*renovate"
+      ],
+      "datasourceTemplate": "maven"
     }
   ]
 }

@@ -104,6 +104,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Optional
     public abstract Property<VersionCapabilities> getVersionCapabilities();
 
+    public abstract Property<Boolean> getDevLogin();
+
     private final ProgramArgsFormat programArgsFormat;
 
     protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
@@ -153,8 +155,19 @@ abstract class PrepareRunOrTest extends DefaultTask {
             runConfig = resolveRunType(userDevConfig);
         }
 
-        writeJvmArguments(runConfig);
-        writeProgramArguments(runConfig);
+        var mainClass = resolveMainClass(runConfig);
+        var devLogin = getDevLogin().getOrElse(false);
+
+        var sysProps = new LinkedHashMap<String, String>();
+
+        if (devLogin && mainClass != null) {
+            sysProps.put("devlogin.launch_target", mainClass);
+        }
+
+        writeJvmArguments(runConfig, sysProps);
+
+        // When DevLogin is used, we swap out the main class with the DevLogin one, and add the actual main class as a system property
+        writeProgramArguments(runConfig, devLogin ? RunUtils.DEV_LOGIN_MAIN_CLASS : mainClass);
     }
 
     private UserDevConfig loadUserDevConfig(File userDevFile) {
@@ -208,7 +221,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
         return new UserDevConfig(runTypes);
     }
 
-    private void writeJvmArguments(UserDevRunType runConfig) throws IOException {
+    private void writeJvmArguments(UserDevRunType runConfig, Map<String, String> additionalProperties) throws IOException {
         var lines = new ArrayList<String>();
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
@@ -238,7 +251,9 @@ abstract class PrepareRunOrTest extends DefaultTask {
             addSystemProp(prop.getKey(), propValue, lines);
         }
 
-        for (var entry : getSystemProperties().get().entrySet()) {
+        additionalProperties.putAll(getSystemProperties().get());
+
+        for (var entry : additionalProperties.entrySet()) {
             addSystemProp(entry.getKey(), entry.getValue(), lines);
         }
 
@@ -250,10 +265,9 @@ abstract class PrepareRunOrTest extends DefaultTask {
         );
     }
 
-    private void writeProgramArguments(UserDevRunType runConfig) throws IOException {
+    private void writeProgramArguments(UserDevRunType runConfig, @Nullable String mainClass) throws IOException {
         var lines = new ArrayList<String>();
 
-        var mainClass = resolveMainClass(runConfig);
         if (mainClass != null) {
             lines.add("# Main Class");
             lines.add(mainClass);
