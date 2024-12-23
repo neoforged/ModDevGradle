@@ -260,7 +260,8 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var supplyDevLogin = project.provider(() -> extension.getRuns().stream().anyMatch(model -> model.getDevLogin().get()));
+        var runs = project.provider(extension::getRuns);
+        var supplyDevLogin = runs.map(r -> r.stream().anyMatch(model -> model.getDevLogin().get()));
 
         // Create a configuration to resolve DevLogin
         var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
