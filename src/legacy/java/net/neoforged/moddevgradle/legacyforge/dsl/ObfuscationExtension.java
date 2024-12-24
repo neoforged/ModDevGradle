@@ -48,7 +48,7 @@ public abstract class ObfuscationExtension {
     }
 
     /**
-     * Format is TSRG
+     * Format is TSRG.
      */
     @ApiStatus.Internal
     public abstract RegularFileProperty getNamedToSrgMappings();
