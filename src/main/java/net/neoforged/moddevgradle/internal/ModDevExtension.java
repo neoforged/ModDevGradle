@@ -4,14 +4,16 @@ import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.Parchment;
 import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
-import org.gradle.api.InvalidUserCodeException;
+import org.gradle.api.GradleException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
 import javax.inject.Inject;
@@ -22,6 +24,7 @@ public abstract class ModDevExtension {
     private final NamedDomainObjectContainer<RunModel> runs;
     private final Parchment parchment;
 
+    private final Project project;
     private final DataFileCollection accessTransformers;
     private final DataFileCollection interfaceInjectionData;
 
@@ -32,6 +35,7 @@ public abstract class ModDevExtension {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
+        this.project = project;
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
@@ -142,4 +146,17 @@ public abstract class ModDevExtension {
      * NeoForge versions.
      */
     public abstract MapProperty<String, File> getAdditionalMinecraftArtifacts();
+
+    /**
+     * Adds the necessary dependencies to develop a Minecraft mod to the given source set.
+     * The plugin automatically adds these dependencies to the main source set.
+     */
+    public void addModdingDependenciesTo(SourceSet sourceSet) {
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        if (!sourceSets.contains(sourceSet)) {
+            throw new GradleException("Cannot add to the source set in another project.");
+        }
+
+        ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet.getName());
+    }
 }

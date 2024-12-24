@@ -8,6 +8,7 @@ public abstract class LegacyForgeModdingSettings {
     @Nullable
     private String neoForgeVersion;
 
+    @Nullable
     private String forgeVersion;
 
     @Nullable
