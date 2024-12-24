@@ -13,6 +13,13 @@ import org.jetbrains.annotations.ApiStatus;
 import java.io.File;
 import java.util.function.Consumer;
 
+/**
+ * Access Transformers and Interface Injection Data are treated in a common way as "collections of data files",
+ * which can be declared via a {@link DataFileCollection DSL}, and have an associated configuration for internal
+ * use by the plugin and the publication of these files.
+ *
+ * This factory constructs these pairs.
+ */
 @ApiStatus.Internal
 public final class DataFileCollectionFactory {
     public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
@@ -22,14 +29,18 @@ public final class DataFileCollectionFactory {
     private DataFileCollectionFactory() {
     }
 
-    public record DefaultDataFileCollections(DataFileCollectionWrapper accessTransformers,
-                                             DataFileCollectionWrapper interfaceInjectionData) {
+    public record DefaultCollections(CollectionWrapper accessTransformers,
+                                     CollectionWrapper interfaceInjectionData) {
     }
 
-    public record DataFileCollectionWrapper(DataFileCollection extension, Configuration configuration) {
+    public record CollectionWrapper(DataFileCollection extension, Configuration configuration) {
     }
 
-    public static DefaultDataFileCollections createDefault(Project project) {
+    /**
+     * Constructs the default data file collections for access transformers and intrface injection data
+     * with sensible defaults.
+     */
+    public static DefaultCollections createDefault(Project project) {
         // Create an access transformer configuration
         var accessTransformers = DataFileCollectionFactory.create(
                 project,
@@ -60,10 +71,10 @@ public final class DataFileCollectionFactory {
                 "interfaceinjection"
         );
 
-        return new DefaultDataFileCollections(accessTransformers, interfaceInjectionData);
+        return new DefaultCollections(accessTransformers, interfaceInjectionData);
     }
 
-    public static DataFileCollectionWrapper create(Project project, String name, String description, String category) {
+    public static CollectionWrapper create(Project project, String name, String description, String category) {
         var configuration = project.getConfigurations().create(name, spec -> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
@@ -118,7 +129,7 @@ public final class DataFileCollectionFactory {
         var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
         configuration.getDependencies().add(depFactory.create(extension.getFiles()));
 
-        return new DataFileCollectionWrapper(extension, configuration);
+        return new CollectionWrapper(extension, configuration);
     }
 
 }
