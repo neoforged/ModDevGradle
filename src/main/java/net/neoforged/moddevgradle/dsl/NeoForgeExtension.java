@@ -28,9 +28,16 @@ public abstract class NeoForgeExtension extends ModDevExtension {
         unitTest.getLoadedMods().convention(getMods());
     }
 
-    @Deprecated(forRemoval = true)
-    public void setVersion(Object any) {
-        throw new InvalidUserCodeException("Please use enableModding { neoForgeVersion = ... } instead of the version property.");
+    /**
+     * Shorthand for:
+     * <code>
+     *     enableModding { neoForgeVersion = '...' }
+     * </code>
+     */
+    public void setVersion(Object version) {
+        enableModding(settings -> {
+            settings.setNeoForgeVersion(version.toString());
+        });
     }
 
     public void enableModding(Action<ModdingVersionSettings> customizer) {

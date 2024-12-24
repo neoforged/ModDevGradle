@@ -25,9 +25,15 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
         this.project = project;
     }
 
-    public void setVersion(String version) {
+    /**
+     * Shorthand for:
+     * <code>
+     *     enableModding { forgeVersion = '...' }
+     * </code>
+     */
+    public void setVersion(Object version) {
         enableModding(settings -> {
-            settings.setForgeVersion(version);
+            settings.setForgeVersion(version.toString());
         });
     }
 
