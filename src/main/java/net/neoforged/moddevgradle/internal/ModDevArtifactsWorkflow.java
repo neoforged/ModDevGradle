@@ -90,7 +90,8 @@ public record ModDevArtifactsWorkflow(
         try {
             toolchainSpec.getLanguageVersion().convention(JavaLanguageVersion.of(versionCapabilities.javaVersion()));
         } catch (IllegalStateException e) {
-            // We tried our best
+            // We tried our best, but the java version was already resolved and is thus finalized
+            // this can occur if any dependency resolution happens since it reads this version for the attributes
         }
 
         // Add a filtered parchment repository automatically if enabled
