@@ -36,6 +36,7 @@ import org.slf4j.event.Level;
 import java.io.File;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -221,10 +222,13 @@ public class ModDevRunWorkflow {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
 
-        // Create a configuration to resolve DevLaunch without leaking it to consumers
+        // Create a configuration to resolve DevLaunch and DevLogin without leaking them to consumers
+        var supplyDevLogin = project.provider(() -> runs.stream().anyMatch(model -> model.getDevLogin().get()));
         var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLaunch into the runtime classpaths of runs.");
+            spec.setDescription("This configuration is used to inject DevLaunch and optionally DevLogin into the runtime classpaths of runs.");
             spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
+            spec.getDependencies().addAllLater(supplyDevLogin.map(
+                    supply -> supply ? List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
         });
 
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
@@ -338,6 +342,7 @@ public class ModDevRunWorkflow {
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
+            task.getDevLogin().set(run.getDevLogin());
             task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);

@@ -582,6 +582,26 @@ dependencies {
 }
 ```
 
+### Using Authenticated Minecraft Accounts
+Minecraft runs normally use an offline user profile in a development environment.  
+If you want to run the game with your real user profile, you may do so using [DevLogin](https://github.com/covers1624/DevLogin) by setting
+the `devLogin` property of a client run to `true`:
+
+```groovy
+neoForge {
+    runs {
+        // Add a second client run that is authenticated
+        clientAuth {
+            client()
+            devLogin = true
+        }
+    }
+}
+```
+
+The first time you launch the authenticated run you will be asked in the console to visit https://www.microsoft.com/link and enter
+the given code. More information is available on the [DevLogin readme](https://github.com/covers1624/DevLogin)
+
 ## Advanced Tips & Tricks
 
 ### Overriding Platform Libraries

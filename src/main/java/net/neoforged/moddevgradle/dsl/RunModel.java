@@ -56,6 +56,7 @@ public abstract class RunModel implements Named, Dependencies {
         });
 
         getLogLevel().convention(Level.INFO);
+        getDevLogin().convention(false);
 
         // Build a nicer name for the IDE run configuration
         boolean isSubProject = project.getRootProject() != project;
@@ -250,6 +251,12 @@ public abstract class RunModel implements Named, Dependencies {
      * classpath.
      */
     public abstract Property<SourceSet> getSourceSet();
+
+    /**
+     * Enables <a href="https://github.com/covers1624/DevLogin">DevLogin</a> which is used to log into an
+     * official Minecraft account in development environments.
+     */
+    public abstract Property<Boolean> getDevLogin();
 
     @Override
     public String toString() {
