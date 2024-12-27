@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The main plugin class.
@@ -510,10 +511,13 @@ public class ModDevPlugin implements Plugin<Project> {
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
-        // Create a configuration to resolve DevLaunch without leaking it to consumers
+        // Create a configuration to resolve DevLaunch and DevLogin without leaking them to consumers
+        var supplyDevLogin = project.provider(() -> runs.stream().anyMatch(model -> model.getDevLogin().get()));
         var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLaunch into the runtime classpaths of runs.");
+            spec.setDescription("This configuration is used to inject DevLaunch and optionally DevLogin into the runtime classpaths of runs.");
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
+            spec.getDependencies().addAllLater(supplyDevLogin.map(
+                    supply -> supply ? List.of(project.getDependencyFactory().create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
         });
 
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
@@ -628,6 +632,7 @@ public class ModDevPlugin implements Plugin<Project> {
             task.getProgramArguments().set(run.getProgramArguments());
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
+            task.getDevLogin().set(run.getDevLogin());
             task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
