@@ -60,7 +60,7 @@ public class ModDevRunWorkflow {
     private final ModuleDependency testFixturesDependency;
     private final ModuleDependency gameLibrariesDependency;
     private final Configuration additionalClasspath;
-    private final @Nullable Configuration userDevConfigOnly;
+    private final Configuration userDevConfigOnly;
 
     /**
      * @param gameLibrariesDependency A module dependency that represents the library dependencies of the game.
@@ -87,19 +87,15 @@ public class ModDevRunWorkflow {
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        if (runTypesConfigDependency != null) {
-            userDevConfigOnly = configurations.create("neoForgeConfigOnly", spec -> {
-                spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
-                spec.setCanBeResolved(true);
-                spec.setCanBeConsumed(false);
-                spec.setTransitive(false);
+        userDevConfigOnly = configurations.create("neoForgeConfigOnly", spec -> {
+            spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setTransitive(false);
+            if (runTypesConfigDependency != null) {
                 spec.getDependencies().add(runTypesConfigDependency);
-            });
-        } else {
-            // Create an implicit configuration
-
-            userDevConfigOnly = null;
-        }
+            }
+        });
 
         additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
             spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
@@ -202,7 +198,7 @@ public class ModDevRunWorkflow {
     }
 
     // FML searches for client resources on the legacy classpath
-    private void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
+    private static void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
         // FML searches for client resources on the legacy classpath
         spec.getDependencies().add(
                 project.getDependencyFactory().create(
