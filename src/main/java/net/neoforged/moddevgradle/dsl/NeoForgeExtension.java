@@ -1,10 +1,8 @@
 package net.neoforged.moddevgradle.dsl;
 
-import net.neoforged.moddevgradle.internal.ModDevExtension;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
-import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
 

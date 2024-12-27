@@ -1,7 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
-import net.neoforged.moddevgradle.internal.ModDevExtension;
+import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import org.gradle.api.Action;

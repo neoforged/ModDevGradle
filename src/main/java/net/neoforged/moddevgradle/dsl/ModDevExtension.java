@@ -1,9 +1,6 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.moddevgradle.dsl;
 
-import net.neoforged.moddevgradle.dsl.DataFileCollection;
-import net.neoforged.moddevgradle.dsl.ModModel;
-import net.neoforged.moddevgradle.dsl.Parchment;
-import net.neoforged.moddevgradle.dsl.RunModel;
+import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
 import org.gradle.api.GradleException;

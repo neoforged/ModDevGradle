@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
+import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.dsl.ModdingVersionSettings;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;

@@ -8,7 +8,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
-import org.jetbrains.annotations.ApiStatus;
 
 import javax.inject.Inject;
 
