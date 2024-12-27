@@ -38,13 +38,12 @@ public class ModDevPlugin implements Plugin<Project> {
         }
 
         var dataFileCollections = DataFileCollectionFactory.createDefault(project);
-        var extension = project.getExtensions().create(
+        project.getExtensions().create(
                 NeoForgeExtension.NAME,
                 NeoForgeExtension.class,
                 dataFileCollections.accessTransformers().extension(),
                 dataFileCollections.interfaceInjectionData().extension()
         );
-        IdeIntegration.of(project, Branding.MDG).runTaskOnProjectSync(extension.getIdeSyncTasks());
     }
 
     public void enableModding(

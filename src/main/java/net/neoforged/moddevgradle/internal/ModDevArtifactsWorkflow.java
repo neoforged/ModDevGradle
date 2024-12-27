@@ -67,6 +67,9 @@ public record ModDevArtifactsWorkflow(
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
+        // Make sync tasks run
+        ideIntegration.runTaskOnProjectSync(extension.getIdeSyncTasks());
+
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
 
