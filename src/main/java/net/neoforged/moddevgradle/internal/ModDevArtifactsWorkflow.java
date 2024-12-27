@@ -124,8 +124,9 @@ public record ModDevArtifactsWorkflow(
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
+            var artifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact ->
-                    modDevBuildDir.map(dir -> dir.dir("artifacts").file(artifactNamingStrategy.getFilename(artifact)));
+                    artifactsDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
