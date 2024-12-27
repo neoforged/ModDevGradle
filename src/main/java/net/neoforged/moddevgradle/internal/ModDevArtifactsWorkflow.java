@@ -1,7 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
-import net.neoforged.moddevgradle.dsl.ModDevExtension;
+import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
@@ -54,7 +54,7 @@ public record ModDevArtifactsWorkflow(
 
     public static ModDevArtifactsWorkflow create(Project project,
                                                  Branding branding,
-                                                 ModDevExtension extension,
+                                                 NeoForgeExtension extension,
                                                  ModuleDependency moddingPlatformDependency,
                                                  String moddingPlatformDataDependencyNotation,
                                                  ModuleDependency recompilableMinecraftWorkflowDependency,
