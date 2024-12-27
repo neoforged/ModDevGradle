@@ -65,7 +65,7 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
      */
     @Input
     @ApiStatus.Internal
-    public abstract Property<String> getJavaExecutable();
+    protected abstract Property<String> getJavaExecutable();
 
     @Inject
     @ApiStatus.Internal
