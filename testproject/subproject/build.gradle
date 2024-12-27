@@ -5,9 +5,7 @@ plugins {
 }
 
 neoForge {
-    enableModding {
-        neoForgeVersion = project.neoforge_version
-    }
+    version = project.neoforge_version
 
     interfaceInjectionData {
         from(project.file('interfaces.json'))

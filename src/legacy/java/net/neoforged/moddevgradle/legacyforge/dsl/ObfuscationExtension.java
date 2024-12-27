@@ -43,7 +43,7 @@ public abstract class ObfuscationExtension {
 
     private <T> Provider<T> assertConfigured(Provider<T> provider) {
         return provider.orElse(project.provider(() -> {
-            throw new InvalidUserCodeException("Please enable modding by setting legacyForge.version or calling legacyForge.enableModding()");
+            throw new InvalidUserCodeException("Please enable modding by setting legacyForge.version or calling legacyForge.enable()");
         }));
     }
 

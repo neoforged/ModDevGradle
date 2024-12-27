@@ -46,12 +46,12 @@ public class ModDevPlugin implements Plugin<Project> {
         );
     }
 
-    public void enableModding(
+    public void enable(
             Project project,
             ModdingVersionSettings settings,
             ModDevExtension extension
     ) {
-        var neoForgeVersion = settings.getNeoForgeVersion();
+        var neoForgeVersion = settings.getVersion();
         var neoFormVersion = settings.getNeoFormVersion();
         if (neoForgeVersion == null && neoFormVersion == null) {
             throw new IllegalArgumentException("You must specify at least a NeoForge or a NeoForm version for vanilla-only mode");

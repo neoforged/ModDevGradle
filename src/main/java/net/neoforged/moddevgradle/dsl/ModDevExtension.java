@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
+import net.neoforged.moddevgradle.internal.Branding;
+import net.neoforged.moddevgradle.internal.IdeIntegration;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
@@ -36,6 +38,10 @@ public abstract class ModDevExtension {
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
         getValidateAccessTransformers().convention(false);
+
+        // Make sync tasks run
+        var ideIntegration = IdeIntegration.of(project, Branding.MDG);
+        ideIntegration.runTaskOnProjectSync(getIdeSyncTasks());
     }
 
     /**

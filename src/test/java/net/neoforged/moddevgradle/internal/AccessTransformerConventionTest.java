@@ -25,7 +25,7 @@ public class AccessTransformerConventionTest {
 
         extension = ExtensionUtils.getExtension(project, "neoForge", NeoForgeExtension.class);
 
-        extension.enableModding(settings -> settings.setNeoForgeVersion("1.2.3"));
+        extension.enable(settings -> settings.setVersion("1.2.3"));
     }
 
     @Test

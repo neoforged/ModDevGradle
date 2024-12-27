@@ -27,18 +27,34 @@ public abstract class NeoForgeExtension extends ModDevExtension {
     }
 
     /**
+     * Enables modding on the main source set with the given NeoForge version.
+     *
      * Shorthand for:
      * <code>
-     *     enableModding { neoForgeVersion = '...' }
+     *     enable { version = '...' }
      * </code>
      */
     public void setVersion(Object version) {
-        enableModding(settings -> {
-            settings.setNeoForgeVersion(version.toString());
+        enable(settings -> {
+            settings.setVersion(version.toString());
         });
     }
 
-    public void enableModding(Action<ModdingVersionSettings> customizer) {
+    /**
+     * Enables the Vanilla-only mode of ModDevGradle.
+     *
+     * Shorthand for:
+     * <code>
+     *     enable { neoFormVersion = '...' }
+     * </code>
+     */
+    public void setNeoFormVersion(Object version) {
+        enable(settings -> {
+            settings.setNeoFormVersion(version.toString());
+        });
+    }
+
+    public void enable(Action<ModdingVersionSettings> customizer) {
         var modDevPlugin = project.getPlugins().getPlugin(ModDevPlugin.class);
 
         var settings = project.getObjects().newInstance(ModdingVersionSettings.class);
@@ -49,7 +65,7 @@ public abstract class NeoForgeExtension extends ModDevExtension {
         }));
         customizer.execute(settings);
 
-        modDevPlugin.enableModding(project, settings, this);
+        modDevPlugin.enable(project, settings, this);
     }
 
     public UnitTest getUnitTest() {

@@ -26,18 +26,34 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
     }
 
     /**
+     * Enables modding for the main source set using the given Forge version.
+     *
      * Shorthand for:
      * <code>
-     *     enableModding { forgeVersion = '...' }
+     *     enable { forgeVersion = '...' }
      * </code>
      */
     public void setVersion(Object version) {
-        enableModding(settings -> {
+        enable(settings -> {
             settings.setForgeVersion(version.toString());
         });
     }
 
-    public void enableModding(Action<LegacyForgeModdingSettings> customizer) {
+    /**
+     * Enables modding for the main source-set in Vanilla-mode.
+     *
+     * Shorthand for:
+     * <code>
+     *     enable { forgeVersion = '...' }
+     * </code>
+     */
+    public void setMcpVersion(Object version) {
+        enable(settings -> {
+            settings.setMcpVersion(version.toString());
+        });
+    }
+
+    public void enable(Action<LegacyForgeModdingSettings> customizer) {
         var plugin = project.getPlugins().getPlugin(LegacyForgeModDevPlugin.class);
 
         var settings = project.getObjects().newInstance(LegacyForgeModdingSettings.class);
@@ -48,6 +64,6 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
         }));
         customizer.execute(settings);
 
-        plugin.enableModding(project, settings, this);
+        plugin.enable(project, settings, this);
     }
 }

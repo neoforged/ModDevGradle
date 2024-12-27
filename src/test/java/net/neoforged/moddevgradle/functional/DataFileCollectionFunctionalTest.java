@@ -147,9 +147,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                 group = "{0}"
                 version = "{1}"
                 neoForge {
-                    enableModding {
-                        neoForgeVersion = "{DEFAULT_NEOFORGE_VERSION}"
-                    }
+                    version = "{DEFAULT_NEOFORGE_VERSION}"
                 }
                 publishing {
                     publications {

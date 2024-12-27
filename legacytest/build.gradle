@@ -13,9 +13,7 @@ java {
 }
 
 legacyForge {
-    enableModding {
-        mcpVersion = '1.19.2'
-    }
+    mcpVersion = '1.19.2'
 }
 
 publishing {

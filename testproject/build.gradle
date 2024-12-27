@@ -26,8 +26,8 @@ test {
 }
 
 neoForge {
-    enableModding {
-        neoForgeVersion = project.neoforge_version
+    enable {
+        version = project.neoforge_version
         enabledSourceSets = [sourceSets.main, sourceSets.api]
     }
 

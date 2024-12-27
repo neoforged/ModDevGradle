@@ -6,13 +6,13 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class ModdingVersionSettings {
     @Nullable
-    private String neoForgeVersion;
+    private String version;
 
     @Nullable
     private String neoFormVersion;
 
-    public @Nullable String getNeoForgeVersion() {
-        return neoForgeVersion;
+    public @Nullable String getVersion() {
+        return version;
     }
 
     public @Nullable String getNeoFormVersion() {
@@ -22,8 +22,8 @@ public abstract class ModdingVersionSettings {
     /**
      * NeoForge version number. You have to set either this or {@link #setNeoFormVersion}.
      */
-    public void setNeoForgeVersion(String version) {
-        this.neoForgeVersion = version;
+    public void setVersion(String version) {
+        this.version = version;
     }
 
     /**

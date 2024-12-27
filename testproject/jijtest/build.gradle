@@ -40,9 +40,7 @@ test {
 }
 
 neoForge {
-    enableModding {
-        neoForgeVersion = project.neoforge_version
-    }
+    version = project.neoforge_version
 
     runs {
         data {

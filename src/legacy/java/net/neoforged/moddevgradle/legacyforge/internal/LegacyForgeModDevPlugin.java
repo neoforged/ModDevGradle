@@ -111,7 +111,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         );
     }
 
-    public void enableModding(Project project, LegacyForgeModdingSettings settings, LegacyForgeExtension extension) {
+    public void enable(Project project, LegacyForgeModdingSettings settings, LegacyForgeExtension extension) {
         var depFactory = project.getDependencyFactory();
 
         var forgeVersion = settings.getForgeVersion();
