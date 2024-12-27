@@ -94,7 +94,6 @@ public record ModDevArtifactsWorkflow(
             // this can occur if any dependency resolution happens since it reads this version for the attributes
         }
 
-        // Add a filtered parchment repository automatically if enabled
         var parchment = extension.getParchment();
         var parchmentData = configurations.create("parchmentData", spec -> {
             spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
