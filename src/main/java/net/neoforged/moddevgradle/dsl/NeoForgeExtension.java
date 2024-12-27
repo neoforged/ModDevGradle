@@ -34,9 +34,9 @@ public abstract class NeoForgeExtension extends ModDevExtension {
      *     enable { version = '...' }
      * </code>
      */
-    public void setVersion(Object version) {
+    public void setVersion(String version) {
         enable(settings -> {
-            settings.setVersion(version.toString());
+            settings.setVersion(version);
         });
     }
 
@@ -48,9 +48,9 @@ public abstract class NeoForgeExtension extends ModDevExtension {
      *     enable { neoFormVersion = '...' }
      * </code>
      */
-    public void setNeoFormVersion(Object version) {
+    public void setNeoFormVersion(String version) {
         enable(settings -> {
-            settings.setNeoFormVersion(version.toString());
+            settings.setNeoFormVersion(version);
         });
     }
 
@@ -58,11 +58,6 @@ public abstract class NeoForgeExtension extends ModDevExtension {
         var modDevPlugin = project.getPlugins().getPlugin(ModDevPlugin.class);
 
         var settings = project.getObjects().newInstance(ModdingVersionSettings.class);
-        // By default, enable modding deps only for the main source set
-        settings.getEnabledSourceSets().convention(project.provider(() -> {
-            var sourceSets = ExtensionUtils.getSourceSets(project);
-            return List.of(sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME));
-        }));
         customizer.execute(settings);
 
         modDevPlugin.enable(project, settings, this);

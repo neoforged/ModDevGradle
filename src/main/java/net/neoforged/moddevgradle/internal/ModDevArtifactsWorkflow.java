@@ -6,6 +6,8 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
+import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -20,6 +22,7 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -27,6 +30,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -41,7 +45,10 @@ public record ModDevArtifactsWorkflow(
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
-        Provider<Directory> modDevBuildDir) {
+        Provider<Directory> modDevBuildDir,
+        Provider<Directory> artifactsBuildDir
+) {
+
     private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
 
     public static ModDevArtifactsWorkflow get(Project project) {
@@ -53,6 +60,7 @@ public record ModDevArtifactsWorkflow(
     }
 
     public static ModDevArtifactsWorkflow create(Project project,
+                                                 Collection<SourceSet> enabledSourceSets,
                                                  Branding branding,
                                                  ModDevExtension extension,
                                                  ModuleDependency moddingPlatformDependency,
@@ -65,10 +73,15 @@ public record ModDevArtifactsWorkflow(
                                                  Configuration interfaceInjectionData,
                                                  VersionCapabilities versionCapabilities
     ) {
+        if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
+            throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
+        }
+
         var ideIntegration = IdeIntegration.of(project, branding);
 
         // We use this directory to store intermediate files used during moddev
         var modDevBuildDir = project.getLayout().getBuildDirectory().dir("moddev");
+        var artifactsBuildDir = project.getLayout().getBuildDirectory().dir("moddev/artifacts");
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(
                 project,
@@ -124,9 +137,8 @@ public record ModDevArtifactsWorkflow(
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
-            var artifactsDir = modDevBuildDir.map(dir -> dir.dir("artifacts"));
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact ->
-                    artifactsDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
+                    artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
@@ -202,9 +214,16 @@ public record ModDevArtifactsWorkflow(
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,
-                modDevBuildDir
+                modDevBuildDir,
+                artifactsBuildDir
         );
+
         project.getExtensions().add(ModDevArtifactsWorkflow.class, EXTENSION_NAME, result);
+
+        for (var sourceSets : enabledSourceSets) {
+            result.addToSourceSet(sourceSets);
+        }
+
         return result;
     }
 
@@ -302,16 +321,22 @@ public record ModDevArtifactsWorkflow(
         return result;
     }
 
-    public void addToSourceSet(String name) {
+    /**
+     * Adds the compile-time and runtime-dependencies needed to compile mod code to the source-set of the given name.
+     */
+    public void addToSourceSet(SourceSet sourceSet) {
         var configurations = project.getConfigurations();
         var sourceSets = ExtensionUtils.getSourceSets(project);
-        var sourceSet = sourceSets.getByName(name);
+        if (!sourceSets.contains(sourceSet)) {
+            throw new GradleException("Cannot add to the source set in another project: " + sourceSet);
+        }
+
         configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
         configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, String filename) {
-        return requestAdditionalMinecraftArtifact(id, modDevBuildDir.map(dir -> dir.file(filename)));
+        return requestAdditionalMinecraftArtifact(id, artifactsBuildDir.map(dir -> dir.file(filename)));
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, Provider<RegularFile> path) {

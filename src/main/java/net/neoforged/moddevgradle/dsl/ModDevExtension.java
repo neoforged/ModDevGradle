@@ -151,15 +151,11 @@ public abstract class ModDevExtension {
     public abstract MapProperty<String, File> getAdditionalMinecraftArtifacts();
 
     /**
-     * Adds the necessary dependencies to develop a Minecraft mod to the given source set.
-     * The plugin automatically adds these dependencies to the main source set.
+     * Adds the necessary dependencies to develop a Minecraft mod to additional source sets.
+     * If you do not specify a source set when you enable modding, the dependencies are automatically added
+     * to the main source set.
      */
     public void addModdingDependenciesTo(SourceSet sourceSet) {
-        var sourceSets = ExtensionUtils.getSourceSets(project);
-        if (!sourceSets.contains(sourceSet)) {
-            throw new GradleException("Cannot add to the source set in another project.");
-        }
-
-        ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet.getName());
+        ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet);
     }
 }

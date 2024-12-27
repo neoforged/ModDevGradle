@@ -1,8 +1,13 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
-import org.gradle.api.provider.ListProperty;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.Nullable;
+
+import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class LegacyForgeModdingSettings {
     @Nullable
@@ -13,6 +18,16 @@ public abstract class LegacyForgeModdingSettings {
 
     @Nullable
     private String mcpVersion;
+
+    private Set<SourceSet> enabledSourceSets = new HashSet<>();
+
+    @Inject
+    public LegacyForgeModdingSettings(Project project) {
+        // By default, enable modding deps only for the main source set
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        var mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+        enabledSourceSets.add(mainSourceSet);
+    }
 
     public @Nullable String getNeoForgeVersion() {
         return neoForgeVersion;
@@ -54,5 +69,16 @@ public abstract class LegacyForgeModdingSettings {
      * Contains the list of source sets for which access to Minecraft classes should be configured.
      * Defaults to the main source set, but can also be set to an empty list.
      */
-    public abstract ListProperty<SourceSet> getEnabledSourceSets();
+
+    /**
+     * Contains the list of source sets for which access to Minecraft classes should be configured.
+     * Defaults to the main source set, but can also be set to an empty list.
+     */
+    public Set<SourceSet> getEnabledSourceSets() {
+        return enabledSourceSets;
+    }
+
+    public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
+        this.enabledSourceSets = enabledSourceSets;
+    }
 }

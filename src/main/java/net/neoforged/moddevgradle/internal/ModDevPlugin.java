@@ -7,6 +7,7 @@ import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -37,7 +38,7 @@ public class ModDevPlugin implements Plugin<Project> {
             LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
         }
 
-        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
+        var dataFileCollections = DataFileCollections.create(project);
         project.getExtensions().create(
                 NeoForgeExtension.NAME,
                 NeoForgeExtension.class,
@@ -54,7 +55,7 @@ public class ModDevPlugin implements Plugin<Project> {
         var neoForgeVersion = settings.getVersion();
         var neoFormVersion = settings.getNeoFormVersion();
         if (neoForgeVersion == null && neoFormVersion == null) {
-            throw new IllegalArgumentException("You must specify at least a NeoForge or a NeoForm version for vanilla-only mode");
+            throw new InvalidUserCodeException("You must specify at least a NeoForge or a NeoForm version for vanilla-only mode");
         }
 
         var dependencyFactory = project.getDependencyFactory();
@@ -106,6 +107,7 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
+                settings.getEnabledSourceSets(),
                 Branding.MDG,
                 extension,
                 neoForgeModule,
@@ -114,14 +116,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 recompilableMinecraftWorkflowDataDependencyNotation,
                 neoForgeModDevLibrariesDependency,
                 artifactNamingStrategy,
-                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_ACCESS_TRANSFORMERS),
-                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
+                configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
                 versionCapabilities
         );
-
-        for (var sourceSet : settings.getEnabledSourceSets().get()) {
-            artifacts.addToSourceSet(sourceSet.getName());
-        }
 
         ModDevRunWorkflow.create(
                 project,

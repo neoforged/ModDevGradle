@@ -1,8 +1,13 @@
 package net.neoforged.moddevgradle.dsl;
 
-import org.gradle.api.provider.ListProperty;
+import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.Nullable;
+
+import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class ModdingVersionSettings {
     @Nullable
@@ -10,6 +15,16 @@ public abstract class ModdingVersionSettings {
 
     @Nullable
     private String neoFormVersion;
+
+    private Set<SourceSet> enabledSourceSets = new HashSet<>();
+
+    @Inject
+    public ModdingVersionSettings(Project project) {
+        // By default, enable modding deps only for the main source set
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        var mainSourceSet = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+        enabledSourceSets.add(mainSourceSet);
+    }
 
     public @Nullable String getVersion() {
         return version;
@@ -39,5 +54,11 @@ public abstract class ModdingVersionSettings {
      * Contains the list of source sets for which access to Minecraft classes should be configured.
      * Defaults to the main source set, but can also be set to an empty list.
      */
-    public abstract ListProperty<SourceSet> getEnabledSourceSets();
+    public Set<SourceSet> getEnabledSourceSets() {
+        return enabledSourceSets;
+    }
+
+    public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
+        this.enabledSourceSets = enabledSourceSets;
+    }
 }

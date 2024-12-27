@@ -43,7 +43,8 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                project.getObjects().property(VersionCapabilities.class) // empty provider
+                // This overload of the method was only used by NeoForge 1.21.3
+                VersionCapabilities.ofMinecraftVersion("1.21.3")
         );
     }
 
@@ -65,7 +66,7 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                neoFormVersion.map(VersionCapabilities::ofNeoFormVersion)
+                neoFormVersion.map(VersionCapabilities::ofNeoFormVersion).getOrElse(VersionCapabilities.latest())
         );
     }
 

@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
-import net.neoforged.moddevgradle.internal.DataFileCollectionFactory;
+import net.neoforged.moddevgradle.internal.DataFileCollections;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
@@ -101,7 +101,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         configureDependencyRemapping(project, obf);
 
-        var dataFileCollections = DataFileCollectionFactory.createDefault(project);
+        var dataFileCollections = DataFileCollections.create(project);
         project.getExtensions().create(
                 LEGACYFORGE_EXTENSION,
                 LegacyForgeExtension.class,
@@ -174,6 +174,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
+                settings.getEnabledSourceSets(),
                 Branding.MDG,
                 extension,
                 platformModule,
@@ -182,8 +183,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 recompilableMinecraftDataDependencyNotation,
                 librariesDependency,
                 artifactNamingStrategy,
-                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_ACCESS_TRANSFORMERS),
-                configurations.getByName(DataFileCollectionFactory.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
+                configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
                 versionCapabilities
         );
 
@@ -198,10 +199,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 extension.getRuns(),
                 versionCapabilities
         );
-
-        for (var sourceSet : settings.getEnabledSourceSets().get()) {
-            artifacts.addToSourceSet(sourceSet.getName());
-        }
 
         // Configure the mixin and obfuscation extensions
         var mixin = ExtensionUtils.getExtension(project, MIXIN_EXTENSION, MixinExtension.class);

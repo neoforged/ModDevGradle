@@ -31,7 +31,7 @@ class MixinMappingTest {
         var remapJarTask = (RemapJar) project.getTasks().getByName("reobfSomeJar");
 
         // The main named->intermediary mappings for the game
-        var namedToIntermediary = project.getLayout().getBuildDirectory().file("moddev/namedToIntermediate.tsrg").get().getAsFile();
+        var namedToIntermediary = project.getLayout().getBuildDirectory().file("moddev/artifacts/namedToIntermediate.tsrg").get().getAsFile();
         var mixinApMappings = project.getLayout().getBuildDirectory().file("mixin/testmod.refmap.json.mappings.tsrg").get().getAsFile();
 
         // Enable modding to actually wire up the tasks

@@ -10,7 +10,6 @@ import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
-import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +20,6 @@ import java.util.Set;
 /**
  * Implementing classes are responsible for registering {@code ideSyncTask} with their IDE.
  */
-@ApiStatus.Internal
 public sealed abstract class IdeIntegration permits IntelliJIntegration, EclipseIntegration, NoIdeIntegration {
     private static final Logger LOG = LoggerFactory.getLogger(IdeIntegration.class);
 

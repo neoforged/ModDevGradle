@@ -120,7 +120,7 @@ public class ModDevRunWorkflow {
                 },
                 legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
-                project.provider(() -> versionCapabilities)
+                versionCapabilities
         );
     }
 
@@ -164,7 +164,7 @@ public class ModDevRunWorkflow {
         var testSourceSet = testSuite.getSources();
 
         var artifactsWorkflow = ModDevArtifactsWorkflow.get(project);
-        artifactsWorkflow.addToSourceSet(testSourceSet.getName());
+        artifactsWorkflow.addToSourceSet(testSourceSet);
 
         var configurations = project.getConfigurations();
 
@@ -173,6 +173,11 @@ public class ModDevRunWorkflow {
             configurations.getByName(testSourceSet.getRuntimeOnlyConfigurationName(), configuration -> {
                 configuration.getDependencies().add(testFixturesDependency);
             });
+        }
+
+        if (testSuite.getTargets().size() > 1) {
+            // NOTE: We can implement support for multiple test tasks later if someone is adamant about it
+            throw new InvalidUserCodeException("MDG currently only supports test suites with a single test task.");
         }
 
         for (var target : testSuite.getTargets()) {
@@ -200,7 +205,6 @@ public class ModDevRunWorkflow {
 
     // FML searches for client resources on the legacy classpath
     private static void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
-        // FML searches for client resources on the legacy classpath
         spec.getDependencies().add(
                 project.getDependencyFactory().create(
                         project.files(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact))
@@ -217,7 +221,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath,
             Provider<RegularFile> assetPropertiesFile,
-            Provider<VersionCapabilities> versionCapabilities
+            VersionCapabilities versionCapabilities
     ) {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -273,7 +277,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            Provider<VersionCapabilities> versionCapabilities,
+            VersionCapabilities versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();

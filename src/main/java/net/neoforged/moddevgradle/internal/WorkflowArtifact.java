@@ -7,7 +7,7 @@ public enum WorkflowArtifact {
     COMPILED(""),
     COMPILED_WITH_SOURCES("-merged"),
     SOURCES("-sources"),
-    CLIENT_RESOURCES("-client-extra");
+    CLIENT_RESOURCES("-client-extra-aka-minecraft-resources");
     public final String defaultSuffix;
 
     WorkflowArtifact(String defaultSuffix) {

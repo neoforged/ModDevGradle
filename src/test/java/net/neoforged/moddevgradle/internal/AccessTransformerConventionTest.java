@@ -24,8 +24,7 @@ public class AccessTransformerConventionTest {
         project.getPlugins().apply(ModDevPlugin.class);
 
         extension = ExtensionUtils.getExtension(project, "neoForge", NeoForgeExtension.class);
-
-        extension.enable(settings -> settings.setVersion("1.2.3"));
+        extension.setVersion("1.2.3");
     }
 
     @Test
