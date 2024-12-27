@@ -25,8 +25,7 @@ import java.util.List;
 
 public abstract class RemapOperation implements Serializable {
     @Inject
-    public RemapOperation() {
-    }
+    public RemapOperation() {}
 
     @Input
     public abstract Property<ToolType> getToolType();
