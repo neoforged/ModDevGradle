@@ -26,7 +26,7 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
     }
 
     /**
-     * Enables modding for the main source set using the given Forge version.
+     * Enables modding for the main source-set using the given Forge version.
      *
      * Shorthand for:
      * <code>
@@ -44,7 +44,7 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
      *
      * Shorthand for:
      * <code>
-     *     enable { forgeVersion = '...' }
+     *     enable { mcpVersion = '...' }
      * </code>
      */
     public void setMcpVersion(Object version) {
