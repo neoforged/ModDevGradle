@@ -1,5 +1,6 @@
-package net.neoforged.moddevgradle.internal;
+package net.neoforged.moddevgradle.internal.jarjar;
 
+import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.tasks.JarJar;
 import org.gradle.api.Plugin;
