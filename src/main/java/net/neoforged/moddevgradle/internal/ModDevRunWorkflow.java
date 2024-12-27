@@ -135,20 +135,19 @@ public class ModDevRunWorkflow {
     public static ModDevRunWorkflow create(Project project,
                                            Branding branding,
                                            ModDevArtifactsWorkflow artifactsWorkflow,
-                                           @Nullable ModuleDependency modulePathDependency,
-                                           @Nullable ModuleDependency runTypesConfigDependency,
-                                           @Nullable ModuleDependency testFixturesDependency,
-                                           ModuleDependency gameLibrariesDependency,
-                                           DomainObjectCollection<RunModel> runs,
-                                           VersionCapabilities versionCapabilites) {
+                                           DomainObjectCollection<RunModel> runs) {
+
+        var dependencies = artifactsWorkflow.dependencies();
+        var versionCapabilites = artifactsWorkflow.versionCapabilities();
+
         var workflow = new ModDevRunWorkflow(
                 project,
                 branding,
                 artifactsWorkflow,
-                modulePathDependency,
-                runTypesConfigDependency,
-                testFixturesDependency,
-                gameLibrariesDependency,
+                dependencies.modulePathDependency(),
+                dependencies.runTypesConfigDependency(),
+                dependencies.testFixturesDependency(),
+                dependencies.gameLibrariesDependency(),
                 runs,
                 versionCapabilites
         );

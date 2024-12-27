@@ -111,7 +111,7 @@ public class ModDevPluginTest {
                 .extracting(this::describeDependency)
                 .containsOnly(
                         "build/moddev/artifacts/neoforge-" + version + ".jar",
-                        "build/moddev/artifacts/neoforge-" + version + "-client-extra.jar",
+                        "build/moddev/artifacts/neoforge-" + version + "-client-extra-aka-minecraft-resources.jar",
                         "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]"
                 );
     }

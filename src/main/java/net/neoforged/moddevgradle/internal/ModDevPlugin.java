@@ -60,43 +60,26 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var dependencyFactory = project.getDependencyFactory();
 
-        ModuleDependency neoForgeModule = null;
-        ModuleDependency modulePathDependency = null;
-        ModuleDependency runTypesDataDependency = null;
-        ModuleDependency testFixturesDependency = null;
-        String moddingPlatformDataDependencyNotation = null;
+        ModuleDependency neoForge = null;
+        String neoForgeNotation = null;
         if (neoForgeVersion != null) {
-            neoForgeModule = dependencyFactory.create("net.neoforged:neoforge:" + neoForgeVersion);
-            moddingPlatformDataDependencyNotation = "net.neoforged:neoforge:" + neoForgeVersion + ":userdev";
-            runTypesDataDependency = neoForgeModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
-            modulePathDependency = neoForgeModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
-                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            testFixturesDependency = neoForgeModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures"));
+            neoForge = dependencyFactory.create("net.neoforged:neoforge:" + neoForgeVersion);
+            neoForgeNotation = "net.neoforged:neoforge:" + neoForgeVersion + ":userdev";
         }
 
-        ModuleDependency neoFormModule = null;
-        String recompilableMinecraftWorkflowDataDependencyNotation = null;
+        ModuleDependency neoForm = null;
+        String neoFormNotation = null;
         if (neoFormVersion != null) {
-            neoFormModule = dependencyFactory.create("net.neoforged:neoform:" + neoFormVersion);
-            recompilableMinecraftWorkflowDataDependencyNotation = "net.neoforged:neoform:" + neoFormVersion + "@zip";
+            neoForm = dependencyFactory.create("net.neoforged:neoform:" + neoFormVersion);
+            neoFormNotation = "net.neoforged:neoform:" + neoFormVersion + "@zip";
         }
 
         // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
         // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
-        ModuleDependency neoForgeModDevLibrariesDependency;
         ArtifactNamingStrategy artifactNamingStrategy;
-        if (neoForgeModule != null) {
-            neoForgeModDevLibrariesDependency = neoForgeModule.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
-
+        if (neoForge != null) {
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("neoforge-" + neoForgeVersion);
         } else {
-            neoForgeModDevLibrariesDependency = neoFormModule.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + neoFormVersion);
         }
 
@@ -105,16 +88,14 @@ public class ModDevPlugin implements Plugin<Project> {
         var versionCapabilities = neoForgeVersion != null ? VersionCapabilities.ofNeoForgeVersion(neoForgeVersion)
                 : VersionCapabilities.ofNeoFormVersion(neoFormVersion);
 
+        var dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities);
+
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
                 settings.getEnabledSourceSets(),
                 Branding.MDG,
                 extension,
-                neoForgeModule,
-                moddingPlatformDataDependencyNotation,
-                neoFormModule,
-                recompilableMinecraftWorkflowDataDependencyNotation,
-                neoForgeModDevLibrariesDependency,
+                dependencies,
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
@@ -125,12 +106,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 project,
                 Branding.MDG,
                 artifacts,
-                modulePathDependency,
-                runTypesDataDependency,
-                testFixturesDependency,
-                neoForgeModDevLibrariesDependency,
-                extension.getRuns(),
-                versionCapabilities
+                extension.getRuns()
         );
     }
 }

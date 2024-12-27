@@ -41,6 +41,8 @@ import java.util.function.Function;
 @ApiStatus.Internal
 public record ModDevArtifactsWorkflow(
         Project project,
+        ModdingDependencies dependencies,
+        VersionCapabilities versionCapabilities,
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
@@ -63,11 +65,7 @@ public record ModDevArtifactsWorkflow(
                                                  Collection<SourceSet> enabledSourceSets,
                                                  Branding branding,
                                                  ModDevExtension extension,
-                                                 ModuleDependency moddingPlatformDependency,
-                                                 String moddingPlatformDataDependencyNotation,
-                                                 ModuleDependency recompilableMinecraftWorkflowDependency,
-                                                 String recompilableMinecraftWorkflowDataDependencyNotation,
-                                                 ModuleDependency gameLibrariesDependency,
+                                                 ModdingDependencies moddingDependencies,
                                                  ArtifactNamingStrategy artifactNamingStrategy,
                                                  Configuration accessTransformers,
                                                  Configuration interfaceInjectionData,
@@ -85,8 +83,8 @@ public record ModDevArtifactsWorkflow(
 
         var createManifestConfigurations = configureArtifactManifestConfigurations(
                 project,
-                moddingPlatformDependency,
-                recompilableMinecraftWorkflowDependency
+                moddingDependencies.neoForgeDependency(),
+                moddingDependencies.neoFormDependency()
         );
 
         var dependencyFactory = project.getDependencyFactory();
@@ -145,8 +143,8 @@ public record ModDevArtifactsWorkflow(
             task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
             task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
 
-            task.getNeoForgeArtifact().set(moddingPlatformDataDependencyNotation);
-            task.getNeoFormArtifact().set(recompilableMinecraftWorkflowDataDependencyNotation);
+            task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
+            task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
             task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
         });
         ideIntegration.runTaskOnProjectSync(createArtifacts);
@@ -161,8 +159,8 @@ public record ModDevArtifactsWorkflow(
                 task.addArtifactsToManifest(configuration);
             }
             task.getAssetPropertiesFile().set(modDevBuildDir.map(dir -> dir.file("minecraft_assets.properties")));
-            task.getNeoForgeArtifact().set(moddingPlatformDataDependencyNotation);
-            task.getNeoFormArtifact().set(recompilableMinecraftWorkflowDataDependencyNotation);
+            task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
+            task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
         });
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
@@ -185,7 +183,7 @@ public record ModDevArtifactsWorkflow(
             config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
-            config.getDependencies().add(gameLibrariesDependency);
+            config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         // Configuration in which we place the required dependencies to develop mods for use in the compile-classpath.
@@ -195,7 +193,7 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
-            config.getDependencies().add(gameLibrariesDependency);
+            config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
@@ -210,6 +208,8 @@ public record ModDevArtifactsWorkflow(
 
         var result = new ModDevArtifactsWorkflow(
                 project,
+                moddingDependencies,
+                versionCapabilities,
                 createArtifacts,
                 downloadAssets,
                 runtimeDependencies,

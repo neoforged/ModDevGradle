@@ -4,6 +4,7 @@ import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.DataFileCollections;
+import net.neoforged.moddevgradle.internal.ModdingDependencies;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
@@ -118,13 +119,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var neoForgeVersion = settings.getNeoForgeVersion();
         var mcpVersion = settings.getMcpVersion();
 
-        ModuleDependency platformModule = null;
-        ModuleDependency recompilableMinecraftWorkflowDependency = null;
-        String recompilableMinecraftDataDependencyNotation = null;
-        ModuleDependency modulePathDependency = null;
-        ModuleDependency runTypesDataDependency = null;
-        ModuleDependency librariesDependency;
-        String moddingPlatformDataDependencyNotation = null;
+        ModuleDependency neoForge = null;
+        ModuleDependency neoForm = null;
+        String neoFormNotation = null;
+        String neoForgeNotation = null;
         ArtifactNamingStrategy artifactNamingStrategy;
         VersionCapabilities versionCapabilities;
         if (forgeVersion != null || neoForgeVersion != null) {
@@ -135,16 +133,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
 
-            platformModule = depFactory.create(groupId + ":forge:" + forgeVersion);
-            moddingPlatformDataDependencyNotation = groupId + ":forge:" + forgeVersion + ":userdev";
-            runTypesDataDependency = platformModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
-            modulePathDependency = platformModule.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
-                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            librariesDependency = platformModule.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
+            neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
+            neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
 
             var artifactPrefix = "forge-" + forgeVersion;
             // We have to ensure that client resources are named "client-extra" and *do not* contain forge-<version>
@@ -159,10 +149,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
             versionCapabilities = VersionCapabilities.ofForgeVersion(forgeVersion);
         } else if (mcpVersion != null) {
-            recompilableMinecraftDataDependencyNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
-            recompilableMinecraftWorkflowDependency = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
-            librariesDependency = recompilableMinecraftWorkflowDependency.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
+            neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
+            neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
 
             versionCapabilities = VersionCapabilities.ofMinecraftVersion(mcpVersion);
@@ -172,16 +160,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         var configurations = project.getConfigurations();
 
+        var dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities);
+
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
                 settings.getEnabledSourceSets(),
                 Branding.MDG,
                 extension,
-                platformModule,
-                moddingPlatformDataDependencyNotation,
-                recompilableMinecraftWorkflowDependency,
-                recompilableMinecraftDataDependencyNotation,
-                librariesDependency,
+                dependencies,
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
@@ -192,12 +178,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 project,
                 Branding.MDG,
                 artifacts,
-                modulePathDependency,
-                runTypesDataDependency,
-                null /* no support for test fixtures */,
-                librariesDependency,
-                extension.getRuns(),
-                versionCapabilities
+                extension.getRuns()
         );
 
         // Configure the mixin and obfuscation extensions
