@@ -260,16 +260,6 @@ public class ModDevPlugin implements Plugin<Project> {
             minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
         }
 
-        var runs = project.provider(extension::getRuns);
-        var supplyDevLogin = runs.map(r -> r.stream().anyMatch(model -> model.getDevLogin().get()));
-
-        // Create a configuration to resolve DevLogin
-        var devLoginConfig = project.getConfigurations().create("devLoginConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLogin into the runtime classpath of modding source sets");
-            // The dependency is added lazily to avoid adding it if no runs request it
-            spec.getDependencies().addAllLater(supplyDevLogin.map(supply -> supply ? List.of(dependencyFactory.create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
-        });
-
         configurations.create(CONFIGURATION_RUNTIME_DEPENDENCIES, config -> {
             config.setDescription("The runtime dependencies to develop a mod for NeoForge, including Minecraft classes.");
             config.setCanBeResolved(false);
@@ -280,8 +270,6 @@ public class ModDevPlugin implements Plugin<Project> {
             // Technically the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().addLater(neoForgeModDevLibrariesDependency);
-
-            config.extendsFrom(devLoginConfig);
         });
 
         configurations.create(CONFIGURATION_COMPILE_DEPENDENCIES, config -> {
@@ -523,10 +511,13 @@ public class ModDevPlugin implements Plugin<Project> {
     ) {
         var ideIntegration = IdeIntegration.of(project, branding);
 
-        // Create a configuration to resolve DevLaunch without leaking it to consumers
+        // Create a configuration to resolve DevLaunch and DevLogin without leaking them to consumers
+        var supplyDevLogin = project.provider(() -> runs.stream().anyMatch(model -> model.getDevLogin().get()));
         var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
-            spec.setDescription("This configuration is used to inject DevLaunch into the runtime classpaths of runs.");
+            spec.setDescription("This configuration is used to inject DevLaunch and optionally DevLogin into the runtime classpaths of runs.");
             spec.getDependencies().add(project.getDependencyFactory().create(RunUtils.DEV_LAUNCH_GAV));
+            spec.getDependencies().addAllLater(supplyDevLogin.map(
+                    supply -> supply ? List.of(project.getDependencyFactory().create(RunUtils.DEV_LOGIN_GAV)) : List.of()));
         });
 
         // Create an empty task similar to "assemble" which can be used to generate all launch scripts at once
