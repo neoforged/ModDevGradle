@@ -13,9 +13,9 @@ plugins {
     id 'net.neoforged.moddev.legacyforge' version '2.0.28-beta'
 }
 
-neoForge {
+legacyForge {
     // Develop against MinecraftForge version 47.3.0 for 1.20.1 (the versions can be found at https://files.minecraftforge.net/)
-    version = "1.20.1-47.3.0"
+    forgeVersion = "1.20.1-47.3.0"
     
     // Validate AT files and raise errors when they have invalid targets
     // This option is false by default, but turning it on is recommended
@@ -91,6 +91,18 @@ obfuscation {
 }
 ```
 
+## Vanilla Mode
+
+You can get dependencies for Vanilla Minecraft added to your project by using the `mcpVersion` property instead of
+setting the `forgeVersion` property.
+
+```groovy
+legacyForge {
+    // This adds Minecraft 1.20.1 as a dependency to the main source set.
+    mcpVersion = "1.20.1"
+}
+```
+
 ## Mixins
 
 You need to create so-called "refmaps" for Mixin, which convert the names you used to declare injection points and reference other parts of Minecraft code to the names used at runtime (SRG).
@@ -126,10 +138,10 @@ jar {
 }
 ```
 
-## Effects of applying the legacy plugin
-When applied, the legacy plugin will change the base NeoForm and NeoForge artifact coordinates of the `neoForge` extension to
-`de.oceanlabs.mcp:mcp_config` and `net.minecraftforge:forge`.  
-It will also trigger the creation of various intermediary (SRG) to named (official) mapping files used by various parts of the toolchain, such as
-mod reobfuscation and runtime naming services.  
+## Effects of enabling legacy forge modding
+
+Enabling modding in the legacyForge extension triggers the creation of various intermediary (SRG) to named (official) mapping files used by various parts of the toolchain, such as
+mod reobfuscation and runtime naming services.
+
 Reobfuscation to the intermediary mappings will automatically be configured for the `jar` task, the non-obfuscated jar will have a `-dev` classifier
 and will not be published in favour of the reobfuscated variant.
