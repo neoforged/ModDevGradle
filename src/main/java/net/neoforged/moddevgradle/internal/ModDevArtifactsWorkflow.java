@@ -208,14 +208,6 @@ public record ModDevArtifactsWorkflow(
         return result;
     }
 
-    public void addToSourceSet(String name) {
-        var configurations = project.getConfigurations();
-        var sourceSets = ExtensionUtils.getSourceSets(project);
-        var sourceSet = sourceSets.getByName(name);
-        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
-        configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
-    }
-
     /**
      * Collects all dependencies needed by the NeoFormRuntime
      */
@@ -308,6 +300,14 @@ public record ModDevArtifactsWorkflow(
         result.add(runtimeClasspath);
 
         return result;
+    }
+
+    public void addToSourceSet(String name) {
+        var configurations = project.getConfigurations();
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        var sourceSet = sourceSets.getByName(name);
+        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
+        configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, String filename) {
