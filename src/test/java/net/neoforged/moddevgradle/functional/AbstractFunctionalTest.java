@@ -48,7 +48,11 @@ public abstract class AbstractFunctionalTest {
         writeFile(buildFile, interpolateTemplate(text, args));
     }
 
-    private static String interpolateTemplate(@Language("gradle") String text, Object[] args) {
+    void writeKotlinBuildScript(@Language("kotlin") String text, Object... args) throws IOException {
+        writeFile(buildFile, interpolateTemplate(text, args));
+    }
+
+    private static String interpolateTemplate(String text, Object[] args) {
         var m = Pattern.compile("\\{(\\d+|[A-Z_]+)}");
         var body = m.matcher(text).replaceAll(matchResult -> {
             Object arg;

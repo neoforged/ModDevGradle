@@ -12,8 +12,8 @@ java {
     }
 }
 
-neoForge {
-    neoFormVersion = '1.19.2'
+legacyForge {
+    mcpVersion = '1.19.2'
 }
 
 publishing {

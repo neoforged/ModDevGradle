@@ -11,16 +11,18 @@ import java.util.regex.Pattern;
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
  * @param javaVersion Which Java version Vanilla uses to compile and run.
  * @param splitDataRuns Whether Vanilla has separate main classes for generating client and server data.
+ * @param testFixtures If the NeoForge version for this Minecraft version supports test fixtures.
  */
-public record VersionCapabilities(int javaVersion, boolean splitDataRuns) implements Serializable {
+public record VersionCapabilities(int javaVersion, boolean splitDataRuns, boolean testFixtures) implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilities.class);
 
-    private static final VersionCapabilities LATEST = new VersionCapabilities(21, true);
+    private static final VersionCapabilities LATEST = new VersionCapabilities(21, true, true);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
 
     private static final int MC_24W45A_INDEX = getReferenceVersionIndex("24w45a");
     private static final int MC_24W14A_INDEX = getReferenceVersionIndex("24w14a");
+    private static final int MC_1_20_4_INDEX = getReferenceVersionIndex("1.20.4");
     private static final int MC_1_18_PRE2_INDEX = getReferenceVersionIndex("1.18-pre2");
     private static final int MC_21W19A_INDEX = getReferenceVersionIndex("21w19a");
 
@@ -41,8 +43,9 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns) implem
     public static VersionCapabilities ofVersionIndex(int versionIndex) {
         var javaVersion = getJavaVersion(versionIndex);
         var splitData = hasSplitDataEntrypoints(versionIndex);
+        var testFixtures = hasTestFixtures(versionIndex);
 
-        return new VersionCapabilities(javaVersion, splitData);
+        return new VersionCapabilities(javaVersion, splitData, testFixtures);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -59,6 +62,10 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns) implem
 
     static boolean hasSplitDataEntrypoints(int versionIndex) {
         return versionIndex <= MC_24W45A_INDEX;
+    }
+
+    static boolean hasTestFixtures(int versionIndex) {
+        return versionIndex <= MC_1_20_4_INDEX;
     }
 
     static int indexOfNeoForgeVersion(String version) {

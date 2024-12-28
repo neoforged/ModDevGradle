@@ -6,6 +6,11 @@ please refer to the changelog, which can be found on the [project page](https://
 The breaking changes in this major version should not affect most projects.
 Nonetheless, every single breaking change is documented here, along with a suggested fix.
 
+- Modding now needs to be enabled before dependencies are made available, and the NeoForge/NeoForm versions will
+  be fixed at the point in time when modding is enabled. Setting `neoForge.version` or `neoForge.neoFormVersion` will
+  enable modding when those properties are set. For more advanced use cases, the `neoForge.enable { ... }` block can
+  be used, i.e. to not enable modding for the `main` source set. You can only enable modding once for one version
+  of NeoForge/NeoForm per project.
 - Changes to access transformer and interface injection data publishing.
   - `accessTransformers.publish` and `interfaceInjectionData.publish` syntax was changed.
   - `accessTransformers.published` and `interfaceInjectionData.published` were removed.

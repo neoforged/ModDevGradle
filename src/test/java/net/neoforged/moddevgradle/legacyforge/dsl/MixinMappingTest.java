@@ -19,19 +19,23 @@ class MixinMappingTest {
         var project = ProjectBuilder.builder().build();
         project.getPlugins().apply(LegacyForgeModDevPlugin.class);
 
-        var obfuscation = ExtensionUtils.getExtension(project, "obfuscation", Obfuscation.class);
+        var obfuscation = ExtensionUtils.getExtension(project, LegacyForgeModDevPlugin.OBFUSCATION_EXTENSION, ObfuscationExtension.class);
         var sourceSets = ExtensionUtils.getSourceSets(project);
-        var mixinExtension = ExtensionUtils.getExtension(project, "mixin", MixinExtension.class);
+        var mixinExtension = ExtensionUtils.getExtension(project, LegacyForgeModDevPlugin.MIXIN_EXTENSION, MixinExtension.class);
         var mainSourceSet = sourceSets.getByName("main");
         mixinExtension.add(mainSourceSet, "testmod.refmap.json");
 
         var someJarTask = project.getTasks().register("someJar", Jar.class);
         var customRemapJarTask = obfuscation.reobfuscate(someJarTask, mainSourceSet).get();
-        var remapJarTask = (RemapJar) project.getTasks().getByName("reobfJar");
+
+        var remapJarTask = (RemapJar) project.getTasks().getByName("reobfSomeJar");
 
         // The main named->intermediary mappings for the game
-        var namedToIntermediary = project.getLayout().getBuildDirectory().file("moddev/namedToIntermediate.tsrg").get().getAsFile();
+        var namedToIntermediary = project.getLayout().getBuildDirectory().file("moddev/artifacts/namedToIntermediate.tsrg").get().getAsFile();
         var mixinApMappings = project.getLayout().getBuildDirectory().file("mixin/testmod.refmap.json.mappings.tsrg").get().getAsFile();
+
+        // Enable modding to actually wire up the tasks
+        ExtensionUtils.getExtension(project, LegacyForgeModDevPlugin.LEGACYFORGE_EXTENSION, LegacyForgeExtension.class).setVersion("1.20.1-47.11");
 
         // The mapping file produced by the Mixin AP should be added as an input to both Jar tasks.
         var otherMappings = customRemapJarTask.getRemapOperation().getMappings().getFiles();

@@ -11,9 +11,7 @@ import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
-import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.DefaultTaskExecutionRequest;
@@ -112,8 +110,8 @@ final class IntelliJIntegration extends IdeIntegration {
     }
 
     @Override
-    public void configureTesting(SetProperty<ModModel> loadedMods,
-                                 Property<ModModel> testedMod,
+    public void configureTesting(Provider<Set<ModModel>> loadedMods,
+                                 Provider<ModModel> testedMod,
                                  Provider<Directory> runArgsDir,
                                  File gameDirectory,
                                  Provider<RegularFile> programArgsFile,
@@ -141,7 +139,7 @@ final class IntelliJIntegration extends IdeIntegration {
             if (intelliJRunConfigurations != null) {
                 intelliJRunConfigurations.defaults(JUnit.class, jUnitDefaults -> {
                     // $MODULE_WORKING_DIR$ is documented here: https://www.jetbrains.com/help/idea/absolute-path-variables.html
-                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevPlugin.JUNIT_GAME_DIR);
+                    jUnitDefaults.setWorkingDirectory("$MODULE_WORKING_DIR$/" + ModDevRunWorkflow.JUNIT_GAME_DIR);
                     jUnitDefaults.setVmParameters(
                             // The FML JUnit plugin uses this system property to read a file containing the program arguments needed to launch
                             // NOTE: IntelliJ does not support $MODULE_WORKING_DIR$ in VM Arguments

@@ -29,6 +29,30 @@ public class KotlinScriptTest extends AbstractFunctionalTest {
                 .withArguments("tasks", "--all")
                 .build();
 
+        assertThat(result.getOutput()).doesNotContain("createMinecraftArtifacts");
+        assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
+    }
+
+    @Test
+    public void testApplyInEmptyProjectAndEnable() throws IOException {
+        writeFile(settingsFile, """
+                rootProject.name = "hello-world";
+                """);
+        writeKotlinBuildScript("""
+                plugins {
+                    id("net.neoforged.moddev")
+                }
+                neoForge {
+                    version = "{DEFAULT_NEOFORGE_VERSION}"
+                }
+                """);
+
+        BuildResult result = GradleRunner.create()
+                .withPluginClasspath()
+                .withProjectDir(testProjectDir)
+                .withArguments("tasks", "--all")
+                .build();
+
         assertThat(result.getOutput()).contains("createMinecraftArtifacts");
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
     }

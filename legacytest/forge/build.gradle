@@ -30,8 +30,8 @@ dependencies {
     modImplementation('curse.maven:applied-energistics-2-223794:5641282')
 }
 
-neoForge {
-    version = '1.20.1-47.3.0'
+legacyForge {
+    version = '1.20.1-47.3.12'
     runs {
         client {
             client()

@@ -1,6 +1,6 @@
 package net.neoforged.moddevgradle.dsl;
 
-import net.neoforged.moddevgradle.internal.ModDevPlugin;
+import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
@@ -22,7 +22,10 @@ public abstract class UnitTest {
      * Enables the integration.
      */
     public void enable() {
-        project.getPlugins().getPlugin(ModDevPlugin.class).setupTestTask();
+        ModDevRunWorkflow.get(project).configureTesting(
+                getTestedMod(),
+                getLoadedMods()
+        );
     }
 
     /**
