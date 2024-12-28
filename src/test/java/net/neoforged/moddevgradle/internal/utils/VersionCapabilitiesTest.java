@@ -40,17 +40,12 @@ public class VersionCapabilitiesTest {
             "21.4.8-beta,1.21.4",
             "21.4.10-beta-pr-1744-gh-1582,1.21.4",
             "21.4.10,1.21.4",
-            "26.1.10,",
+            "26.1.10,1.26.1",
+            "26.0.10,1.26",
     })
     public void testNeoForgeVersionParsing(String neoForgeVersion, String minecraftVersion) {
-        var idx = VersionCapabilities.indexOfNeoForgeVersion(neoForgeVersion);
-        String actual;
-        if (idx == -1) {
-            actual = null;
-        } else {
-            actual = MinecraftVersionList.VERSIONS.get(idx);
-        }
-        assertEquals(minecraftVersion, actual);
+        var caps = VersionCapabilities.ofNeoForgeVersion(neoForgeVersion);
+        assertEquals(minecraftVersion, caps.minecraftVersion());
     }
 
     @ParameterizedTest()
@@ -75,20 +70,21 @@ public class VersionCapabilitiesTest {
     @CsvSource({
             // This checks that a separator must follow the prefix match since this matches the 1.20.1 prefix, but
             // should not be recognized as such.
-            "1.20.12-20200101202020,",
-            "1.20.1-20200101202020,1.20.1",
+            "1.20.12-20241017.134216,1.20.12",
+            "29w31a,29w31a",
+            "29w31a-20230819.124900,29w31a",
+            "1.20.1-20241017.134216,1.20.1",
+            "1.20.12,1.20.12",
             "1.20.1,1.20.1",
             "1.20.1-rc1,1.20.1-rc1",
+            "1.99.1-20241017.134216,1.99.1",
+            "1.99.0-20241017.134216,1.99.0",
+            // Dynamic version
+            "1.99.0-+,1.99.0",
     })
     public void testNeoFormVersionParsing(String neoFormVersion, String minecraftVersion) {
-        var idx = VersionCapabilities.indexOfNeoFormVersion(neoFormVersion);
-        String actual;
-        if (idx == -1) {
-            actual = null;
-        } else {
-            actual = MinecraftVersionList.VERSIONS.get(idx);
-        }
-        assertEquals(minecraftVersion, actual);
+        var actual = VersionCapabilities.ofNeoFormVersion(neoFormVersion);
+        assertEquals(minecraftVersion, actual.minecraftVersion());
     }
 
     @ParameterizedTest()

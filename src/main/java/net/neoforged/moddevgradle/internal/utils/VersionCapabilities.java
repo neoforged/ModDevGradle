@@ -9,16 +9,21 @@ import java.util.regex.Pattern;
 
 /**
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
- * @param javaVersion Which Java version Vanilla uses to compile and run.
- * @param splitDataRuns Whether Vanilla has separate main classes for generating client and server data.
- * @param testFixtures If the NeoForge version for this Minecraft version supports test fixtures.
+ *
+ * @param minecraftVersion The Minecraft version.
+ * @param javaVersion      Which Java version Vanilla uses to compile and run.
+ * @param splitDataRuns    Whether Vanilla has separate main classes for generating client and server data.
+ * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
  */
-public record VersionCapabilities(int javaVersion, boolean splitDataRuns, boolean testFixtures) implements Serializable {
+public record VersionCapabilities(String minecraftVersion, int javaVersion, boolean splitDataRuns,
+                                  boolean testFixtures) implements net.neoforged.moddevgradle.dsl.VersionCapabilities, Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilities.class);
 
-    private static final VersionCapabilities LATEST = new VersionCapabilities(21, true, true);
+    private static final VersionCapabilities LATEST = new VersionCapabilities(MinecraftVersionList.VERSIONS.get(0), 21, true, true);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
+    // Strips NeoForm timestamp suffixes OR dynamic version markers
+    private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
 
     private static final int MC_24W45A_INDEX = getReferenceVersionIndex("24w45a");
     private static final int MC_24W14A_INDEX = getReferenceVersionIndex("24w14a");
@@ -34,18 +39,23 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns, boolea
         var versionIndex = MinecraftVersionList.VERSIONS.indexOf(minecraftVersion);
         if (versionIndex == -1) {
             LOG.info("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
-            return LATEST;
+            return LATEST.withMinecraftVersion(minecraftVersion);
         }
 
         return ofVersionIndex(versionIndex);
     }
 
     public static VersionCapabilities ofVersionIndex(int versionIndex) {
+        var minecraftVersion = MinecraftVersionList.VERSIONS.get(versionIndex);
+        return ofVersionIndex(versionIndex, minecraftVersion);
+    }
+
+    public static VersionCapabilities ofVersionIndex(int versionIndex, String minecraftVersion) {
         var javaVersion = getJavaVersion(versionIndex);
         var splitData = hasSplitDataEntrypoints(versionIndex);
         var testFixtures = hasTestFixtures(versionIndex);
 
-        return new VersionCapabilities(javaVersion, splitData, testFixtures);
+        return new VersionCapabilities(minecraftVersion, javaVersion, splitData, testFixtures);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -86,23 +96,38 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns, boolea
     public static VersionCapabilities ofNeoForgeVersion(String version) {
         var index = indexOfNeoForgeVersion(version);
         if (index == -1) {
-            LOG.warn("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version.", version);
-            return LATEST;
+            var capabilities = LATEST;
+            var m = NEOFORGE_PATTERN.matcher(version);
+            if (m.matches()) {
+                var minecraftVersion = "1." + m.group(1);
+                if (minecraftVersion.endsWith(".0")) {
+                    minecraftVersion = minecraftVersion.substring(0, minecraftVersion.length() - 2);
+                }
+                capabilities = capabilities.withMinecraftVersion(minecraftVersion);
+            }
+
+            LOG.warn("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
+            return capabilities;
         }
 
         return ofVersionIndex(index);
     }
 
-    static int indexOfNeoFormVersion(String version) {
-        // Examples: 1.21-<timestamp>
-        return MinecraftVersionList.indexOfByPrefix(version, "-");
-    }
-
     public static VersionCapabilities ofNeoFormVersion(String version) {
-        var index = indexOfNeoFormVersion(version);
+        // Examples: 1.21-<timestamp>
+        var index = MinecraftVersionList.indexOfByPrefix(version, "-");
+
         if (index == -1) {
-            LOG.warn("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version.", version);
-            return LATEST;
+            var capabilities = LATEST;
+            var m = NEOFORM_PATTERN.matcher(version);
+            if (m.matches()) {
+                capabilities = capabilities.withMinecraftVersion(m.group(1));
+            } else {
+                capabilities = capabilities.withMinecraftVersion(version);
+            }
+
+            LOG.warn("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
+            return capabilities;
         }
 
         return ofVersionIndex(index);
@@ -129,5 +154,14 @@ public record VersionCapabilities(int javaVersion, boolean splitDataRuns, boolea
             throw new IllegalArgumentException("Reference version " + v + " is not in version list!");
         }
         return idx;
+    }
+
+    public VersionCapabilities withMinecraftVersion(String minecraftVersion) {
+        return new VersionCapabilities(
+                minecraftVersion,
+                javaVersion,
+                splitDataRuns,
+                testFixtures
+        );
     }
 }

@@ -50,13 +50,12 @@ public record ModDevArtifactsWorkflow(
         Provider<Directory> modDevBuildDir,
         Provider<Directory> artifactsBuildDir
 ) {
-
     private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
 
     public static ModDevArtifactsWorkflow get(Project project) {
         var result = ExtensionUtils.findExtension(project, EXTENSION_NAME, ModDevArtifactsWorkflow.class);
         if (result == null) {
-            throw new IllegalStateException("Mod development has not been enabled yet for project " + project);
+            throw new InvalidUserCodeException("Mod development has not been enabled yet for project " + project);
         }
         return result;
     }
