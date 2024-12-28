@@ -19,29 +19,20 @@ public record ModdingDependencies(
 
     public static ModdingDependencies create(ModuleDependency neoForge,
                                              String neoForgeNotation,
-                                             ModuleDependency neoForm,
-                                             String neoFormNotation,
+                                             @Nullable ModuleDependency neoForm,
+                                             @Nullable String neoFormNotation,
                                              VersionCapabilities versionCapabilities) {
-
-        ModuleDependency modulePathDependency = null;
-        ModuleDependency runTypesDataDependency = null;
-        ModuleDependency librariesDependency;
-        if (neoForge != null) {
-            runTypesDataDependency = neoForge.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
-            modulePathDependency = neoForge.copy()
-                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
-                    // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
-                    .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-            librariesDependency = neoForge.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
-        } else {
-            librariesDependency = neoForm.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
-        }
+        var runTypesDataDependency = neoForge.copy()
+                .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
+        var modulePathDependency = neoForge.copy()
+                .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
+                // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
+                .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
+        var librariesDependency = neoForge.copy()
+                .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
 
         ModuleDependency testFixturesDependency = null;
-        if (neoForge != null && versionCapabilities.testFixtures()) {
+        if (versionCapabilities.testFixtures()) {
             testFixturesDependency = neoForge.copy()
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures"));
         }
@@ -55,6 +46,22 @@ public record ModdingDependencies(
                 modulePathDependency,
                 runTypesDataDependency,
                 testFixturesDependency
+        );
+    }
+
+    public static ModdingDependencies createVanillaOnly(ModuleDependency neoForm, String neoFormNotation) {
+        var librariesDependency = neoForm.copy()
+                .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies"));
+
+        return new ModdingDependencies(
+                null,
+                null,
+                neoForm,
+                neoFormNotation,
+                librariesDependency,
+                null,
+                null,
+                null
         );
     }
 }

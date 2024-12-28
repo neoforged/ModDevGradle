@@ -15,8 +15,6 @@ import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-
 /**
  * The main plugin class.
  */
@@ -88,7 +86,8 @@ public class ModDevPlugin implements Plugin<Project> {
         var versionCapabilities = neoForgeVersion != null ? VersionCapabilities.ofNeoForgeVersion(neoForgeVersion)
                 : VersionCapabilities.ofNeoFormVersion(neoFormVersion);
 
-        var dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities);
+        var dependencies = neoForge != null ? ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities)
+                : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
 
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,

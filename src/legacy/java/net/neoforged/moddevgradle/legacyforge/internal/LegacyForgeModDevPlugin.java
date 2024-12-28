@@ -21,7 +21,6 @@ import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.plugins.JavaLibraryPlugin;
@@ -119,10 +118,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var neoForgeVersion = settings.getNeoForgeVersion();
         var mcpVersion = settings.getMcpVersion();
 
-        ModuleDependency neoForge = null;
-        ModuleDependency neoForm = null;
-        String neoFormNotation = null;
-        String neoForgeNotation = null;
+        ModdingDependencies dependencies;
         ArtifactNamingStrategy artifactNamingStrategy;
         VersionCapabilities versionCapabilities;
         if (forgeVersion != null || neoForgeVersion != null) {
@@ -130,11 +126,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             if (forgeVersion != null && neoForgeVersion != null || mcpVersion != null) {
                 throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
             }
-
-            String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
-
-            neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
-            neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
 
             var artifactPrefix = "forge-" + forgeVersion;
             // We have to ensure that client resources are named "client-extra" and *do not* contain forge-<version>
@@ -148,19 +139,23 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             };
 
             versionCapabilities = VersionCapabilities.ofForgeVersion(forgeVersion);
-        } else if (mcpVersion != null) {
-            neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
-            neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
 
+            String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
+            var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
+            var neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
+            dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
+        } else if (mcpVersion != null) {
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
             versionCapabilities = VersionCapabilities.ofMinecraftVersion(mcpVersion);
+
+            var neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
+            var neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
+            dependencies = ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
         } else {
             throw new InvalidUserCodeException("You must specify a Forge, NeoForge or MCP version");
         }
 
         var configurations = project.getConfigurations();
-
-        var dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities);
 
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
