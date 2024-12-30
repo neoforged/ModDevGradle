@@ -15,7 +15,7 @@ plugins {
 
 legacyForge {
     // Develop against MinecraftForge version 47.3.0 for 1.20.1 (the versions can be found at https://files.minecraftforge.net/)
-    forgeVersion = "1.20.1-47.3.0"
+    version = "1.20.1-47.3.0"
     
     // Validate AT files and raise errors when they have invalid targets
     // This option is false by default, but turning it on is recommended
@@ -94,7 +94,7 @@ obfuscation {
 ## Vanilla Mode
 
 You can get dependencies for Vanilla Minecraft added to your project by using the `mcpVersion` property instead of
-setting the `forgeVersion` property.
+setting the `version` property.
 
 ```groovy
 legacyForge {
