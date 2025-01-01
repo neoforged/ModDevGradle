@@ -78,9 +78,9 @@ public class ModDevPlugin implements Plugin<Project> {
         ArtifactNamingStrategy artifactNamingStrategy;
         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
         if (neoForge != null) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "neoforge", neoForgeVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "neoforge", neoForgeVersion);
         } else {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "vanilla", neoFormVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(neoFormVersion);
         }
 
         var configurations = project.getConfigurations();

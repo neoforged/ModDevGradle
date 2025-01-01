@@ -6,7 +6,13 @@ import org.jetbrains.annotations.ApiStatus;
 @FunctionalInterface
 @ApiStatus.Internal
 public interface ArtifactNamingStrategy {
-    static ArtifactNamingStrategy createDefault(VersionCapabilitiesInternal versionCapabilities, String loader, String version) {
+    static ArtifactNamingStrategy createVanilla(String version) {
+        return (artifact) -> {
+            return "vanilla-%s%s.jar".formatted(version, artifact.defaultSuffix);
+        };
+    }
+
+    static ArtifactNamingStrategy createNeoForge(VersionCapabilitiesInternal versionCapabilities, String loader, String version) {
         return (artifact) -> {
             if (artifact != WorkflowArtifact.CLIENT_RESOURCES || versionCapabilities.modLocatorRework()) {
                 return "%s-%s%s.jar".formatted(loader, version, artifact.defaultSuffix);

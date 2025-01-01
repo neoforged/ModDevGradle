@@ -20,7 +20,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                                           boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
 
-    private static final VersionCapabilities LATEST = ofVersionIndex(0);
+    private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
     // Strips NeoForm timestamp suffixes OR dynamic version markers
@@ -168,7 +168,8 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 minecraftVersion,
                 javaVersion,
                 splitDataRuns,
-                testFixtures
+                testFixtures,
+                modLocatorRework
         );
     }
 }

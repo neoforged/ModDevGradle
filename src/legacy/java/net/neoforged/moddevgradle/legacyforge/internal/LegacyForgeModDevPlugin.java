@@ -123,7 +123,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             }
 
             versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "forge", forgeVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", forgeVersion);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
             var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
@@ -131,7 +131,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
             versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "vanilla", mcpVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(mcpVersion);
 
             var neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             var neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
