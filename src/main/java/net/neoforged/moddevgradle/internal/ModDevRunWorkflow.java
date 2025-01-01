@@ -5,7 +5,7 @@ import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.DomainObjectCollection;
@@ -77,7 +77,7 @@ public class ModDevRunWorkflow {
                               @Nullable ModuleDependency testFixturesDependency,
                               ModuleDependency gameLibrariesDependency,
                               DomainObjectCollection<RunModel> runs,
-                              VersionCapabilities versionCapabilities) {
+                              VersionCapabilitiesInternal versionCapabilities) {
         this.project = project;
         this.branding = branding;
         this.modulePathDependency = modulePathDependency;
@@ -220,7 +220,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath,
             Provider<RegularFile> assetPropertiesFile,
-            VersionCapabilities versionCapabilities
+            VersionCapabilitiesInternal versionCapabilities
     ) {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -276,7 +276,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
-            VersionCapabilities versionCapabilities,
+            VersionCapabilitiesInternal versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();

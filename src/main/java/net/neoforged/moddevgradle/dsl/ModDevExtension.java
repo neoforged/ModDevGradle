@@ -3,9 +3,8 @@ package net.neoforged.moddevgradle.dsl;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.IdeIntegration;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
-import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
-import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -157,5 +156,31 @@ public abstract class ModDevExtension {
      */
     public void addModdingDependenciesTo(SourceSet sourceSet) {
         ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet);
+    }
+
+    /**
+     * After enabling modding, you can retrieve the version of the modding platform you picked using this getter.
+     * I.e. the NeoForge or Forge version. If you chose to enable vanilla-only mode, this getter returns null.
+     */
+    public String getVersion() {
+        var dependencies = ModDevArtifactsWorkflow.get(project).dependencies();
+        if (dependencies.neoForgeDependency() == null) {
+            throw new InvalidUserCodeException("You cannot retrieve the enabled version if you are in vanilla-only mode.");
+        }
+        return dependencies.neoForgeDependency().getVersion();
+    }
+
+    /**
+     * After enabling modding, you can retrieve the effective Minecraft version using this getter.
+     */
+    public String getMinecraftVersion() {
+        return ModDevArtifactsWorkflow.get(project).versionCapabilities().minecraftVersion();
+    }
+
+    /**
+     * After enabling modding, you can retrieve the capabilities of the version you picked using this getter.
+     */
+    public VersionCapabilities getVersionCapabilities() {
+        return ModDevArtifactsWorkflow.get(project).versionCapabilities();
     }
 }

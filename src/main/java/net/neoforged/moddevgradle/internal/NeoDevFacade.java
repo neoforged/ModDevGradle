@@ -2,7 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -44,7 +44,7 @@ public final class NeoDevFacade {
                 configureAdditionalClasspath,
                 assetPropertiesFile,
                 // This overload of the method was only used by NeoForge 1.21.3
-                VersionCapabilities.ofMinecraftVersion("1.21.3")
+                VersionCapabilitiesInternal.ofMinecraftVersion("1.21.3")
         );
     }
 
@@ -66,7 +66,7 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                neoFormVersion.map(VersionCapabilities::ofNeoFormVersion).getOrElse(VersionCapabilities.latest())
+                neoFormVersion.map(VersionCapabilitiesInternal::ofNeoFormVersion).getOrElse(VersionCapabilitiesInternal.latest())
         );
     }
 

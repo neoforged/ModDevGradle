@@ -3,18 +3,20 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.AbstractProjectBuilderTest;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.InvalidUserCodeException;
-import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.testfixtures.ProjectBuilder;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ModDevPluginTest extends AbstractProjectBuilderTest {
@@ -39,32 +41,15 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
 
     @Test
     void testModdingCannotBeEnabledTwice() {
-        extension.setVersion("1.2.3");
-        var e = assertThrows(InvalidUserCodeException.class, () -> extension.setVersion("1.2.3"));
+        extension.setVersion("2.3.0");
+        var e = assertThrows(InvalidUserCodeException.class, () -> extension.setVersion("2.3.0"));
         assertThat(e).hasMessage("You cannot enable modding in the same project twice.");
-    }
-
-    @Test
-    void testEnableVanillaOnlyMode() {
-        extension.setNeoFormVersion("1.2.3");
-
-        assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
-                .containsOnly(
-                        "build/moddev/artifacts/vanilla-1.2.3.jar",
-                        "net.neoforged:neoform:1.2.3[net.neoforged:neoform-dependencies]"
-                );
-        assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName())
-                .containsOnly(
-                        "build/moddev/artifacts/vanilla-1.2.3.jar",
-                        "build/moddev/artifacts/vanilla-1.2.3-client-extra-aka-minecraft-resources.jar",
-                        "net.neoforged:neoform:1.2.3[net.neoforged:neoform-dependencies]"
-                );
     }
 
     @Test
     void testEnableForTestSourceSetOnly() {
         extension.enable(settings -> {
-            settings.setVersion("1.2.3");
+            settings.setVersion("2.3.0");
             settings.setEnabledSourceSets(Set.of(testSourceSet));
         });
 
@@ -73,25 +58,117 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
 
         // While the test classpath should have modding dependencies
-        assertContainsModdingCompileDependencies("1.2.3", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("2.3.0", testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("2.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
     }
 
     @Test
     void testAddModdingDependenciesTo() {
-        extension.setVersion("1.2.3");
+        extension.setVersion("2.3.0");
 
         // Initially, only the main source set should have the dependencies
-        assertContainsModdingCompileDependencies("1.2.3", mainSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", mainSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("2.3.0", mainSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("2.3.0", mainSourceSet.getRuntimeClasspathConfigurationName());
         assertThatDependencies(testSourceSet.getCompileClasspathConfigurationName()).isEmpty();
         assertThatDependencies(testSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
 
         // Now add it to the test source set too
         extension.addModdingDependenciesTo(testSourceSet);
 
-        assertContainsModdingCompileDependencies("1.2.3", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("2.3.0", testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("2.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
+    }
+
+    @Test
+    void testGetVersion() {
+        extension.setVersion("2.3.0");
+        assertEquals("2.3.0", extension.getVersion());
+    }
+
+    @Test
+    void testGetVersionCapabilities() {
+        extension.setVersion("2.3.0");
+        assertEquals(VersionCapabilitiesInternal.ofMinecraftVersion("1.2.3"), extension.getVersionCapabilities());
+        assertEquals("1.2.3", extension.getMinecraftVersion());
+    }
+
+    @Test
+    void testGetMinecraftVersion() {
+        extension.setVersion("2.3.0-suffixstuff");
+        assertEquals("1.2.3", extension.getMinecraftVersion());
+    }
+
+    @Nested
+    class VanillaOnlyMode {
+        final static String VERSION = "1.21.4-20240101.235959";
+
+        @Test
+        void testEnable() {
+            extension.setNeoFormVersion(VERSION);
+
+            assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
+                    .containsOnly(
+                            "build/moddev/artifacts/vanilla-" + VERSION + ".jar",
+                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]"
+                    );
+            assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName())
+                    .containsOnly(
+                            "build/moddev/artifacts/vanilla-" + VERSION + ".jar",
+                            "build/moddev/artifacts/vanilla-" + VERSION + "-client-extra-aka-minecraft-resources.jar",
+                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]"
+                    );
+        }
+
+        @Test
+        void testGetVersion() {
+            extension.setNeoFormVersion(VERSION);
+            assertEquals(VersionCapabilitiesInternal.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
+        }
+
+        @Test
+        void testGetMinecraftVersion() {
+            extension.setNeoFormVersion(VERSION);
+            assertEquals("1.21.4", extension.getMinecraftVersion());
+        }
+
+        @Test
+        void testGetVersionCapabilities() {
+            extension.setNeoFormVersion(VERSION);
+            assertEquals(VersionCapabilitiesInternal.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
+        }
+
+        @Test
+        void testGetVersionCapabilitiesForUnknownVersion() {
+            extension.setNeoFormVersion("1.99.1-20990101.235959");
+            // Should use latest features, but with the specified Minecraft version
+            assertEquals(
+                    VersionCapabilitiesInternal.latest().withMinecraftVersion("1.99.1"),
+                    extension.getVersionCapabilities()
+            );
+        }
+    }
+
+    @Nested
+    class CannotCallWhenModdingIsNotEnabled {
+        static String expectedMessage = "Mod development has not been enabled yet for project root project 'test'";
+
+        @Test
+        void testGettingMinecraftVersionThrows() {
+            var e = assertThrows(InvalidUserCodeException.class, extension::getVersionCapabilities);
+            assertThat(e).hasMessage(expectedMessage);
+        }
+
+        @Test
+        void testGettingVersionCapabilitiesThrows() {
+            var e = assertThrows(InvalidUserCodeException.class, extension::getVersion);
+            assertThat(e).hasMessage(expectedMessage);
+        }
+
+        @Test
+        void testAddModdingDependenciesToThrows() {
+            var e = assertThrows(InvalidUserCodeException.class, () -> extension.addModdingDependenciesTo(mainSourceSet));
+            assertThat(e).hasMessage(expectedMessage);
+        }
     }
 
     private void assertContainsModdingCompileDependencies(String version, String configurationName) {

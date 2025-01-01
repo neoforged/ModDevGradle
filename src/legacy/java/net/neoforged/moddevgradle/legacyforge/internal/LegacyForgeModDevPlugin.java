@@ -12,7 +12,7 @@ import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import net.neoforged.moddevgradle.internal.WorkflowArtifact;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
@@ -118,7 +118,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         ModdingDependencies dependencies;
         ArtifactNamingStrategy artifactNamingStrategy;
-        VersionCapabilities versionCapabilities;
+        VersionCapabilitiesInternal versionCapabilities;
         if (forgeVersion != null || neoForgeVersion != null) {
             // All settings are mutually exclusive
             if (forgeVersion != null && neoForgeVersion != null || mcpVersion != null) {
@@ -136,7 +136,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 }
             };
 
-            versionCapabilities = VersionCapabilities.ofForgeVersion(forgeVersion);
+            versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
             var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
@@ -144,7 +144,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
             artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
-            versionCapabilities = VersionCapabilities.ofMinecraftVersion(mcpVersion);
+            versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
 
             var neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             var neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
