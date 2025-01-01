@@ -105,6 +105,11 @@ public class ModDevRunWorkflow {
 
             spec.getDependencies().add(gameLibrariesDependency);
             addClientResources(project, spec, artifactsWorkflow.createArtifacts());
+            if (!versionCapabilities.modLocatorRework()) {
+                // Forge expects to find the Forge and client-extra jar on the legacy classpath
+                // Newer FML versions also search for it on the java.class.path.
+                spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependency());
+            }
         });
 
         setupRuns(
@@ -242,6 +247,11 @@ public class ModDevRunWorkflow {
 
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         runs.all(run -> {
+            if (!versionCapabilities.modLocatorRework()) {
+                // TODO: do this properly now that we have a flag in the version capabilities
+                // This will explicitly be replaced in RunUtils to make this work for IDEs
+                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null).getClassesArgument());
+            }
             var prepareRunTask = setupRunInGradle(
                     project,
                     branding,

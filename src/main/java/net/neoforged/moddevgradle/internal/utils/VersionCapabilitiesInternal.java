@@ -17,16 +17,17 @@ import java.util.regex.Pattern;
  * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
  */
 public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
-                                          boolean testFixtures) implements VersionCapabilities, Serializable {
+                                          boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
 
-    private static final VersionCapabilitiesInternal LATEST = new VersionCapabilitiesInternal(MinecraftVersionList.VERSIONS.get(0), 21, true, true);
+    private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
     // Strips NeoForm timestamp suffixes OR dynamic version markers
     private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
 
     private static final int MC_24W45A_INDEX = getReferenceVersionIndex("24w45a");
+    private static final int MC_1_20_5_INDEX = getReferenceVersionIndex("1.20.5");
     private static final int MC_24W14A_INDEX = getReferenceVersionIndex("24w14a");
     private static final int MC_1_20_4_INDEX = getReferenceVersionIndex("1.20.4");
     private static final int MC_1_18_PRE2_INDEX = getReferenceVersionIndex("1.18-pre2");
@@ -55,8 +56,9 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         var javaVersion = getJavaVersion(versionIndex);
         var splitData = hasSplitDataEntrypoints(versionIndex);
         var testFixtures = hasTestFixtures(versionIndex);
+        var modLocatorRework = hasModLocatorRework(versionIndex);
 
-        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures);
+        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures, modLocatorRework);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -77,6 +79,10 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
 
     static boolean hasTestFixtures(int versionIndex) {
         return versionIndex <= MC_1_20_4_INDEX;
+    }
+
+    static boolean hasModLocatorRework(int versionIndex) {
+        return versionIndex <= MC_1_20_5_INDEX;
     }
 
     static int indexOfNeoForgeVersion(String version) {
@@ -162,7 +168,8 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 minecraftVersion,
                 javaVersion,
                 splitDataRuns,
-                testFixtures
+                testFixtures,
+                modLocatorRework
         );
     }
 }

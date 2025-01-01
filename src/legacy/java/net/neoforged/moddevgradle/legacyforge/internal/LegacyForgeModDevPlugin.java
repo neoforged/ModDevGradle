@@ -6,11 +6,9 @@ import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.DataFileCollections;
 import net.neoforged.moddevgradle.internal.ModdingDependencies;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
-import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
-import net.neoforged.moddevgradle.internal.WorkflowArtifact;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
@@ -33,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.util.Map;
 import java.util.stream.Stream;
 
 @ApiStatus.Internal
@@ -125,26 +122,16 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
             }
 
-            var artifactPrefix = "forge-" + forgeVersion;
-            // We have to ensure that client resources are named "client-extra" and *do not* contain forge-<version>
-            // otherwise FML might pick up the client resources as the main Minecraft jar.
-            artifactNamingStrategy = (artifact) -> {
-                if (artifact == WorkflowArtifact.CLIENT_RESOURCES) {
-                    return "client-extra-" + forgeVersion + ".jar";
-                } else {
-                    return artifactPrefix + artifact.defaultSuffix + ".jar";
-                }
-            };
-
             versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", forgeVersion);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
             var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
             var neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
             versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(mcpVersion);
 
             var neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             var neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";
@@ -186,7 +173,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         obf.getSrgToNamedMappings().set(mappingsCsv);
 
         extension.getRuns().configureEach(run -> {
-            LegacyForgeFacade.configureRun(project, run);
+            // Old BSL versions before 2022 (i.e. on 1.18.2) did not export any packages, causing DevLaunch to be unable to access the main method
+            run.getJvmArguments().addAll("--add-exports", "cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED");
 
             // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
             run.getSystemProperties().put("mixin.env.remapRefMap", "true");
@@ -205,13 +193,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         // Forge expects the mapping csv files on the root classpath
         artifacts.runtimeDependencies()
                 .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
-
-        // Forge expects to find the Forge and client-extra jar on the legacy classpath
-        // Newer FML versions also search for it on the java.class.path.
-        // MDG already adds cilent-extra, but the forge jar is missing.
-        runs.getAdditionalClasspath()
-                .extendsFrom(artifacts.runtimeDependencies())
-                .exclude(Map.of("group", "net.neoforged", "module", "DevLaunch"));
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
             spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");

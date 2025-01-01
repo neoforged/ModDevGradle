@@ -49,7 +49,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
     @Test
     void testEnableForTestSourceSetOnly() {
         extension.enable(settings -> {
-            settings.setVersion("2.3.0");
+            settings.setVersion("100.3.0"); // Needs to be at least 20.5 to use paths for newer FML
             settings.setEnabledSourceSets(Set.of(testSourceSet));
         });
 
@@ -58,25 +58,25 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
 
         // While the test classpath should have modding dependencies
-        assertContainsModdingCompileDependencies("2.3.0", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("2.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("100.3.0", testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("100.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
     }
 
     @Test
     void testAddModdingDependenciesTo() {
-        extension.setVersion("2.3.0");
+        extension.setVersion("100.3.0"); // Needs to be at least 20.5 to use paths for newer FML
 
         // Initially, only the main source set should have the dependencies
-        assertContainsModdingCompileDependencies("2.3.0", mainSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("2.3.0", mainSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("100.3.0", mainSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("100.3.0", mainSourceSet.getRuntimeClasspathConfigurationName());
         assertThatDependencies(testSourceSet.getCompileClasspathConfigurationName()).isEmpty();
         assertThatDependencies(testSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
 
         // Now add it to the test source set too
         extension.addModdingDependenciesTo(testSourceSet);
 
-        assertContainsModdingCompileDependencies("2.3.0", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("2.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies("100.3.0", testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies("100.3.0", testSourceSet.getRuntimeClasspathConfigurationName());
     }
 
     @Test
