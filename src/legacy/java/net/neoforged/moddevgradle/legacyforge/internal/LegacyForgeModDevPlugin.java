@@ -10,7 +10,6 @@ import net.neoforged.moddevgradle.internal.LegacyForgeFacade;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
-import net.neoforged.moddevgradle.internal.WorkflowArtifact;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
@@ -125,26 +124,16 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
             }
 
-            var artifactPrefix = "forge-" + forgeVersion;
-            // We have to ensure that client resources are named "client-extra" and *do not* contain forge-<version>
-            // otherwise FML might pick up the client resources as the main Minecraft jar.
-            artifactNamingStrategy = (artifact) -> {
-                if (artifact == WorkflowArtifact.CLIENT_RESOURCES) {
-                    return "client-extra-" + forgeVersion + ".jar";
-                } else {
-                    return artifactPrefix + artifact.defaultSuffix + ".jar";
-                }
-            };
-
             versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "forge", forgeVersion);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
             var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
             var neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + mcpVersion);
             versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "vanilla", mcpVersion);
 
             var neoForm = depFactory.create("de.oceanlabs.mcp:mcp_config:" + mcpVersion);
             var neoFormNotation = "de.oceanlabs.mcp:mcp_config:" + mcpVersion + "@zip";

@@ -72,19 +72,19 @@ public class ModDevPlugin implements Plugin<Project> {
             neoFormNotation = "net.neoforged:neoform:" + neoFormVersion + "@zip";
         }
 
-        // When a NeoForge version is specified, we use the dependencies published by that, and otherwise
-        // we fall back to a potentially specified NeoForm version, which allows us to run in "Vanilla" mode.
+        var versionCapabilities = neoForgeVersion != null ? VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion)
+                : VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion);
+
         ArtifactNamingStrategy artifactNamingStrategy;
+        // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
         if (neoForge != null) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("neoforge-" + neoForgeVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "neoforge", neoForgeVersion);
         } else {
-            artifactNamingStrategy = ArtifactNamingStrategy.createDefault("vanilla-" + neoFormVersion);
+            artifactNamingStrategy = ArtifactNamingStrategy.createDefault(versionCapabilities, "vanilla", neoFormVersion);
         }
 
         var configurations = project.getConfigurations();
 
-        var versionCapabilities = neoForgeVersion != null ? VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion)
-                : VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion);
 
         var dependencies = neoForge != null ? ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities)
                 : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
