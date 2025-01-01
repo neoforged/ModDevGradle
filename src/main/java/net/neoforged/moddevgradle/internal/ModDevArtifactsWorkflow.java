@@ -11,13 +11,13 @@ import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.DocsType;
 import org.gradle.api.attributes.Usage;
-import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -44,6 +44,7 @@ public record ModDevArtifactsWorkflow(
         ModdingDependencies dependencies,
         VersionCapabilitiesInternal versionCapabilities,
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
+        Provider<? extends Dependency> minecraftClassesDependency,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
@@ -164,11 +165,11 @@ public record ModDevArtifactsWorkflow(
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
-        Provider<ConfigurableFileCollection> minecraftClassesArtifact;
+        Provider<? extends Dependency> minecraftClassesDependency;
         if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact()));
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
         } else {
-            minecraftClassesArtifact = createArtifacts.map(task -> project.files(task.getCompiledArtifact()));
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
         }
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
@@ -178,7 +179,7 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
 
-            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(minecraftClassesDependency);
             config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
@@ -191,7 +192,7 @@ public record ModDevArtifactsWorkflow(
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.getDependencies().addLater(minecraftClassesArtifact.map(dependencyFactory::create));
+            config.getDependencies().addLater(minecraftClassesDependency);
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
@@ -210,6 +211,7 @@ public record ModDevArtifactsWorkflow(
                 moddingDependencies,
                 versionCapabilities,
                 createArtifacts,
+                minecraftClassesDependency,
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,
