@@ -21,7 +21,7 @@ jobs:
     uses: neoforged/actions/.github/workflows/build-prs.yml@main
     with:
       java: 17
-      gradle_tasks: test
+      gradle_tasks: check
       jar_compatibility: false
 
   test-project:
