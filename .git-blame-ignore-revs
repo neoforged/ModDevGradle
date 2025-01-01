@@ -1,0 +1,6 @@
+
+# Use via git config --local --add blame.ignoreRevsFile .git-blame-ignore-revs
+# Github should automatically adhere to this.
+
+# Applying Immaculate / NeoForge formatting
+ebf5b8cf432903f85c37a561ef0fe168fd81b392

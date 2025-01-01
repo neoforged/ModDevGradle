@@ -16,7 +16,7 @@ jobs:
     uses: neoforged/actions/.github/workflows/gradle-publish.yml@main
     with:
       java: 17
-      pre_gradle_tasks: test
+      pre_gradle_tasks: check
       gradle_tasks: 'publish publishPlugins'
       version_labels: -beta, -stable
     secrets:
