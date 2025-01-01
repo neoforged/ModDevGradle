@@ -1,5 +1,10 @@
 package net.neoforged.nfrtgradle;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -14,12 +19,6 @@ import org.gradle.api.tasks.OutputFiles;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * The primary task for creating the Minecraft artifacts that mods will be compiled against,

@@ -1,5 +1,8 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.util.Map;
+import java.util.Set;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -12,10 +15,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Implementing classes are responsible for registering {@code ideSyncTask} with their IDE.
@@ -70,8 +69,7 @@ public sealed abstract class IdeIntegration permits IntelliJIntegration, Eclipse
      *                              Locations are usually JAR files but may be folders.
      * @see #shouldUseCombinedSourcesAndClassesArtifact() This method will not work if the IDE doesn't support attaching sources.
      */
-    void attachSources(Map<Provider<RegularFile>, Provider<RegularFile>> jarToSourceJarMapping) {
-    }
+    void attachSources(Map<Provider<RegularFile>, Provider<RegularFile>> jarToSourceJarMapping) {}
 
     /**
      * Only IntelliJ needs the combined artifact.
@@ -91,20 +89,17 @@ public sealed abstract class IdeIntegration permits IntelliJIntegration, Eclipse
         ideSyncTask.configure(ideSyncTask -> ideSyncTask.dependsOn(task));
     }
 
-    void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {
-    }
+    void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {}
 
     void configureTesting(Provider<Set<ModModel>> loadedMods,
-                          Provider<ModModel> testedMod,
-                          Provider<Directory> runArgsDir,
-                          File gameDirectory,
-                          Provider<RegularFile> programArgsFile,
-                          Provider<RegularFile> vmArgsFile) {
-    }
+            Provider<ModModel> testedMod,
+            Provider<Directory> runArgsDir,
+            File gameDirectory,
+            Provider<RegularFile> programArgsFile,
+            Provider<RegularFile> vmArgsFile) {}
 
     protected boolean shouldGenerateConfigFor(RunModel run) {
         var ideName = run.getIdeName().get();
         return !ideName.isBlank();
     }
-
 }

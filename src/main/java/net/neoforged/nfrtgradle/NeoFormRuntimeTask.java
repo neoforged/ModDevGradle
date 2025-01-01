@@ -1,5 +1,14 @@
 package net.neoforged.nfrtgradle;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.IdeDetection;
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.DefaultTask;
@@ -17,16 +26,6 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.process.ExecOperations;
 import org.jetbrains.annotations.ApiStatus;
-
-import javax.inject.Inject;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.stream.Collectors;
 
 /**
  * Base task implementation for running the NFRT CLI, regardless of which sub-command is used.
@@ -106,8 +105,7 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         // Run NFRT itself with Java 21
         getJavaExecutable().convention(getJavaToolchainService()
                 .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)))
-                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
-        );
+                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
 
         // We construct this here to keep them private from subclasses
         artifactManifestEntries = project.getObjects().setProperty(ArtifactManifestEntry.class);
@@ -185,5 +183,4 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         }
         return artifactManifest;
     }
-
 }

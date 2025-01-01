@@ -1,8 +1,5 @@
 package net.neoforged.moddevgradle.internal.utils;
 
-import org.gradle.api.GradleException;
-import org.jetbrains.annotations.ApiStatus;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilterOutputStream;
@@ -22,6 +19,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.zip.ZipFile;
+import org.gradle.api.GradleException;
+import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
 public final class FileUtils {
@@ -30,8 +29,7 @@ public final class FileUtils {
      */
     private static final int MAX_TRIES = 2;
 
-    private FileUtils() {
-    }
+    private FileUtils() {}
 
     /**
      * Finds an explicitly defined Java module name in the given Jar file.
@@ -59,7 +57,6 @@ public final class FileUtils {
         } catch (Exception e) {
             throw new IOException("Failed to determine the Java module name of " + file + ": " + e, e);
         }
-
     }
 
     public static String hashFile(File file, String algorithm) {
@@ -77,7 +74,7 @@ public final class FileUtils {
     public static void writeStringSafe(Path destination, String content, Charset charset) throws IOException {
         if (!charset.newEncoder().canEncode(content)) {
             throw new IllegalArgumentException("The given character set " + charset
-                                               + " cannot represent this string: " + content);
+                    + " cannot represent this string: " + content);
         }
 
         try (var out = newSafeFileOutputStream(destination)) {
@@ -106,8 +103,7 @@ public final class FileUtils {
                 } finally {
                     try {
                         Files.deleteIfExists(tempFile);
-                    } catch (IOException ignored) {
-                    }
+                    } catch (IOException ignored) {}
                     closed[0] = true;
                 }
             }

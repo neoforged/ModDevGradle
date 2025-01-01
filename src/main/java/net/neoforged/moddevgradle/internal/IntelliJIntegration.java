@@ -1,5 +1,15 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -27,17 +37,6 @@ import org.jetbrains.gradle.ext.ProjectSettings;
 import org.jetbrains.gradle.ext.RunConfigurationContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 final class IntelliJIntegration extends IdeIntegration {
     private static final Logger LOG = LoggerFactory.getLogger(IntelliJIntegration.class);
@@ -82,7 +81,6 @@ final class IntelliJIntegration extends IdeIntegration {
 
     @Override
     public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {
-
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
 
@@ -111,11 +109,11 @@ final class IntelliJIntegration extends IdeIntegration {
 
     @Override
     public void configureTesting(Provider<Set<ModModel>> loadedMods,
-                                 Provider<ModModel> testedMod,
-                                 Provider<Directory> runArgsDir,
-                                 File gameDirectory,
-                                 Provider<RegularFile> programArgsFile,
-                                 Provider<RegularFile> vmArgsFile) {
+            Provider<ModModel> testedMod,
+            Provider<Directory> runArgsDir,
+            File gameDirectory,
+            Provider<RegularFile> programArgsFile,
+            Provider<RegularFile> vmArgsFile) {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
             // Write out a separate file that has IDE specific VM args, which include the definition of the output directories.
@@ -149,8 +147,7 @@ final class IntelliJIntegration extends IdeIntegration {
                                     + " "
                                     + RunUtils.escapeJvmArg("@" + buildRelativePath(vmArgsFile, gameDirectory))
                                     + " "
-                                    + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory))
-                    );
+                                    + RunUtils.escapeJvmArg("@" + buildRelativePath(intellijVmArgsFile, gameDirectory)));
                 });
             }
         });
@@ -174,10 +171,10 @@ final class IntelliJIntegration extends IdeIntegration {
     }
 
     private static void addIntelliJRunConfiguration(Project project,
-                                                    RunConfigurationContainer runConfigurations,
-                                                    @Nullable Function<Project, File> outputDirectory,
-                                                    RunModel run,
-                                                    PrepareRun prepareTask) {
+            RunConfigurationContainer runConfigurations,
+            @Nullable Function<Project, File> outputDirectory,
+            RunModel run,
+            PrepareRun prepareTask) {
         var appRun = new Application(run.getIdeName().get(), project);
         var sourceSets = ExtensionUtils.getSourceSets(project);
         var sourceSet = run.getSourceSet().get();
@@ -191,9 +188,8 @@ final class IntelliJIntegration extends IdeIntegration {
         appRun.setEnvs(RunUtils.replaceModClassesEnv(run, modFoldersProvider));
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
-                + " "
-                + RunUtils.escapeJvmArg(modFoldersProvider.getArgument())
-        );
+                        + " "
+                        + RunUtils.escapeJvmArg(modFoldersProvider.getArgument()));
         appRun.setMainClass(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         appRun.setProgramParameters(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())));
 
@@ -233,9 +229,9 @@ final class IntelliJIntegration extends IdeIntegration {
     }
 
     private static ModFoldersProvider getModFoldersProvider(Project project,
-                                                            @Nullable Function<Project, File> outputDirectory,
-                                                            Provider<Set<ModModel>> modsProvider,
-                                                            @Nullable Provider<ModModel> testedMod) {
+            @Nullable Function<Project, File> outputDirectory,
+            Provider<Set<ModModel>> modsProvider,
+            @Nullable Provider<ModModel> testedMod) {
         Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
             folders = RunUtils.buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {

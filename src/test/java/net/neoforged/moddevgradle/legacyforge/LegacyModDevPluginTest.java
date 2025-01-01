@@ -1,5 +1,9 @@
 package net.neoforged.moddevgradle.legacyforge;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.Set;
 import net.neoforged.moddevgradle.AbstractProjectBuilderTest;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
@@ -11,11 +15,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
     private final LegacyForgeExtension extension;
@@ -51,15 +50,13 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
         assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
                 .containsOnly(
                         "build/moddev/artifacts/vanilla-1.17.1.jar",
-                        "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]"
-                );
+                        "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]");
         assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName())
                 .containsOnly(
                         "build/moddev/artifacts/vanilla-1.17.1.jar",
                         "build/moddev/artifacts/vanilla-1.17.1-client-extra-aka-minecraft-resources.jar",
                         "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]",
-                        "build/moddev/artifacts/intermediateToNamed.zip"
-                );
+                        "build/moddev/artifacts/intermediateToNamed.zip");
     }
 
     @Test
@@ -99,8 +96,7 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
         assertThatDependencies(configurationName)
                 .containsOnly(
                         "build/moddev/artifacts/forge-" + version + ".jar",
-                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]"
-                );
+                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]");
     }
 
     private void assertContainsModdingRuntimeDependencies(String version, String configurationName) {
@@ -116,7 +112,6 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
                         "build/moddev/artifacts/forge-" + version + ".jar",
                         "build/moddev/artifacts/client-extra-1.2.3.jar",
                         "build/moddev/artifacts/intermediateToNamed.zip",
-                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]"
-                );
+                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]");
     }
 }

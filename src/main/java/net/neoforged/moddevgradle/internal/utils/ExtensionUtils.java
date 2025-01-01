@@ -9,8 +9,7 @@ import org.jetbrains.annotations.Nullable;
 
 @ApiStatus.Internal
 public final class ExtensionUtils {
-    private ExtensionUtils() {
-    }
+    private ExtensionUtils() {}
 
     public static <T> T getExtension(ExtensionAware holder, String name, Class<T> expectedType) {
         var extension = findExtension(holder.getExtensions(), name, expectedType);

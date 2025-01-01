@@ -1,7 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
 import com.google.gson.Gson;
-
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,4 +16,3 @@ public record UserDevConfig(Map<String, UserDevRunType> runs) implements Seriali
         return new Gson().fromJson(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)), UserDevConfig.class);
     }
 }
-

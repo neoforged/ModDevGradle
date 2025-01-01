@@ -9,12 +9,11 @@ import org.jetbrains.annotations.Nullable;
  */
 @ApiStatus.Internal
 public class InternalModelHelper {
-    public InternalModelHelper() {
-    }
+    public InternalModelHelper() {}
 
     public static String nameOfRun(RunModel run, @Nullable String prefix, @Nullable String suffix) {
         return StringUtils.uncapitalize((prefix == null ? "" : prefix)
-                                        + StringUtils.capitalize(run.getName())
-                                        + (suffix == null ? "" : StringUtils.capitalize(suffix)));
+                + StringUtils.capitalize(run.getName())
+                + (suffix == null ? "" : StringUtils.capitalize(suffix)));
     }
 }

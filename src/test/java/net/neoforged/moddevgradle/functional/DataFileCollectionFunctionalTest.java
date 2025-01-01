@@ -1,25 +1,23 @@
 package net.neoforged.moddevgradle.functional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.intellij.lang.annotations.Language;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
-
     @TempDir
     File publicationTarget;
 
@@ -33,12 +31,10 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                         publish(project.file("accesstransformer.cfg"))
                     }
                 }
-                """
-        );
+                """);
 
         assertThat(consumeDataFilePublication("accessTransformers", "test:publish-at:1.0")).containsOnly(
-                entry("publish-at-1.0-accesstransformer.cfg", "# hello world")
-        );
+                entry("publish-at-1.0-accesstransformer.cfg", "# hello world"));
     }
 
     @Test
@@ -61,14 +57,12 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                          publish(generatedDataFile)
                     }
                 }
-                """
-        );
+                """);
 
         assertThat(consumeDataFilePublication("interfaceInjectionData", "test:publish-if:1.0")).containsOnly(
                 entry("publish-if-1.0-interfaceinjection1.json", "[]"),
                 entry("publish-if-1.0-interfaceinjection2.json", "[]"),
-                entry("publish-if-1.0-interfaceinjection3.json", "{}")
-        );
+                entry("publish-if-1.0-interfaceinjection3.json", "{}"));
     }
 
     @Test
@@ -130,9 +124,9 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
     }
 
     private void publishDataFiles(String groupId,
-                                  String artifactId,
-                                  String version,
-                                  @Language("groovy") String buildScriptBody) throws IOException {
+            String artifactId,
+            String version,
+            @Language("groovy") String buildScriptBody) throws IOException {
         writeGroovySettingsScript("""
                 plugins {
                     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
@@ -173,5 +167,4 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":publish").getOutcome());
     }
-
 }

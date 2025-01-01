@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.util.Set;
+import java.util.function.Consumer;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
@@ -12,9 +14,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
 
-import java.util.Set;
-import java.util.function.Consumer;
-
 /**
  * Internal API provided to the NeoForge development build scripts.
  * <strong>This is NOT API for normal mod development projects!</strong>
@@ -23,17 +22,15 @@ import java.util.function.Consumer;
  * b) evolve the internal API while not having to modify NeoDev.
  */
 public final class NeoDevFacade {
-    private NeoDevFacade() {
-    }
+    private NeoDevFacade() {}
 
     public static void setupRuns(Project project,
-                                 Provider<Directory> argFileDir,
-                                 DomainObjectCollection<RunModel> runs,
-                                 Object runTemplatesSourceFile,
-                                 Consumer<Configuration> configureModulePath,
-                                 Consumer<Configuration> configureAdditionalClasspath,
-                                 Provider<RegularFile> assetPropertiesFile
-    ) {
+            Provider<Directory> argFileDir,
+            DomainObjectCollection<RunModel> runs,
+            Object runTemplatesSourceFile,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureAdditionalClasspath,
+            Provider<RegularFile> assetPropertiesFile) {
         ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
@@ -44,19 +41,17 @@ public final class NeoDevFacade {
                 configureAdditionalClasspath,
                 assetPropertiesFile,
                 // This overload of the method was only used by NeoForge 1.21.3
-                VersionCapabilitiesInternal.ofMinecraftVersion("1.21.3")
-        );
+                VersionCapabilitiesInternal.ofMinecraftVersion("1.21.3"));
     }
 
     public static void setupRuns(Project project,
-                                 Provider<Directory> argFileDir,
-                                 DomainObjectCollection<RunModel> runs,
-                                 Object runTemplatesSourceFile,
-                                 Consumer<Configuration> configureModulePath,
-                                 Consumer<Configuration> configureAdditionalClasspath,
-                                 Provider<RegularFile> assetPropertiesFile,
-                                 Provider<String> neoFormVersion
-    ) {
+            Provider<Directory> argFileDir,
+            DomainObjectCollection<RunModel> runs,
+            Object runTemplatesSourceFile,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureAdditionalClasspath,
+            Provider<RegularFile> assetPropertiesFile,
+            Provider<String> neoFormVersion) {
         ModDevRunWorkflow.setupRuns(
                 project,
                 Branding.NEODEV,
@@ -66,20 +61,18 @@ public final class NeoDevFacade {
                 configureModulePath,
                 configureAdditionalClasspath,
                 assetPropertiesFile,
-                neoFormVersion.map(VersionCapabilitiesInternal::ofNeoFormVersion).getOrElse(VersionCapabilitiesInternal.latest())
-        );
+                neoFormVersion.map(VersionCapabilitiesInternal::ofNeoFormVersion).getOrElse(VersionCapabilitiesInternal.latest()));
     }
 
     public static void setupTestTask(Project project,
-                                     Provider<Directory> argFileDir,
-                                     TaskProvider<Test> testTask,
-                                     Object runTemplatesSourceFile,
-                                     Provider<Set<ModModel>> loadedMods,
-                                     Provider<ModModel> testedMod,
-                                     Consumer<Configuration> configureModulePath,
-                                     Consumer<Configuration> configureAdditionalClasspath,
-                                     Provider<RegularFile> assetPropertiesFile
-    ) {
+            Provider<Directory> argFileDir,
+            TaskProvider<Test> testTask,
+            Object runTemplatesSourceFile,
+            Provider<Set<ModModel>> loadedMods,
+            Provider<ModModel> testedMod,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureAdditionalClasspath,
+            Provider<RegularFile> assetPropertiesFile) {
         ModDevRunWorkflow.setupTestTask(
                 project,
                 Branding.NEODEV,
@@ -90,8 +83,7 @@ public final class NeoDevFacade {
                 argFileDir,
                 configureModulePath,
                 configureAdditionalClasspath,
-                assetPropertiesFile
-        );
+                assetPropertiesFile);
     }
 
     public static void runTaskOnProjectSync(Project project, Object task) {

@@ -1,5 +1,10 @@
 package net.neoforged.moddevgradle.dsl;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Pattern;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.GradleException;
@@ -16,12 +21,6 @@ import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.slf4j.event.Level;
-
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.regex.Pattern;
 
 /**
  * Model of a run. Each run will generate a {@code runXxx} gradle task and optionally

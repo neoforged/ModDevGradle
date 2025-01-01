@@ -1,5 +1,13 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
@@ -18,15 +26,6 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaToolchainService;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Writes standalone start scripts to launch the game.
@@ -89,8 +88,7 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
         var java = ExtensionUtils.getExtension(getProject(), "java", JavaPluginExtension.class);
         getJavaExecutable().convention(getJavaToolchainService()
                 .launcherFor(java.getToolchain())
-                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
-        );
+                .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
     }
 
     @TaskAction
@@ -131,15 +129,13 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
 
         var lines = List.of(
                 "-classpath",
-                RunUtils.escapeJvmArg(classpathFileList)
-        );
+                RunUtils.escapeJvmArg(classpathFileList));
 
         FileUtils.writeLinesSafe(
                 getClasspathArgsFile().get().getAsFile().toPath(),
                 lines,
                 // JVM expects default character set
-                StringUtils.getNativeCharset()
-        );
+                StringUtils.getNativeCharset());
     }
 
     private void writeLaunchScriptForWindows(List<String> javaCommand) throws IOException {
@@ -151,8 +147,7 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
                 // https://stackoverflow.com/a/1427817
                 "for /f \"tokens=2 delims=:.\" %%x in ('chcp') do set _codepage=%%x",
                 // Switch encoding to Unicode, otherwise the next "cd" might not work with special chars
-                "chcp 65001>nul"
-        );
+                "chcp 65001>nul");
 
         for (var entry : getEnvironment().get().entrySet()) {
             lines.add("set " + escapeBatchScriptArg(entry.getKey()) + "=" + escapeBatchScriptArg(entry.getValue()));
@@ -163,19 +158,17 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
                 javaCommand.stream().map(this::escapeBatchScriptArg).collect(Collectors.joining(" ")),
                 // When Minecraft crashed, pause to prevent the console from closing, making it harder to read the error
                 "if not ERRORLEVEL 0 (" +
-                "  echo Minecraft failed with exit code %ERRORLEVEL%" +
-                "  pause" +
-                ")",
+                        "  echo Minecraft failed with exit code %ERRORLEVEL%" +
+                        "  pause" +
+                        ")",
                 // Restore original codepage
                 "chcp %_codepage%>nul",
-                "endlocal"
-        );
+                "endlocal");
 
         FileUtils.writeStringSafe(
                 getLaunchScript().get().getAsFile().toPath(),
                 String.join("\r\n", lines),
-                StandardCharsets.UTF_8
-        );
+                StandardCharsets.UTF_8);
     }
 
     private String escapeBatchScriptArg(String text) {
@@ -195,14 +188,12 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
 
         Collections.addAll(lines,
                 "(cd " + escapeShellArg(getWorkingDirectory().get()) + "; exec "
-                + javaCommand.stream().map(this::escapeShellArg).collect(Collectors.joining(" ")) + ")"
-        );
+                        + javaCommand.stream().map(this::escapeShellArg).collect(Collectors.joining(" ")) + ")");
 
         FileUtils.writeStringSafe(
                 getLaunchScript().get().getAsFile().toPath(),
                 String.join("\n", lines),
-                StandardCharsets.UTF_8
-        );
+                StandardCharsets.UTF_8);
     }
 
     private String escapeShellArg(String text) {

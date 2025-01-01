@@ -1,5 +1,8 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
+import java.util.List;
+import java.util.Objects;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
@@ -23,10 +26,6 @@ import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.jetbrains.annotations.ApiStatus;
 
-import javax.inject.Inject;
-import java.util.List;
-import java.util.Objects;
-
 public abstract class ObfuscationExtension {
     private final Project project;
     private final Configuration autoRenamingToolRuntime;
@@ -35,9 +34,9 @@ public abstract class ObfuscationExtension {
 
     @Inject
     public ObfuscationExtension(Project project,
-                                Configuration autoRenamingToolRuntime,
-                                Configuration installerToolsRuntime,
-                                FileCollection extraMixinMappings) {
+            Configuration autoRenamingToolRuntime,
+            Configuration installerToolsRuntime,
+            FileCollection extraMixinMappings) {
         this.project = project;
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
         this.installerToolsRuntime = installerToolsRuntime;
@@ -79,13 +78,12 @@ public abstract class ObfuscationExtension {
     /**
      * Create a reobfuscation task.
      *
-     * @param jar           the jar task to reobfuscate
-     * @param sourceSet     the source set whose classpath to use when remapping inherited methods
+     * @param jar       the jar task to reobfuscate
+     * @param sourceSet the source set whose classpath to use when remapping inherited methods
      * @return a provider of the created task
      */
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar, SourceSet sourceSet) {
-        return reobfuscate(jar, sourceSet, ignored -> {
-        });
+        return reobfuscate(jar, sourceSet, ignored -> {});
     }
 
     /**
@@ -97,8 +95,8 @@ public abstract class ObfuscationExtension {
      * @return a provider of the created task
      */
     public TaskProvider<RemapJar> reobfuscate(TaskProvider<? extends AbstractArchiveTask> jar,
-                                              SourceSet sourceSet,
-                                              Action<RemapJar> configureTask) {
+            SourceSet sourceSet,
+            Action<RemapJar> configureTask) {
         var reobf = project.getTasks().register("reobf" + StringUtils.capitalize(jar.getName()), RemapJar.class, task -> {
             task.getInput().set(jar.flatMap(AbstractArchiveTask::getArchiveFile));
             task.getDestinationDirectory().convention(task.getProject().getLayout().getBuildDirectory().dir("libs"));
@@ -139,8 +137,7 @@ public abstract class ObfuscationExtension {
 
             // Publish the reobf configuration instead of the original one to Maven
             java.withVariantsFromConfiguration(config, ConfigurationVariantDetails::skip);
-            java.addVariantsFromConfiguration(reobfConfig, spec -> {
-            });
+            java.addVariantsFromConfiguration(reobfConfig, spec -> {});
         }
 
         return reobf;

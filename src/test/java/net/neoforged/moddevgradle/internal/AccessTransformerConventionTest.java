@@ -1,5 +1,10 @@
 package net.neoforged.moddevgradle.internal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
@@ -7,12 +12,6 @@ import org.gradle.api.Project;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class AccessTransformerConventionTest {
     Project project;

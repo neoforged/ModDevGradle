@@ -1,5 +1,21 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
@@ -23,26 +39,8 @@ import org.gradle.process.CommandLineArgumentProvider;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
-import javax.inject.Inject;
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
-
 final class RunUtils {
-    private RunUtils() {
-    }
+    private RunUtils() {}
 
     public static final String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.1"; // renovate
     public static final String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
@@ -80,8 +78,7 @@ final class RunUtils {
 
         return new AssetProperties(
                 assetProperties.getProperty("asset_index"),
-                assetProperties.getProperty("assets_root")
-        );
+                assetProperties.getProperty("assets_root"));
     }
 
     public static void writeLog4j2Configuration(Level rootLevel, Path destination) throws IOException {
@@ -147,7 +144,7 @@ final class RunUtils {
                         <Logger level="${sys:forge.logging.mojang.level:-info}" name="com.mojang"/>
                         <Logger level="${sys:forge.logging.mojang.level:-info}" name="net.minecraft"/>
                         <Logger level="${sys:forge.logging.classtransformer.level:-info}" name="cpw.mods.modlauncher.ClassTransformer"/>
-                
+
                         <!-- Netty reflects into JDK internals, and it's causing useless DEBUG-level error stacktraces. We just ignore them -->
                         <Logger name="io.netty.util.internal.PlatformDependent0">
                             <filters>
@@ -155,7 +152,7 @@ final class RunUtils {
                                 <RegexFilter regex="^jdk\\.internal\\.misc\\.Unsafe\\.allocateUninitializedArray\\(int\\): unavailable$" onMatch="DENY" onMismatch="NEUTRAL" />
                             </filters>
                         </Logger>
-                
+
                         <Root level="$ROOTLEVEL$">
                             <AppenderRef ref="Console" />
                             <AppenderRef ref="ServerGuiConsole" level="${sys:forge.logging.console.level:-info}"/>
@@ -240,17 +237,17 @@ final class RunUtils {
     }
 
     public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
-                                                                          Provider<Set<ModModel>> modsProvider,
-                                                                          @Nullable Provider<ModModel> testedMod) {
+            Provider<Set<ModModel>> modsProvider,
+            @Nullable Provider<ModModel> testedMod) {
         return buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(sourceSet.getOutput());
         });
     }
 
     public static Provider<Map<String, ModFolder>> buildModFolders(Project project,
-                                                                   Provider<Set<ModModel>> modsProvider,
-                                                                   @Nullable Provider<ModModel> testedModProvider,
-                                                                   BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
+            Provider<Set<ModModel>> modsProvider,
+            @Nullable Provider<ModModel> testedModProvider,
+            BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
         // Convert it to optional to ensure zip will be called even if no mod under test is present.
         if (testedModProvider == null) {
             testedModProvider = project.provider(() -> null);
@@ -291,11 +288,9 @@ final class RunUtils {
                     }));
         }));
     }
-
 }
 
-record AssetProperties(String assetIndex, String assetsRoot) {
-}
+record AssetProperties(String assetIndex, String assetsRoot) {}
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
@@ -330,8 +325,7 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
 
 abstract class ModFolder {
     @Inject
-    public ModFolder() {
-    }
+    public ModFolder() {}
 
     @InputFiles
     @Classpath

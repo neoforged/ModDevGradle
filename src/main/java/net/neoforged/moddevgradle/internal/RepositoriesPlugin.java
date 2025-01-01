@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.net.URI;
 import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -10,14 +11,12 @@ import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.PluginAware;
 
-import java.net.URI;
-
 /**
  * This plugin acts in different roles depending on where it is applied:
  * <ul>
- *     <li>At the project-level, it will add the required repositories for moddev.</li>
- *     <li>At the settings-level, it will add the required repositories to the dependency management block, and add a marker plugin to the Gradle instance to prevent the
- *     repositories from being added again at the project-level.</li>
+ * <li>At the project-level, it will add the required repositories for moddev.</li>
+ * <li>At the settings-level, it will add the required repositories to the dependency management block, and add a marker plugin to the Gradle instance to prevent the
+ * repositories from being added again at the project-level.</li>
  * </ul>
  */
 public class RepositoriesPlugin implements Plugin<PluginAware> {

@@ -1,12 +1,11 @@
 package net.neoforged.moddevgradle.internal;
 
+import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
 import org.jetbrains.annotations.Nullable;
-
-import javax.inject.Inject;
 
 /**
  * Prepare all files needed to run a particular flavor of the game.

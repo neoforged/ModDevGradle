@@ -5,8 +5,7 @@ import org.gradle.api.Project;
 import org.gradle.api.provider.Provider;
 
 public final class PropertyUtils {
-    private PropertyUtils() {
-    }
+    private PropertyUtils() {}
 
     public static Provider<String> getStringProperty(Project project, String propertyName) {
         return project.getProviders().gradleProperty(propertyName);
@@ -22,5 +21,4 @@ public final class PropertyUtils {
                     }
                 });
     }
-
 }

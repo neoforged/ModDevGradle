@@ -1,5 +1,9 @@
 package net.neoforged.moddevgradle.internal.jarjar;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
 import net.neoforged.jarjar.metadata.ContainedJarMetadata;
 import net.neoforged.jarjar.metadata.ContainedVersion;
@@ -11,13 +15,7 @@ import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
-
 public class ResolvedJarJarArtifact {
-
     private final File file;
     private final String embeddedFilename;
     private final String version;
@@ -42,8 +40,7 @@ public class ResolvedJarJarArtifact {
         try {
             return new ContainedVersion(
                     VersionRange.createFromVersionSpec(versionRange),
-                    new DefaultArtifactVersion(version)
-            );
+                    new DefaultArtifactVersion(version));
         } catch (InvalidVersionSpecificationException e) {
             throw new RuntimeException(e);
         }

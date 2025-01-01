@@ -1,5 +1,14 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.function.Function;
+import javax.inject.Inject;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.ValueSource;
@@ -7,16 +16,6 @@ import org.gradle.api.provider.ValueSourceParameters;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
 import org.xml.sax.InputSource;
-
-import javax.inject.Inject;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.function.Function;
 
 /**
  * Checks the IntelliJ project files for the setting that determines whether 1) the build is delegated
@@ -37,8 +36,7 @@ abstract class IntelliJOutputDirectoryValueSource implements ValueSource<String,
     }
 
     @Inject
-    public IntelliJOutputDirectoryValueSource() {
-    }
+    public IntelliJOutputDirectoryValueSource() {}
 
     /**
      * Returns a function that maps a project to the configured output directory,

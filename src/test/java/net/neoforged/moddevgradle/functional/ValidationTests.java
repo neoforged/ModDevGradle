@@ -1,14 +1,13 @@
 package net.neoforged.moddevgradle.functional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.nio.file.Files;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.nio.file.Files;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class ValidationTests extends AbstractFunctionalTest {
     @BeforeEach
@@ -22,7 +21,7 @@ public class ValidationTests extends AbstractFunctionalTest {
                 plugins {
                     id "net.neoforged.moddev"
                 }
-                
+
                 neoForge {
                     runs {
                         validName1 {}

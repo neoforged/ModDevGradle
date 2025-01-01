@@ -9,8 +9,7 @@ import org.slf4j.LoggerFactory;
 public final class IdeDetection {
     private static final Logger LOG = LoggerFactory.getLogger(IdeDetection.class);
 
-    private IdeDetection() {
-    }
+    private IdeDetection() {}
 
     /**
      * @return true if IntelliJ is running Gradle. This is true both during sync and execution of other Gradle tasks.
@@ -84,5 +83,4 @@ public final class IdeDetection {
                 vsCodePid, ourProcess.pid());
         return false;
     }
-
 }

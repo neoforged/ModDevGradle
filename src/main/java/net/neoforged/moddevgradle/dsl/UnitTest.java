@@ -1,11 +1,10 @@
 package net.neoforged.moddevgradle.dsl;
 
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
-
-import javax.inject.Inject;
 
 /**
  * Used to enable and configure the JUnit integration.
@@ -24,8 +23,7 @@ public abstract class UnitTest {
     public void enable() {
         ModDevRunWorkflow.get(project).configureTesting(
                 getTestedMod(),
-                getLoadedMods()
-        );
+                getLoadedMods());
     }
 
     /**

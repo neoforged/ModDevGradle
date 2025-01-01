@@ -1,5 +1,14 @@
 package net.neoforged.moddevgradle.legacyforge.tasks;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.Serializable;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.NetworkSettingPassthrough;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -12,16 +21,6 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.ExecOperations;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.Serializable;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public abstract class RemapOperation implements Serializable {
     @Inject
@@ -59,8 +58,7 @@ public abstract class RemapOperation implements Serializable {
 
         try (var log = getLogFile().isPresent() ? Files.newOutputStream(getLogFile().get().getAsFile().toPath()) : new OutputStream() {
             @Override
-            public void write(int b) {
-            }
+            public void write(int b) {}
         }) {
             operations.javaexec(execSpec -> {
                 // Pass through network properties

@@ -1,5 +1,16 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.zip.ZipFile;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
@@ -24,18 +35,6 @@ import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.zip.ZipFile;
 
 /**
  * Performs preparation for running the game or running a test.
@@ -63,8 +62,8 @@ abstract class PrepareRunOrTest extends DefaultTask {
      * The source of the underlying run type templates. This must contain a single file, which has one of the
      * following supported formats:
      * <ul>
-     *     <li>NeoForge Userdev config.json file</li>
-     *     <li>NeoForge Userdev jar file, containing a Userdev config.json file</li>
+     * <li>NeoForge Userdev config.json file</li>
+     * <li>NeoForge Userdev jar file, containing a Userdev config.json file</li>
      * </ul>
      * Subclasses implementing {@link #resolveRunType} can then access this information to get the run type template.
      */
@@ -205,23 +204,18 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         var runTypes = new LinkedHashMap<String, UserDevRunType>();
         runTypes.put("client", new UserDevRunType(
-                true, "net.minecraft.client.main.Main", clientArgs, List.of(), Map.of(), Map.of()
-        ));
+                true, "net.minecraft.client.main.Main", clientArgs, List.of(), Map.of(), Map.of()));
         runTypes.put("server", new UserDevRunType(
-                true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
-        ));
+                true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()));
 
         if (getVersionCapabilities().getOrElse(VersionCapabilitiesInternal.latest()).splitDataRuns()) {
             runTypes.put("clientData", new UserDevRunType(
-                    true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
-            ));
+                    true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()));
             runTypes.put("serverData", new UserDevRunType(
-                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
-            ));
+                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()));
         } else {
             runTypes.put("data", new UserDevRunType(
-                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()
-            ));
+                    true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()));
         }
 
         return new UserDevConfig(runTypes);
@@ -267,8 +261,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 getVmArgsFile().get().getAsFile().toPath(),
                 lines,
                 // JVM expects default character set
-                StringUtils.getNativeCharset()
-        );
+                StringUtils.getNativeCharset());
     }
 
     private void writeProgramArguments(UserDevRunType runConfig, @Nullable String mainClass) throws IOException {
@@ -320,8 +313,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 getProgramArgsFile().get().getAsFile().toPath(),
                 lines,
                 // FML Junit and DevLaunch (starting in 1.0.1) read this file using UTF-8
-                StandardCharsets.UTF_8
-        );
+                StandardCharsets.UTF_8);
     }
 
     private static void addSystemProp(String name, String value, List<String> lines) {

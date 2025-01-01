@@ -1,5 +1,8 @@
 package net.neoforged.nfrtgradle;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -10,10 +13,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
 
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collections;
-
 /**
  * Use the NFRT CLI to download the asset index and assets for the Minecraft version used by the
  * underlying NeoForge/NeoForm configuration.
@@ -22,17 +21,16 @@ import java.util.Collections;
 @ApiStatus.NonExtendable
 public abstract class DownloadAssets extends NeoFormRuntimeTask {
     @Inject
-    public DownloadAssets() {
-    }
+    public DownloadAssets() {}
 
     /**
      * Gradle dependency notation for the NeoForm data artifact, from which a Minecraft version will be derived.
      * <p>
      * To determine the Minecraft version, the following properties will be checked in-order and the first one will be used:
      * <ol>
-     *   <li>{@link #getMinecraftVersion()}</li>
-     *   <li>{@link #getNeoFormArtifact()}</li>
-     *   <li>this property</li>
+     * <li>{@link #getMinecraftVersion()}</li>
+     * <li>{@link #getNeoFormArtifact()}</li>
+     * <li>this property</li>
      * </ol>
      */
     @Input
@@ -44,9 +42,9 @@ public abstract class DownloadAssets extends NeoFormRuntimeTask {
      * <p>
      * To determine the Minecraft version, the following properties will be checked in-order and the first one will be used:
      * <ol>
-     *   <li>{@link #getMinecraftVersion()}</li>
-     *   <li>this property</li>
-     *   <li>{@link #getNeoForgeArtifact()}</li>
+     * <li>{@link #getMinecraftVersion()}</li>
+     * <li>this property</li>
+     * <li>{@link #getNeoForgeArtifact()}</li>
      * </ol>
      */
     @Input
@@ -58,9 +56,9 @@ public abstract class DownloadAssets extends NeoFormRuntimeTask {
      * <p>
      * To determine the Minecraft version, the following properties will be checked in-order and the first one will be used:
      * <ol>
-     *   <li>this property</li>
-     *   <li>{@link #getNeoFormArtifact()}</li>
-     *   <li>{@link #getNeoForgeArtifact()}</li>
+     * <li>this property</li>
+     * <li>{@link #getNeoFormArtifact()}</li>
+     * <li>{@link #getNeoForgeArtifact()}</li>
      * </ol>
      */
     @Input
@@ -89,7 +87,6 @@ public abstract class DownloadAssets extends NeoFormRuntimeTask {
 
     @TaskAction
     public void downloadAssets() {
-
         var args = new ArrayList<String>();
         Collections.addAll(args, "download-assets");
         if (getAssetPropertiesFile().isPresent()) {

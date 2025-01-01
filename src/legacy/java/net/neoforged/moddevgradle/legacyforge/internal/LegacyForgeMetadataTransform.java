@@ -2,6 +2,8 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import java.util.List;
+import javax.inject.Inject;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.CacheableRule;
 import org.gradle.api.artifacts.ComponentMetadataContext;
@@ -13,9 +15,6 @@ import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.model.ObjectFactory;
-
-import javax.inject.Inject;
-import java.util.List;
 
 @CacheableRule
 class LegacyForgeMetadataTransform extends LegacyMetadataTransform {
