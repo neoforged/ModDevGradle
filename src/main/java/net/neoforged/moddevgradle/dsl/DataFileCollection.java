@@ -1,9 +1,8 @@
 package net.neoforged.moddevgradle.dsl;
 
-import org.gradle.api.file.ConfigurableFileCollection;
-
-import javax.inject.Inject;
 import java.util.function.Consumer;
+import javax.inject.Inject;
+import org.gradle.api.file.ConfigurableFileCollection;
 
 /**
  * Holds data files (such as ATs) to be used or exposed.

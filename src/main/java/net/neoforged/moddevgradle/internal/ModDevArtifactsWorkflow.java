@@ -1,5 +1,10 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -29,12 +34,6 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-
 /**
  * The workflow needed to produce artifacts and assets for compiling and running a mod.
  */
@@ -49,10 +48,9 @@ public record ModDevArtifactsWorkflow(
         Configuration runtimeDependencies,
         Configuration compileDependencies,
         Provider<Directory> modDevBuildDir,
-        Provider<Directory> artifactsBuildDir
-) {
-    private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
+        Provider<Directory> artifactsBuildDir) {
 
+    private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
     public static ModDevArtifactsWorkflow get(Project project) {
         var result = ExtensionUtils.findExtension(project, EXTENSION_NAME, ModDevArtifactsWorkflow.class);
         if (result == null) {
@@ -62,15 +60,14 @@ public record ModDevArtifactsWorkflow(
     }
 
     public static ModDevArtifactsWorkflow create(Project project,
-                                                 Collection<SourceSet> enabledSourceSets,
-                                                 Branding branding,
-                                                 ModDevExtension extension,
-                                                 ModdingDependencies moddingDependencies,
-                                                 ArtifactNamingStrategy artifactNamingStrategy,
-                                                 Configuration accessTransformers,
-                                                 Configuration interfaceInjectionData,
-                                                 VersionCapabilitiesInternal versionCapabilities
-    ) {
+            Collection<SourceSet> enabledSourceSets,
+            Branding branding,
+            ModDevExtension extension,
+            ModdingDependencies moddingDependencies,
+            ArtifactNamingStrategy artifactNamingStrategy,
+            Configuration accessTransformers,
+            Configuration interfaceInjectionData,
+            VersionCapabilitiesInternal versionCapabilities) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -84,8 +81,7 @@ public record ModDevArtifactsWorkflow(
         var createManifestConfigurations = configureArtifactManifestConfigurations(
                 project,
                 moddingDependencies.neoForgeDependency(),
-                moddingDependencies.neoFormDependency()
-        );
+                moddingDependencies.neoFormDependency());
 
         var dependencyFactory = project.getDependencyFactory();
         var configurations = project.getConfigurations();
@@ -125,8 +121,7 @@ public record ModDevArtifactsWorkflow(
             // NFRT needs access to a JDK of the right version to be able to correctly decompile and recompile the code
             task.getToolsJavaExecutable().set(javaToolchainService
                     .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
-                    .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath())
-            );
+                    .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
 
             task.getAccessTransformers().from(accessTransformers);
             task.getInterfaceInjectionData().from(interfaceInjectionData);
@@ -135,8 +130,7 @@ public record ModDevArtifactsWorkflow(
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
-            Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact ->
-                    artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
+            Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
@@ -201,9 +195,7 @@ public record ModDevArtifactsWorkflow(
             ideIntegration.attachSources(
                     Map.of(
                             createArtifacts.get().getCompiledArtifact(),
-                            createArtifacts.get().getSourcesArtifact()
-                    )
-            );
+                            createArtifacts.get().getSourcesArtifact()));
         }
 
         var result = new ModDevArtifactsWorkflow(
@@ -216,8 +208,7 @@ public record ModDevArtifactsWorkflow(
                 runtimeDependencies,
                 compileDependencies,
                 modDevBuildDir,
-                artifactsBuildDir
-        );
+                artifactsBuildDir);
 
         project.getExtensions().add(ModDevArtifactsWorkflow.class, EXTENSION_NAME, result);
 
@@ -234,8 +225,7 @@ public record ModDevArtifactsWorkflow(
     private static List<Configuration> configureArtifactManifestConfigurations(
             Project project,
             @Nullable ModuleDependency moddingPlatformDependency,
-            @Nullable ModuleDependency recompilableMinecraftWorkflowDependency
-    ) {
+            @Nullable ModuleDependency recompilableMinecraftWorkflowDependency) {
         var configurations = project.getConfigurations();
 
         var configurationPrefix = "neoFormRuntimeDependencies";
@@ -343,8 +333,7 @@ public record ModDevArtifactsWorkflow(
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, Provider<RegularFile> path) {
         createArtifacts.configure(task -> task.getAdditionalResults().put(id, path.map(RegularFile::getAsFile)));
         return project.getLayout().file(
-                createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id))
-        );
+                createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id)));
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {

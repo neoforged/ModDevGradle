@@ -1,12 +1,11 @@
 package net.neoforged.moddevgradle.boot;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.plugins.PluginAware;
 import org.gradle.util.GradleVersion;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * This is just a trampoline to perform the Java and Gradle version check, and is compiled for Java 8 in the real Jar.
@@ -32,7 +31,7 @@ public abstract class TrampolinePlugin<T extends PluginAware> implements Plugin<
 
         if (GradleVersion.current().compareTo(MIN_GRADLE_VERSION) < 0) {
             throw new GradleException("To use the NeoForge plugin, please use at least " + MIN_GRADLE_VERSION
-                                      + ". You are currently using " + GradleVersion.current() + ".");
+                    + ". You are currently using " + GradleVersion.current() + ".");
         }
 
         try {

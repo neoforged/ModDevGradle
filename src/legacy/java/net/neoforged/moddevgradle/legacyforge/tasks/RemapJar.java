@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.tasks;
 
+import java.io.IOException;
+import javax.inject.Inject;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.tasks.InputFile;
@@ -10,14 +12,10 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.process.ExecOperations;
 
-import javax.inject.Inject;
-import java.io.IOException;
-
 /**
  * Task used to remap a jar using AutoRenamingTool.
  */
 public abstract class RemapJar extends Jar {
-
     @Nested
     public abstract RemapOperation getRemapOperation();
 
@@ -35,8 +33,7 @@ public abstract class RemapJar extends Jar {
     protected abstract ExecOperations getExecOperations();
 
     @Inject
-    public RemapJar() {
-    }
+    public RemapJar() {}
 
     @TaskAction
     public void remap() throws IOException {

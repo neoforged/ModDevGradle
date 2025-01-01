@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.util.function.Consumer;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Project;
@@ -10,9 +12,6 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.ApiStatus;
 
-import java.io.File;
-import java.util.function.Consumer;
-
 /**
  * Access Transformers and Interface Injection Data are treated in a common way as "collections of data files",
  * which can be declared via a {@link DataFileCollection DSL}, and have an associated configuration for internal
@@ -22,7 +21,8 @@ import java.util.function.Consumer;
  */
 @ApiStatus.Internal
 public record DataFileCollections(CollectionWrapper accessTransformers,
-                                  CollectionWrapper interfaceInjectionData) {
+        CollectionWrapper interfaceInjectionData) {
+
     public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
 
     public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
@@ -37,8 +37,7 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
                 project,
                 CONFIGURATION_ACCESS_TRANSFORMERS,
                 "AccessTransformers to widen visibility of Minecraft classes/fields/methods",
-                "accesstransformer"
-        );
+                "accesstransformer");
         accessTransformers.extension().getFiles().convention(project.provider(() -> {
             var collection = project.getObjects().fileCollection();
 
@@ -59,14 +58,11 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
                 project,
                 CONFIGURATION_INTERFACE_INJECTION_DATA,
                 "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
-                "interfaceinjection"
-        );
+                "interfaceinjection");
 
         return new DataFileCollections(accessTransformers, interfaceInjectionData);
     }
-
-    public record CollectionWrapper(DataFileCollection extension, Configuration configuration) {
-    }
+    public record CollectionWrapper(DataFileCollection extension, Configuration configuration) {}
 
     private static CollectionWrapper createCollection(Project project, String name, String description, String category) {
         var configuration = project.getConfigurations().create(name, spec -> {

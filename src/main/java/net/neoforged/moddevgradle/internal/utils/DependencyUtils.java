@@ -6,8 +6,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
 public final class DependencyUtils {
-    private DependencyUtils() {
-    }
+    private DependencyUtils() {}
 
     /**
      * Given a resolved artifact, try to guess which Maven GAV it was resolved from.

@@ -1,5 +1,10 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.TreeSet;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.RegularFileProperty;
@@ -8,16 +13,9 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.TreeSet;
-
 abstract class WriteLegacyClasspath extends DefaultTask {
     @Inject
-    public WriteLegacyClasspath() {
-    }
+    public WriteLegacyClasspath() {}
 
     @Input
     abstract ListProperty<String> getEntries();

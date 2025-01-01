@@ -1,12 +1,11 @@
 package net.neoforged.moddevgradle.internal;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 class RunUtilsTest {
-
     @ParameterizedTest
     @CsvSource(textBlock = """
             ""|\\"\\"
@@ -21,5 +20,4 @@ class RunUtilsTest {
 
         assertEquals(escaped, RunUtils.escapeJvmArg(unescaped));
     }
-
 }

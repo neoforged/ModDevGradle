@@ -2,16 +2,15 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.jar.JarInputStream;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataRule;
 import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
 import org.gradle.api.model.ObjectFactory;
-
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.jar.JarInputStream;
 
 abstract class LegacyMetadataTransform implements ComponentMetadataRule {
     protected final ObjectFactory objects;

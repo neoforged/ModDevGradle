@@ -1,5 +1,13 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import javax.xml.stream.XMLStreamException;
 import net.neoforged.elc.configs.GradleLaunchConfig;
 import net.neoforged.elc.configs.JavaApplicationLaunchConfig;
 import net.neoforged.elc.configs.LaunchConfig;
@@ -20,15 +28,6 @@ import org.gradle.plugins.ide.eclipse.model.Library;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.xml.stream.XMLStreamException;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * Provides integration with Eclipse Buildship and VSCode extensions based on it.
@@ -55,7 +54,6 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
      */
     @Override
     public void attachSources(Map<Provider<RegularFile>, Provider<RegularFile>> jarToSourceJarMapping) {
-
         var fileClasspath = eclipseModel.getClasspath().getFile();
         fileClasspath.whenMerged((Classpath classpath) -> {
             for (var mapping : jarToSourceJarMapping.entrySet()) {
@@ -73,7 +71,7 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
 
     @Override
     public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks,
-                              Iterable<RunModel> runs) {
+            Iterable<RunModel> runs) {
         // Set up runs if running under buildship and in VS Code
         project.afterEvaluate(ignored -> {
             for (var run : runs) {
@@ -85,11 +83,11 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
 
     @Override
     public void configureTesting(Provider<Set<ModModel>> loadedMods,
-                                 Provider<ModModel> testedMod,
-                                 Provider<Directory> runArgsDir,
-                                 File gameDirectory,
-                                 Provider<RegularFile> programArgsFile,
-                                 Provider<RegularFile> vmArgsFile) {
+            Provider<ModModel> testedMod,
+            Provider<Directory> runArgsDir,
+            File gameDirectory,
+            Provider<RegularFile> programArgsFile,
+            Provider<RegularFile> vmArgsFile) {
         // Eclipse has no concept of JUnit run templates. We cannot configure VM args or similar for all JUnit runs.
     }
 
@@ -107,8 +105,8 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
     }
 
     private void addEclipseLaunchConfiguration(Project project,
-                                               RunModel run,
-                                               PrepareRun prepareTask) {
+            RunModel run,
+            PrepareRun prepareTask) {
         if (!prepareTask.getEnabled()) {
             LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
             return;
@@ -160,8 +158,7 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
         var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
-                        RunUtils.escapeJvmArg(modFoldersProvider.getArgument())
-                )
+                        RunUtils.escapeJvmArg(modFoldersProvider.getArgument()))
                 .args(RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getProgramArgsFile().get())))
                 .envVar(RunUtils.replaceModClassesEnv(run, modFoldersProvider))
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
@@ -170,8 +167,8 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
     }
 
     protected static ModFoldersProvider getModFoldersProvider(Project project,
-                                                              Provider<Set<ModModel>> modsProvider,
-                                                              @Nullable Provider<ModModel> testedMod) {
+            Provider<Set<ModModel>> modsProvider,
+            @Nullable Provider<ModModel> testedMod) {
         var folders = RunUtils.buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(RunUtils.findSourceSetProject(project, sourceSet).getProjectDir().toPath()
                     .resolve("bin")

@@ -1,9 +1,8 @@
 package net.neoforged.moddevgradle.internal;
 
+import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.jetbrains.annotations.Nullable;
-
-import javax.inject.Inject;
 
 abstract class PrepareTest extends PrepareRunOrTest {
     @Inject

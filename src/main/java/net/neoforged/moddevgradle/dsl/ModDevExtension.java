@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
+import java.io.File;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.IdeIntegration;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
@@ -14,9 +16,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 
-import javax.inject.Inject;
-import java.io.File;
-
 public abstract class ModDevExtension {
     private final NamedDomainObjectContainer<ModModel> mods;
     private final NamedDomainObjectContainer<RunModel> runs;
@@ -28,8 +27,8 @@ public abstract class ModDevExtension {
 
     @Inject
     public ModDevExtension(Project project,
-                           DataFileCollection accessTransformers,
-                           DataFileCollection interfaceInjectionData) {
+            DataFileCollection accessTransformers,
+            DataFileCollection interfaceInjectionData) {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);

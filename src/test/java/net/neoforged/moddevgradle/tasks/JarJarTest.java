@@ -1,5 +1,17 @@
 package net.neoforged.moddevgradle.tasks;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
+import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
 import net.neoforged.jarjar.metadata.ContainedJarMetadata;
 import net.neoforged.jarjar.metadata.ContainedVersion;
@@ -13,19 +25,6 @@ import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.UnexpectedBuildFailure;
 import org.junit.jupiter.api.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.jar.JarOutputStream;
-import java.util.jar.Manifest;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
-import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JarJarTest extends AbstractFunctionalTest {
     @Test
@@ -83,8 +82,8 @@ class JarJarTest extends AbstractFunctionalTest {
                 }
                 """));
         assertThat(e).hasMessageFindingMatch("Cannot embed local file dependency .*file.jar because it has no explicit Java module name.\\s*" +
-                                             "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\\s*" +
-                                             "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
+                "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\\s*" +
+                "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
     }
 
     @Test
@@ -108,10 +107,8 @@ class JarJarTest extends AbstractFunctionalTest {
                                 new ContainedJarIdentifier("", "super_duper_module"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[" + md5Hash + "]"), new DefaultArtifactVersion(md5Hash)),
                                 "META-INF/jarjar/file.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     /**
@@ -124,7 +121,7 @@ class JarJarTest extends AbstractFunctionalTest {
                     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
                 }
                 rootProject.name = 'root_project_name'
-                
+
                 include ':plugin'
                 """);
         writeProjectFile("build.gradle", """
@@ -150,10 +147,8 @@ class JarJarTest extends AbstractFunctionalTest {
                                 new ContainedJarIdentifier("root_project_name", "plugin"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[9.0.0,)"), new DefaultArtifactVersion("9.0.0")),
                                 "META-INF/jarjar/root_project_name.plugin-9.0.0.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     /**
@@ -166,7 +161,7 @@ class JarJarTest extends AbstractFunctionalTest {
                     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
                 }
                 rootProject.name = 'root_project_name'
-                
+
                 include ':plugin'
                 """);
         writeProjectFile("build.gradle", """
@@ -193,10 +188,8 @@ class JarJarTest extends AbstractFunctionalTest {
                                 new ContainedJarIdentifier("net.somegroup", "plugin"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[9.0.0,)"), new DefaultArtifactVersion("9.0.0")),
                                 "META-INF/jarjar/net.somegroup.plugin-9.0.0.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     @Test
@@ -229,10 +222,8 @@ class JarJarTest extends AbstractFunctionalTest {
                                 new ContainedJarIdentifier("", "super_duper_module"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[" + md5Hash + "]"), new DefaultArtifactVersion(md5Hash)),
                                 "META-INF/jarjar/jijtest-plugin.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     @Test
@@ -250,18 +241,15 @@ class JarJarTest extends AbstractFunctionalTest {
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
 
         assertThat(listFiles()).containsOnly(
-                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
-        );
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar");
         assertEquals(new Metadata(
                 List.of(
                         new ContainedJarMetadata(
                                 new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[0.1,3.0)"), new DefaultArtifactVersion("2.0.13")),
                                 "META-INF/jarjar/slf4j-api-2.0.13.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     @Test
@@ -274,18 +262,15 @@ class JarJarTest extends AbstractFunctionalTest {
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
 
         assertThat(listFiles()).containsOnly(
-                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
-        );
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar");
         assertEquals(new Metadata(
                 List.of(
                         new ContainedJarMetadata(
                                 new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
                                 "META-INF/jarjar/slf4j-api-2.0.13.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     /**
@@ -306,18 +291,15 @@ class JarJarTest extends AbstractFunctionalTest {
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
 
         assertThat(listFiles()).containsOnly(
-                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar"
-        );
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar");
         assertEquals(new Metadata(
                 List.of(
                         new ContainedJarMetadata(
                                 new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
                                 new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
                                 "META-INF/jarjar/slf4j-api-2.0.13.jar",
-                                false
-                        )
-                )
-        ), readMetadata());
+                                false))),
+                readMetadata());
     }
 
     @Test
@@ -384,13 +366,13 @@ class JarJarTest extends AbstractFunctionalTest {
                 rootProject.name = 'jijtest'
                 """);
         writeProjectFile("build.gradle", """
-                                                 plugins {
-                                                   id "net.neoforged.moddev"
-                                                 }
-                                                 repositories {
-                                                   mavenCentral()
-                                                 }
-                                                 """ + source);
+                plugins {
+                  id "net.neoforged.moddev"
+                }
+                repositories {
+                  mavenCentral()
+                }
+                """ + source);
 
         return run();
     }
@@ -421,5 +403,4 @@ class JarJarTest extends AbstractFunctionalTest {
             return MetadataIOHandler.fromStream(in).orElseThrow();
         }
     }
-
 }

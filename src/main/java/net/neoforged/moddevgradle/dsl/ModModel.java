@@ -1,11 +1,10 @@
 package net.neoforged.moddevgradle.dsl;
 
+import java.util.List;
+import javax.inject.Inject;
 import org.gradle.api.Named;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.SourceSet;
-
-import javax.inject.Inject;
-import java.util.List;
 
 /**
  * Model of a mod. This tells the moddev plugin which classes and resources need to be combined to produce a valid mod.

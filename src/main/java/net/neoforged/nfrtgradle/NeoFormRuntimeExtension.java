@@ -1,10 +1,9 @@
 package net.neoforged.nfrtgradle;
 
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.PropertyUtils;
 import org.gradle.api.Project;
 import org.gradle.api.provider.Property;
-
-import javax.inject.Inject;
 
 /**
  * Configures aspects of the NeoForm Runtime (NFRT), which is used by this plugin to produce

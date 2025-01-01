@@ -1,5 +1,16 @@
 package net.neoforged.moddevgradle.tasks;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.jarjar.metadata.Metadata;
 import net.neoforged.jarjar.metadata.MetadataIOHandler;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarArtifacts;
@@ -28,18 +39,6 @@ import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.jetbrains.annotations.ApiStatus;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public abstract class JarJar extends DefaultTask {
     private static final String DEFAULT_GROUP = "jarjar";
@@ -122,8 +121,8 @@ public abstract class JarJar extends DefaultTask {
                 var moduleName = FileUtils.getExplicitJavaModuleName(file);
                 if (moduleName.isEmpty()) {
                     throw new GradleException("Cannot embed local file dependency " + file + " because it has no explicit Java module name.\n" +
-                                              "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\n" +
-                                              "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
+                            "Please set either 'Automatic-Module-Name' in the Jar manifest, or make it an explicit Java module.\n" +
+                            "This ensures that your file does not conflict with another mods library that has the same or a similar filename.");
                 }
 
                 // Create a hashcode to use as a version
@@ -134,8 +133,7 @@ public abstract class JarJar extends DefaultTask {
                         hashCode,
                         "[" + hashCode + "]",
                         "",
-                        moduleName.get()
-                ));
+                        moduleName.get()));
                 artifactFiles.add(file);
             }
         }
@@ -210,7 +208,6 @@ public abstract class JarJar extends DefaultTask {
         return new Metadata(
                 jars.stream()
                         .map(ResolvedJarJarArtifact::createContainerMetadata)
-                        .collect(Collectors.toList())
-        );
+                        .collect(Collectors.toList()));
     }
 }

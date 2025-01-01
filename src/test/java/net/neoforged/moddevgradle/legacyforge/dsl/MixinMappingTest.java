@@ -1,13 +1,13 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import org.gradle.jvm.tasks.Jar;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class MixinMappingTest {
     /**

@@ -41,15 +41,13 @@ public class ModDevPlugin implements Plugin<Project> {
                 NeoForgeExtension.NAME,
                 NeoForgeExtension.class,
                 dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension()
-        );
+                dataFileCollections.interfaceInjectionData().extension());
     }
 
     public void enable(
             Project project,
             ModdingVersionSettings settings,
-            ModDevExtension extension
-    ) {
+            ModDevExtension extension) {
         var neoForgeVersion = settings.getVersion();
         var neoFormVersion = settings.getNeoFormVersion();
         if (neoForgeVersion == null && neoFormVersion == null) {
@@ -85,7 +83,6 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var configurations = project.getConfigurations();
 
-
         var dependencies = neoForge != null ? ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities)
                 : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
 
@@ -98,14 +95,12 @@ public class ModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
-                versionCapabilities
-        );
+                versionCapabilities);
 
         ModDevRunWorkflow.create(
                 project,
                 Branding.MDG,
                 artifacts,
-                extension.getRuns()
-        );
+                extension.getRuns());
     }
 }

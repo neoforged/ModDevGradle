@@ -1,12 +1,11 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
-
-import javax.inject.Inject;
 
 /**
  * This is the top-level {@code legacyForge} extension, used to configure the moddev plugin.
@@ -16,8 +15,8 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
 
     @Inject
     public LegacyForgeExtension(Project project,
-                                DataFileCollection accessTransformers,
-                                DataFileCollection interfaceInjectionData) {
+            DataFileCollection accessTransformers,
+            DataFileCollection interfaceInjectionData) {
         super(project, accessTransformers, interfaceInjectionData);
         this.project = project;
     }

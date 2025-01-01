@@ -1,14 +1,16 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import java.net.URI;
+import java.util.stream.Stream;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.DataFileCollections;
-import net.neoforged.moddevgradle.internal.ModdingDependencies;
-import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
+import net.neoforged.moddevgradle.internal.ModdingDependencies;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
+import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeExtension;
@@ -29,9 +31,6 @@ import org.gradle.jvm.tasks.Jar;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.URI;
-import java.util.stream.Stream;
 
 @ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
@@ -102,8 +101,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 LegacyForgeExtension.class,
                 project,
                 dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension()
-        );
+                dataFileCollections.interfaceInjectionData().extension());
     }
 
     public void enable(Project project, LegacyForgeModdingSettings settings, LegacyForgeExtension extension) {
@@ -151,15 +149,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
-                versionCapabilities
-        );
+                versionCapabilities);
 
         var runs = ModDevRunWorkflow.create(
                 project,
                 Branding.MDG,
                 artifacts,
-                extension.getRuns()
-        );
+                extension.getRuns());
 
         // Configure the mixin and obfuscation extensions
         var mixin = ExtensionUtils.getExtension(project, MIXIN_EXTENSION, MixinExtension.class);
@@ -185,8 +181,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         var reobfJar = obf.reobfuscate(
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
-                project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME)
-        );
+                project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
 
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 

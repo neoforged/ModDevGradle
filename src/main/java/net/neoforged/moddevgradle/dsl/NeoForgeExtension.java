@@ -1,13 +1,9 @@
 package net.neoforged.moddevgradle.dsl;
 
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
-import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
-import org.gradle.api.tasks.SourceSet;
-
-import javax.inject.Inject;
-import java.util.List;
 
 /**
  * This is the top-level {@code neoForge} extension, used to configure the moddev plugin.
@@ -31,7 +27,7 @@ public abstract class NeoForgeExtension extends ModDevExtension {
      *
      * Shorthand for:
      * <code>
-     *     enable { version = '...' }
+     * enable { version = '...' }
      * </code>
      */
     public void setVersion(String version) {
@@ -45,7 +41,7 @@ public abstract class NeoForgeExtension extends ModDevExtension {
      *
      * Shorthand for:
      * <code>
-     *     enable { neoFormVersion = '...' }
+     * enable { neoFormVersion = '...' }
      * </code>
      */
     public void setNeoFormVersion(String version) {

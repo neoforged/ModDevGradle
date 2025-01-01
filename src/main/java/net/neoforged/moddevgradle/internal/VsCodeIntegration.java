@@ -1,5 +1,9 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.vsclc.BatchedLaunchWriter;
 import net.neoforged.vsclc.attribute.ConsoleType;
@@ -10,11 +14,6 @@ import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * Provides integration with Eclipse Buildship and VSCode extensions based on it.
@@ -28,7 +27,7 @@ final class VsCodeIntegration extends EclipseIntegration {
 
     @Override
     public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks,
-                              Iterable<RunModel> runs) {
+            Iterable<RunModel> runs) {
         // Set up runs if running under buildship and in VS Code
         project.afterEvaluate(ignored -> {
             var launchWriter = new BatchedLaunchWriter(WritingMode.MODIFY_CURRENT);
@@ -47,9 +46,9 @@ final class VsCodeIntegration extends EclipseIntegration {
     }
 
     private void addVscodeLaunchConfiguration(Project project,
-                                              RunModel run,
-                                              PrepareRun prepareTask,
-                                              BatchedLaunchWriter launchWriter) {
+            RunModel run,
+            PrepareRun prepareTask,
+            BatchedLaunchWriter launchWriter) {
         if (!prepareTask.getEnabled()) {
             LOG.info("Not creating VSCode run {} since its prepare task {} is disabled", run, prepareTask);
             return;

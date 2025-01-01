@@ -1,10 +1,9 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.util.Map;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
 
 public record ModdingDependencies(
         @Nullable ModuleDependency neoForgeDependency,
@@ -14,14 +13,12 @@ public record ModdingDependencies(
         ModuleDependency gameLibrariesDependency,
         @Nullable ModuleDependency modulePathDependency,
         @Nullable ModuleDependency runTypesConfigDependency,
-        @Nullable ModuleDependency testFixturesDependency
-) {
-
+        @Nullable ModuleDependency testFixturesDependency) {
     public static ModdingDependencies create(ModuleDependency neoForge,
-                                             String neoForgeNotation,
-                                             @Nullable ModuleDependency neoForm,
-                                             @Nullable String neoFormNotation,
-                                             VersionCapabilitiesInternal versionCapabilities) {
+            String neoForgeNotation,
+            @Nullable ModuleDependency neoForm,
+            @Nullable String neoFormNotation,
+            VersionCapabilitiesInternal versionCapabilities) {
         var runTypesDataDependency = neoForge.copy()
                 .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
         var modulePathDependency = neoForge.copy()
@@ -45,8 +42,7 @@ public record ModdingDependencies(
                 librariesDependency,
                 modulePathDependency,
                 runTypesDataDependency,
-                testFixturesDependency
-        );
+                testFixturesDependency);
     }
 
     public static ModdingDependencies createVanillaOnly(ModuleDependency neoForm, String neoFormNotation) {
@@ -61,7 +57,6 @@ public record ModdingDependencies(
                 librariesDependency,
                 null,
                 null,
-                null
-        );
+                null);
     }
 }

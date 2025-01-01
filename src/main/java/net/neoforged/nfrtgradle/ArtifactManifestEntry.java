@@ -1,13 +1,12 @@
 package net.neoforged.nfrtgradle;
 
+import java.io.File;
+import java.io.Serializable;
+import java.util.Objects;
 import net.neoforged.moddevgradle.internal.utils.DependencyUtils;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
-
-import java.io.File;
-import java.io.Serializable;
-import java.util.Objects;
 
 /**
  * Represents an entry in the Artifact manifest given to NFRT to prevent re-downloading of
@@ -41,7 +40,7 @@ final class ArtifactManifestEntry implements Serializable {
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (ArtifactManifestEntry) obj;
         return Objects.equals(this.artifactId, that.artifactId) &&
-               Objects.equals(this.file, that.file);
+                Objects.equals(this.file, that.file);
     }
 
     @Override
@@ -52,7 +51,7 @@ final class ArtifactManifestEntry implements Serializable {
     @Override
     public String toString() {
         return "ArtifactManifestEntry[" +
-               "artifactId=" + artifactId + ", " +
-               "file=" + file + ']';
+                "artifactId=" + artifactId + ", " +
+                "file=" + file + ']';
     }
 }

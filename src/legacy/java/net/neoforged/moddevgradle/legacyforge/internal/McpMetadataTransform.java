@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import javax.inject.Inject;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.CacheableRule;
 import org.gradle.api.artifacts.ComponentMetadataContext;
@@ -10,8 +11,6 @@ import org.gradle.api.artifacts.repositories.RepositoryResourceAccessor;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.attributes.java.TargetJvmVersion;
 import org.gradle.api.model.ObjectFactory;
-
-import javax.inject.Inject;
 
 /**
  * Given an implicit Metadata object by Gradle (which results from reading in a pom.xml from Maven for MCP data,
@@ -64,8 +63,7 @@ class McpMetadataTransform extends LegacyMetadataTransform {
             });
         });
 
-        dependencies(context, "mcpRuntimeElements", javaTarget, Usage.JAVA_RUNTIME, deps -> {
-        });
+        dependencies(context, "mcpRuntimeElements", javaTarget, Usage.JAVA_RUNTIME, deps -> {});
 
         dependencies(context, "mcpApiElements", javaTarget, Usage.JAVA_API, dependencies -> {
             var libraries = config.getAsJsonObject("libraries").getAsJsonArray("joined");

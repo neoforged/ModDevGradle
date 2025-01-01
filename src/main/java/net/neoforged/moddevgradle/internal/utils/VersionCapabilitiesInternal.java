@@ -1,12 +1,11 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import java.io.Serializable;
+import java.util.regex.Pattern;
 import net.neoforged.moddevgradle.dsl.VersionCapabilities;
 import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.Serializable;
-import java.util.regex.Pattern;
 
 /**
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
@@ -17,7 +16,8 @@ import java.util.regex.Pattern;
  * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
  */
 public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
-                                          boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
+        boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
+
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
 
     private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
@@ -32,7 +32,6 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     private static final int MC_1_20_4_INDEX = getReferenceVersionIndex("1.20.4");
     private static final int MC_1_18_PRE2_INDEX = getReferenceVersionIndex("1.18-pre2");
     private static final int MC_21W19A_INDEX = getReferenceVersionIndex("21w19a");
-
     public static VersionCapabilitiesInternal latest() {
         return LATEST;
     }
@@ -169,7 +168,6 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 javaVersion,
                 splitDataRuns,
                 testFixtures,
-                modLocatorRework
-        );
+                modLocatorRework);
     }
 }

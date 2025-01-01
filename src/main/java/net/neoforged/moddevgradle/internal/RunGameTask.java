@@ -1,5 +1,9 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import javax.inject.Inject;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.MapProperty;
@@ -10,11 +14,6 @@ import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 
 /**
  * By extending JavaExec, we allow IntelliJ to automatically attach a debugger to the forked JVM, making
@@ -33,8 +32,7 @@ public abstract class RunGameTask extends JavaExec {
     public abstract DirectoryProperty getGameDirectory();
 
     @Inject
-    public RunGameTask() {
-    }
+    public RunGameTask() {}
 
     @TaskAction
     public void exec() {
@@ -52,5 +50,4 @@ public abstract class RunGameTask extends JavaExec {
         setWorkingDir(runDir);
         super.exec();
     }
-
 }

@@ -1,9 +1,8 @@
 package net.neoforged.minecraftdependencies;
 
+import javax.inject.Inject;
 import org.gradle.api.attributes.AttributeDisambiguationRule;
 import org.gradle.api.attributes.MultipleCandidatesDetails;
-
-import javax.inject.Inject;
 
 /**
  * Sets a default value for an attribute if no value is requested.

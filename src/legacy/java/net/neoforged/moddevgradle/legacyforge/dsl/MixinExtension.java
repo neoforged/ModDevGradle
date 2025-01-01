@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.legacyforge.dsl;
 
+import javax.inject.Inject;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFile;
@@ -9,8 +10,6 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.jvm.tasks.Jar;
 
-import javax.inject.Inject;
-
 public abstract class MixinExtension {
     private final Project project;
     private final Provider<RegularFile> officialToSrg;
@@ -18,8 +17,8 @@ public abstract class MixinExtension {
 
     @Inject
     public MixinExtension(Project project,
-                          Provider<RegularFile> officialToSrg,
-                          ConfigurableFileCollection extraMappingFiles) {
+            Provider<RegularFile> officialToSrg,
+            ConfigurableFileCollection extraMappingFiles) {
         this.project = project;
         this.officialToSrg = officialToSrg;
         this.extraMappingFiles = extraMappingFiles;
@@ -54,4 +53,3 @@ public abstract class MixinExtension {
         return refMapFile;
     }
 }
-

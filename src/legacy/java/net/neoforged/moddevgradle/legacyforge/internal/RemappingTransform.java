@@ -1,5 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import java.io.IOException;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
@@ -18,9 +20,6 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.ExecOperations;
 
-import javax.inject.Inject;
-import java.io.IOException;
-
 @CacheableTransform
 abstract class RemappingTransform implements TransformAction<RemappingTransform.Parameters> {
     @InputArtifact
@@ -35,8 +34,7 @@ abstract class RemappingTransform implements TransformAction<RemappingTransform.
     protected abstract ExecOperations getExecOperations();
 
     @Inject
-    public RemappingTransform() {
-    }
+    public RemappingTransform() {}
 
     @Override
     public void transform(TransformOutputs outputs) {
@@ -51,8 +49,7 @@ abstract class RemappingTransform implements TransformAction<RemappingTransform.
                             getExecOperations(),
                             inputFile,
                             mappedFile,
-                            getDependencies().plus(getParameters().getMinecraftDependencies())
-                    );
+                            getDependencies().plus(getParameters().getMinecraftDependencies()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

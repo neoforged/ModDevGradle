@@ -1,5 +1,10 @@
 package net.neoforged.moddevgradle.internal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.Set;
 import net.neoforged.moddevgradle.AbstractProjectBuilderTest;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -12,12 +17,6 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ModDevPluginTest extends AbstractProjectBuilderTest {
     private final NeoForgeExtension extension;
@@ -109,14 +108,12 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
             assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
                     .containsOnly(
                             "build/moddev/artifacts/vanilla-" + VERSION + ".jar",
-                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]"
-                    );
+                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]");
             assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName())
                     .containsOnly(
                             "build/moddev/artifacts/vanilla-" + VERSION + ".jar",
                             "build/moddev/artifacts/vanilla-" + VERSION + "-client-extra-aka-minecraft-resources.jar",
-                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]"
-                    );
+                            "net.neoforged:neoform:" + VERSION + "[net.neoforged:neoform-dependencies]");
         }
 
         @Test
@@ -143,8 +140,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
             // Should use latest features, but with the specified Minecraft version
             assertEquals(
                     VersionCapabilitiesInternal.latest().withMinecraftVersion("1.99.1"),
-                    extension.getVersionCapabilities()
-            );
+                    extension.getVersionCapabilities());
         }
     }
 
@@ -175,8 +171,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         assertThatDependencies(configurationName)
                 .containsOnly(
                         "build/moddev/artifacts/neoforge-" + version + ".jar",
-                        "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]"
-                );
+                        "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]");
     }
 
     private void assertContainsModdingRuntimeDependencies(String version, String configurationName) {
@@ -191,7 +186,6 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
                 .containsOnly(
                         "build/moddev/artifacts/neoforge-" + version + ".jar",
                         "build/moddev/artifacts/neoforge-" + version + "-client-extra-aka-minecraft-resources.jar",
-                        "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]"
-                );
+                        "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]");
     }
 }

@@ -1,9 +1,5 @@
 package net.neoforged.moddevgradle.functional;
 
-import org.intellij.lang.annotations.Language;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,13 +7,15 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.intellij.lang.annotations.Language;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.io.TempDir;
 
 public abstract class AbstractFunctionalTest {
     static final String DEFAULT_NEOFORGE_VERSION = "21.0.133-beta";
 
     static final Map<String, String> DEFAULT_PLACEHOLDERS = Map.of(
-            "DEFAULT_NEOFORGE_VERSION", DEFAULT_NEOFORGE_VERSION
-    );
+            "DEFAULT_NEOFORGE_VERSION", DEFAULT_NEOFORGE_VERSION);
 
     @TempDir
     protected File testProjectDir;

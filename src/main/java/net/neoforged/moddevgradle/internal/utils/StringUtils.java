@@ -1,14 +1,12 @@
 package net.neoforged.moddevgradle.internal.utils;
 
-import org.jetbrains.annotations.ApiStatus;
-
 import java.nio.charset.Charset;
 import java.util.Locale;
+import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
 public final class StringUtils {
-    private StringUtils() {
-    }
+    private StringUtils() {}
 
     /**
      * Get the platform native charset. To see how this differs from the default charset,

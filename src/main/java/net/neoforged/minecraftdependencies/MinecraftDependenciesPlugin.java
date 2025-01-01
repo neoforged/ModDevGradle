@@ -8,8 +8,8 @@ import org.gradle.api.Project;
  * <p>
  * The defaults are:
  * <ul>
- *     <li>{@code net.neoforged.distribution} defaults to {@code client}</li>
- *     <li>{@code net.neoforged.operatingsystem} defaults to the current operating system</li>
+ * <li>{@code net.neoforged.distribution} defaults to {@code client}</li>
+ * <li>{@code net.neoforged.operatingsystem} defaults to the current operating system</li>
  * </ul>
  */
 public class MinecraftDependenciesPlugin implements Plugin<Project> {
@@ -20,13 +20,11 @@ public class MinecraftDependenciesPlugin implements Plugin<Project> {
             // This happens under the assumption that client is usually a superset of server.
             var defaultDistribution = project.getObjects().named(MinecraftDistribution.class, MinecraftDistribution.CLIENT);
             attributesSchema.attribute(MinecraftDistribution.ATTRIBUTE).getDisambiguationRules().add(DistributionDisambiguationRule.class, spec -> spec.params(
-                    defaultDistribution
-            ));
+                    defaultDistribution));
 
             var defaultOperatingSystem = project.getObjects().named(OperatingSystem.class, getDefaultOperatingSystem());
             attributesSchema.attribute(OperatingSystem.ATTRIBUTE).getDisambiguationRules().add(OperatingSystemDisambiguationRule.class, spec -> spec.params(
-                    defaultOperatingSystem
-            ));
+                    defaultOperatingSystem));
         });
     }
 

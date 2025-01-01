@@ -1,5 +1,15 @@
 package net.neoforged.moddevgradle.internal.jarjar;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.jarjar.metadata.ContainedJarIdentifier;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -25,22 +35,10 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 public abstract class JarJarArtifacts {
     private static final Logger LOG = LoggerFactory.getLogger(JarJarArtifacts.class);
     private transient final SetProperty<ResolvedComponentResult> includedRootComponents;
     private transient final SetProperty<ResolvedArtifactResult> includedArtifacts;
-
 
     @Internal
     protected SetProperty<ResolvedComponentResult> getIncludedRootComponents() {
@@ -71,8 +69,7 @@ public abstract class JarJarArtifacts {
     public void configuration(Configuration jarJarConfiguration) {
         getIncludedArtifacts().addAll(jarJarConfiguration.getIncoming().artifactView(config -> {
             config.attributes(
-                    attr -> attr.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE)
-            );
+                    attr -> attr.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
         }).getArtifacts().getResolvedArtifacts());
         getIncludedRootComponents().add(jarJarConfiguration.getIncoming().getResolutionResult().getRootComponent());
     }
@@ -213,16 +210,14 @@ public abstract class JarJarArtifacts {
             moduleIdentifier = new ArtifactIdentifier(
                     moduleComponentIdentifier.getGroup(),
                     moduleComponentIdentifier.getModule(),
-                    moduleComponentIdentifier.getVersion()
-            );
+                    moduleComponentIdentifier.getVersion());
         }
 
         List<ArtifactIdentifier> capabilityIdentifiers = variant.getCapabilities().stream()
                 .map(capability -> new ArtifactIdentifier(
                         capability.getGroup(),
                         capability.getName(),
-                        capability.getVersion()
-                ))
+                        capability.getVersion()))
                 .toList();
 
         if (moduleIdentifier != null && capabilityIdentifiers.contains(moduleIdentifier)) {
@@ -234,7 +229,8 @@ public abstract class JarJarArtifacts {
     }
 
     private static @Nullable String moduleOrCapabilityVersion(final ResolvedVariantResult variant) {
-        @Nullable ArtifactIdentifier identifier = capabilityOrModule(variant);
+        @Nullable
+        ArtifactIdentifier identifier = capabilityOrModule(variant);
         if (identifier != null) {
             return identifier.version();
         }
@@ -274,6 +270,5 @@ public abstract class JarJarArtifacts {
     /**
      * Simple artifact identifier class which only references group, name and version.
      */
-    private record ArtifactIdentifier(String group, String name, String version) {
-    }
+    private record ArtifactIdentifier(String group, String name, String version) {}
 }
