@@ -7,7 +7,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class VersionCapabilitiesTest {
+public class VersionCapabilitiesInternalTest {
     @ParameterizedTest()
     @CsvSource({
             "1.21.4,21",
@@ -30,7 +30,7 @@ public class VersionCapabilitiesTest {
             "21w19a,16",
     })
     public void testJavaVersion(String neoFormVersion, int javaVersion) {
-        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).javaVersion())
+        assertThat(VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion).javaVersion())
                 .isEqualTo(javaVersion);
     }
 
@@ -44,7 +44,7 @@ public class VersionCapabilitiesTest {
             "26.0.10,1.26",
     })
     public void testNeoForgeVersionParsing(String neoForgeVersion, String minecraftVersion) {
-        var caps = VersionCapabilities.ofNeoForgeVersion(neoForgeVersion);
+        var caps = VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion);
         assertEquals(minecraftVersion, caps.minecraftVersion());
     }
 
@@ -56,7 +56,7 @@ public class VersionCapabilitiesTest {
             "1.20.1-47.3.12,1.20.1",
     })
     public void testForgeVersionParsing(String forgeVersion, String minecraftVersion) {
-        var idx = VersionCapabilities.indexOfForgeVersion(forgeVersion);
+        var idx = VersionCapabilitiesInternal.indexOfForgeVersion(forgeVersion);
         String actual;
         if (idx == -1) {
             actual = null;
@@ -83,7 +83,7 @@ public class VersionCapabilitiesTest {
             "1.99.0-+,1.99.0",
     })
     public void testNeoFormVersionParsing(String neoFormVersion, String minecraftVersion) {
-        var actual = VersionCapabilities.ofNeoFormVersion(neoFormVersion);
+        var actual = VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion);
         assertEquals(minecraftVersion, actual.minecraftVersion());
     }
 
@@ -106,7 +106,7 @@ public class VersionCapabilitiesTest {
             "1.22-pre1,true"
     })
     public void testSplitDataRunsCorrectness(String neoFormVersion, boolean splitDataRuns) {
-        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).splitDataRuns())
+        assertThat(VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion).splitDataRuns())
                 .isEqualTo(splitDataRuns);
     }
 
@@ -123,7 +123,7 @@ public class VersionCapabilitiesTest {
             "24242",
     })
     public void testSplitDataRunsDoesNotCrash(String neoFormVersion) {
-        assertThat(VersionCapabilities.ofNeoFormVersion(neoFormVersion).splitDataRuns())
+        assertThat(VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion).splitDataRuns())
                 .isTrue();
     }
 }

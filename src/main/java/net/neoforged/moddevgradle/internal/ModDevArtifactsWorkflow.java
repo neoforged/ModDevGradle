@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.GradleException;
@@ -42,7 +42,7 @@ import java.util.function.Function;
 public record ModDevArtifactsWorkflow(
         Project project,
         ModdingDependencies dependencies,
-        VersionCapabilities versionCapabilities,
+        VersionCapabilitiesInternal versionCapabilities,
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
@@ -68,7 +68,7 @@ public record ModDevArtifactsWorkflow(
                                                  ArtifactNamingStrategy artifactNamingStrategy,
                                                  Configuration accessTransformers,
                                                  Configuration interfaceInjectionData,
-                                                 VersionCapabilities versionCapabilities
+                                                 VersionCapabilitiesInternal versionCapabilities
     ) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");

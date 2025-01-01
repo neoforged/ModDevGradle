@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -103,7 +103,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
      */
     @Input
     @Optional
-    public abstract Property<VersionCapabilities> getVersionCapabilities();
+    public abstract Property<VersionCapabilitiesInternal> getVersionCapabilities();
 
     /**
      * The property that decides whether DevLogin is enabled.
@@ -115,7 +115,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
         this.programArgsFormat = programArgsFormat;
-        getVersionCapabilities().convention(VersionCapabilities.latest());
+        getVersionCapabilities().convention(VersionCapabilitiesInternal.latest());
         getDevLogin().convention(false);
     }
 
@@ -211,7 +211,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                 true, "net.minecraft.server.Main", commonArgs, List.of(), Map.of(), Map.of()
         ));
 
-        if (getVersionCapabilities().getOrElse(VersionCapabilities.latest()).splitDataRuns()) {
+        if (getVersionCapabilities().getOrElse(VersionCapabilitiesInternal.latest()).splitDataRuns()) {
             runTypes.put("clientData", new UserDevRunType(
                     true, "net.minecraft.client.data.Main", commonArgs, List.of(), Map.of(), Map.of()
             ));

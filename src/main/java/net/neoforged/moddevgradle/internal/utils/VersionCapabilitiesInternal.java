@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import net.neoforged.moddevgradle.dsl.VersionCapabilities;
 import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,11 +16,11 @@ import java.util.regex.Pattern;
  * @param splitDataRuns    Whether Vanilla has separate main classes for generating client and server data.
  * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
  */
-public record VersionCapabilities(String minecraftVersion, int javaVersion, boolean splitDataRuns,
-                                  boolean testFixtures) implements net.neoforged.moddevgradle.dsl.VersionCapabilities, Serializable {
-    private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilities.class);
+public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
+                                          boolean testFixtures) implements VersionCapabilities, Serializable {
+    private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
 
-    private static final VersionCapabilities LATEST = new VersionCapabilities(MinecraftVersionList.VERSIONS.get(0), 21, true, true);
+    private static final VersionCapabilitiesInternal LATEST = new VersionCapabilitiesInternal(MinecraftVersionList.VERSIONS.get(0), 21, true, true);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
     // Strips NeoForm timestamp suffixes OR dynamic version markers
@@ -31,11 +32,11 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
     private static final int MC_1_18_PRE2_INDEX = getReferenceVersionIndex("1.18-pre2");
     private static final int MC_21W19A_INDEX = getReferenceVersionIndex("21w19a");
 
-    public static VersionCapabilities latest() {
+    public static VersionCapabilitiesInternal latest() {
         return LATEST;
     }
 
-    public static VersionCapabilities ofMinecraftVersion(String minecraftVersion) {
+    public static VersionCapabilitiesInternal ofMinecraftVersion(String minecraftVersion) {
         var versionIndex = MinecraftVersionList.VERSIONS.indexOf(minecraftVersion);
         if (versionIndex == -1) {
             LOG.info("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
@@ -45,17 +46,17 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
         return ofVersionIndex(versionIndex);
     }
 
-    public static VersionCapabilities ofVersionIndex(int versionIndex) {
+    public static VersionCapabilitiesInternal ofVersionIndex(int versionIndex) {
         var minecraftVersion = MinecraftVersionList.VERSIONS.get(versionIndex);
         return ofVersionIndex(versionIndex, minecraftVersion);
     }
 
-    public static VersionCapabilities ofVersionIndex(int versionIndex, String minecraftVersion) {
+    public static VersionCapabilitiesInternal ofVersionIndex(int versionIndex, String minecraftVersion) {
         var javaVersion = getJavaVersion(versionIndex);
         var splitData = hasSplitDataEntrypoints(versionIndex);
         var testFixtures = hasTestFixtures(versionIndex);
 
-        return new VersionCapabilities(minecraftVersion, javaVersion, splitData, testFixtures);
+        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -93,7 +94,7 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
         return MinecraftVersionList.VERSIONS.indexOf(mcVersion);
     }
 
-    public static VersionCapabilities ofNeoForgeVersion(String version) {
+    public static VersionCapabilitiesInternal ofNeoForgeVersion(String version) {
         var index = indexOfNeoForgeVersion(version);
         if (index == -1) {
             var capabilities = LATEST;
@@ -113,7 +114,7 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
         return ofVersionIndex(index);
     }
 
-    public static VersionCapabilities ofNeoFormVersion(String version) {
+    public static VersionCapabilitiesInternal ofNeoFormVersion(String version) {
         // Examples: 1.21-<timestamp>
         var index = MinecraftVersionList.indexOfByPrefix(version, "-");
 
@@ -138,7 +139,7 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
         return MinecraftVersionList.indexOfByPrefix(version, "-");
     }
 
-    public static VersionCapabilities ofForgeVersion(String version) {
+    public static VersionCapabilitiesInternal ofForgeVersion(String version) {
         var index = indexOfForgeVersion(version);
         if (index == -1) {
             LOG.warn("Failed to parse MC version from Forge version {}. Using capabilities of latest known Minecraft version.", version);
@@ -156,8 +157,8 @@ public record VersionCapabilities(String minecraftVersion, int javaVersion, bool
         return idx;
     }
 
-    public VersionCapabilities withMinecraftVersion(String minecraftVersion) {
-        return new VersionCapabilities(
+    public VersionCapabilitiesInternal withMinecraftVersion(String minecraftVersion) {
+        return new VersionCapabilitiesInternal(
                 minecraftVersion,
                 javaVersion,
                 splitDataRuns,

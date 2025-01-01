@@ -3,7 +3,7 @@ package net.neoforged.moddevgradle.internal;
 import net.neoforged.moddevgradle.AbstractProjectBuilderTest;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Task;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -88,8 +88,8 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
     @Test
     void testGetVersionCapabilities() {
         extension.setVersion("2.3.0");
-        assertEquals(VersionCapabilities.ofMinecraftVersion("1.2.3"), extension.getVersionCapabilities());
-        assertEquals("1.2.3", extension.getVersionCapabilities().minecraftVersion());
+        assertEquals(VersionCapabilitiesInternal.ofMinecraftVersion("1.2.3"), extension.getVersionCapabilities());
+        assertEquals("1.2.3", extension.getMinecraftVersion());
     }
 
     @Test
@@ -122,7 +122,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         @Test
         void testGetVersion() {
             extension.setNeoFormVersion(VERSION);
-            assertEquals(VersionCapabilities.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
+            assertEquals(VersionCapabilitiesInternal.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
         }
 
         @Test
@@ -134,7 +134,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         @Test
         void testGetVersionCapabilities() {
             extension.setNeoFormVersion(VERSION);
-            assertEquals(VersionCapabilities.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
+            assertEquals(VersionCapabilitiesInternal.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
         }
 
         @Test
@@ -142,7 +142,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
             extension.setNeoFormVersion("1.99.1-20990101.235959");
             // Should use latest features, but with the specified Minecraft version
             assertEquals(
-                    VersionCapabilities.latest().withMinecraftVersion("1.99.1"),
+                    VersionCapabilitiesInternal.latest().withMinecraftVersion("1.99.1"),
                     extension.getVersionCapabilities()
             );
         }

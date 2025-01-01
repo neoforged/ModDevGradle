@@ -1,6 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,7 +21,7 @@ public record ModdingDependencies(
                                              String neoForgeNotation,
                                              @Nullable ModuleDependency neoForm,
                                              @Nullable String neoFormNotation,
-                                             VersionCapabilities versionCapabilities) {
+                                             VersionCapabilitiesInternal versionCapabilities) {
         var runTypesDataDependency = neoForge.copy()
                 .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-config"));
         var modulePathDependency = neoForge.copy()

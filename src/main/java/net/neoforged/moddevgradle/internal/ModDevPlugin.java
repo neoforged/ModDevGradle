@@ -5,7 +5,7 @@ import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.dsl.ModdingVersionSettings;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
-import net.neoforged.moddevgradle.internal.utils.VersionCapabilities;
+import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
@@ -83,8 +83,8 @@ public class ModDevPlugin implements Plugin<Project> {
 
         var configurations = project.getConfigurations();
 
-        var versionCapabilities = neoForgeVersion != null ? VersionCapabilities.ofNeoForgeVersion(neoForgeVersion)
-                : VersionCapabilities.ofNeoFormVersion(neoFormVersion);
+        var versionCapabilities = neoForgeVersion != null ? VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion)
+                : VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion);
 
         var dependencies = neoForge != null ? ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities)
                 : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
