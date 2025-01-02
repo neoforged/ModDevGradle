@@ -11,7 +11,7 @@ public final class DependencyUtils {
     /**
      * Given a resolved artifact, try to guess which Maven GAV it was resolved from.
      */
-    public static String guessMavenGav(ResolvedArtifactResult result) {
+    public static String guessMavenGav(ResolvedArtifactResult result, boolean useWildcardVersionForProjectRefs) {
         String artifactId;
         String ext = "";
         String classifier = null;
@@ -40,7 +40,12 @@ public final class DependencyUtils {
             var capabilities = result.getVariant().getCapabilities();
             if (capabilities.size() == 1) {
                 var capability = capabilities.get(0);
-                artifactId = capability.getGroup() + ":" + capability.getName() + ":" + capability.getVersion();
+                artifactId = capability.getGroup() + ":" + capability.getName() + ":";
+                if (useWildcardVersionForProjectRefs) {
+                    artifactId += "*";
+                } else {
+                    artifactId += capability.getVersion();
+                }
             } else {
                 artifactId = result.getId().getComponentIdentifier().toString();
             }
