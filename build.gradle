@@ -95,7 +95,7 @@ dependencies {
     compileOnly gradleApi()
     compileOnly "com.intellij:annotations:9.0.4"
     shaded "com.google.code.gson:gson:2.11.0"
-    implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.8"
+    implementation "gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.1.9"
     shaded "net.neoforged:EclipseLaunchConfigs:0.1.11"
     shaded("net.neoforged:JarJarMetadata:0.4.2") {
         exclude group: 'org.slf4j'
