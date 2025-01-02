@@ -20,7 +20,7 @@ final class ArtifactManifestEntry implements Serializable {
     private final File file;
 
     ArtifactManifestEntry(ResolvedArtifactResult artifactResult) {
-        this.artifactId = DependencyUtils.guessMavenGav(artifactResult);
+        this.artifactId = DependencyUtils.guessMavenGav(artifactResult, true);
         this.file = artifactResult.getFile();
     }
 
