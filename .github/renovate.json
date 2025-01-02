@@ -4,6 +4,16 @@
     "github>neoforged/actions:renovate_preset"
   ],
   "baseBranches": ["main", "/^\\d+\\.x/"],
+  "packageRules": [
+    {
+      "matchDatasources": ["maven"],
+      "matchPackagePatterns": [
+        "^curse\\.maven(\\.|:)",
+        "^mezz\\.jei(\\.|:)"
+      ],
+      "enabled": false
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
