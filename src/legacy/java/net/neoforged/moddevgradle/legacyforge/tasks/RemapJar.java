@@ -1,6 +1,8 @@
 package net.neoforged.moddevgradle.legacyforge.tasks;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import javax.inject.Inject;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -33,10 +35,17 @@ public abstract class RemapJar extends Jar {
     protected abstract ExecOperations getExecOperations();
 
     @Inject
-    public RemapJar() {}
+    public RemapJar() {
+        getRemapOperation().getLogFile().set(new File(getTemporaryDir(), "console.log"));
+    }
 
     @TaskAction
-    public void remap() throws IOException {
-        getRemapOperation().execute(getExecOperations(), getInput().getAsFile().get(), getArchiveFile().get().getAsFile(), getLibraries());
+    @Override
+    public void copy() {
+        try {
+            getRemapOperation().execute(getExecOperations(), getInput().getAsFile().get(), getArchiveFile().get().getAsFile(), getLibraries());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }
