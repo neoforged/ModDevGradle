@@ -35,8 +35,11 @@ public record ModdingDependencies(
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures"));
         }
 
-        var javaAgentDependency = neoForge.copy()
-                .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-javaagent"));
+        ModuleDependency javaAgentDependency = null;
+        if (versionCapabilities.javaAgent()) {
+            javaAgentDependency = neoForge.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-javaagent"));
+        }
 
         return new ModdingDependencies(
                 neoForge,

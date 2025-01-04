@@ -14,9 +14,12 @@ import org.slf4j.LoggerFactory;
  * @param javaVersion      Which Java version Vanilla uses to compile and run.
  * @param splitDataRuns    Whether Vanilla has separate main classes for generating client and server data.
  * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
+ * @param modLocatorRework Has the rework of FML mod locators that allow the client resources to use any jar filename. If false, the client resource jar must be called "client-extra".
+ * @param javaAgent        If true, the NeoForge dependency supplies a java agent capability.
  */
 public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
-        boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
+        boolean testFixtures, boolean modLocatorRework,
+        boolean javaAgent) implements VersionCapabilities, Serializable {
 
     private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
 
@@ -26,6 +29,8 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     // Strips NeoForm timestamp suffixes OR dynamic version markers
     private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
 
+    // TODO: Wrong but for testing it's 1.20.1 for now
+    private static final int MC_1_21_4_INDEX = getReferenceVersionIndex("1.21.1");
     private static final int MC_24W45A_INDEX = getReferenceVersionIndex("24w45a");
     private static final int MC_1_20_5_INDEX = getReferenceVersionIndex("1.20.5");
     private static final int MC_24W14A_INDEX = getReferenceVersionIndex("24w14a");
@@ -56,8 +61,9 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         var splitData = hasSplitDataEntrypoints(versionIndex);
         var testFixtures = hasTestFixtures(versionIndex);
         var modLocatorRework = hasModLocatorRework(versionIndex);
+        var javaAgent = hasJavaAgent(versionIndex);
 
-        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures, modLocatorRework);
+        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures, modLocatorRework, javaAgent);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -82,6 +88,10 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
 
     static boolean hasModLocatorRework(int versionIndex) {
         return versionIndex <= MC_1_20_5_INDEX;
+    }
+
+    static boolean hasJavaAgent(int versionIndex) {
+        return versionIndex <= MC_1_21_4_INDEX;
     }
 
     static int indexOfNeoForgeVersion(String version) {
@@ -168,6 +178,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 javaVersion,
                 splitDataRuns,
                 testFixtures,
-                modLocatorRework);
+                modLocatorRework,
+                javaAgent);
     }
 }
