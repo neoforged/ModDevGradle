@@ -1,8 +1,10 @@
 package net.neoforged.moddevgradle.dsl;
 
 import javax.inject.Inject;
+import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevPlugin;
 import org.gradle.api.Action;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 
 /**
@@ -48,6 +50,19 @@ public abstract class NeoForgeExtension extends ModDevExtension {
         enable(settings -> {
             settings.setNeoFormVersion(version);
         });
+    }
+
+    /**
+     * After enabling modding, you can retrieve the version of NeoForm you picked using this getter.
+     * This is only meaningful if you have enabled vanilla-only mode or if you have overridden NeoForm for NeoForge.
+     * This getter throws if no NeoForm version was set.
+     */
+    public String getNeoFormVersion() {
+        var dependencies = ModDevArtifactsWorkflow.get(project).dependencies();
+        if (dependencies.neoFormDependency() == null) {
+            throw new InvalidUserCodeException("You cannot retrieve the NeoForm version without setting it first.");
+        }
+        return dependencies.neoFormDependency().getVersion();
     }
 
     public void enable(Action<ModdingVersionSettings> customizer) {
