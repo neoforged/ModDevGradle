@@ -159,7 +159,7 @@ public abstract class ModDevExtension {
 
     /**
      * After enabling modding, you can retrieve the version of the modding platform you picked using this getter.
-     * I.e. the NeoForge or Forge version. If you chose to enable vanilla-only mode, this getter returns null.
+     * I.e. the NeoForge or Forge version. If you chose to enable vanilla-only mode, this getter will throw.
      */
     public String getVersion() {
         var dependencies = ModDevArtifactsWorkflow.get(project).dependencies();

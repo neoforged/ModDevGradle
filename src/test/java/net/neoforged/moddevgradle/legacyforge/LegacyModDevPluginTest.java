@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
@@ -57,6 +58,12 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
                         "build/moddev/artifacts/vanilla-1.17.1-client-extra-aka-minecraft-resources.jar",
                         "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]",
                         "build/moddev/artifacts/intermediateToNamed.zip");
+        assertEquals("1.17.1", extension.getMcpVersion());
+    }
+
+    @Test
+    void testGetMcpVersionThrowsBeforeEnabling() {
+        assertThrows(InvalidUserCodeException.class, extension::getMcpVersion);
     }
 
     @Test

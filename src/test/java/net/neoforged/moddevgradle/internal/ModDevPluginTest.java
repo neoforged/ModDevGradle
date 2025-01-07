@@ -119,7 +119,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         @Test
         void testGetVersion() {
             extension.setNeoFormVersion(VERSION);
-            assertEquals(VersionCapabilitiesInternal.ofNeoFormVersion(VERSION), extension.getVersionCapabilities());
+            assertEquals(VERSION, extension.getNeoFormVersion());
         }
 
         @Test
