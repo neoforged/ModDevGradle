@@ -3,8 +3,10 @@ package net.neoforged.moddevgradle.legacyforge.dsl;
 import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
+import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import org.gradle.api.Action;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
 
 /**
@@ -47,6 +49,18 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
         enable(settings -> {
             settings.setMcpVersion(version);
         });
+    }
+
+    /**
+     * After enabling modding, you can retrieve the version of MCP you picked using this getter.
+     * This getter will throw if you have not enabled vanilla-mode yet.
+     */
+    public String getMcpVersion() {
+        var dependencies = ModDevArtifactsWorkflow.get(project).dependencies();
+        if (dependencies.neoFormDependency() == null) {
+            throw new InvalidUserCodeException("You cannot retrieve the MCP version without setting it first.");
+        }
+        return dependencies.neoFormDependency().getVersion();
     }
 
     public void enable(Action<LegacyForgeModdingSettings> customizer) {
