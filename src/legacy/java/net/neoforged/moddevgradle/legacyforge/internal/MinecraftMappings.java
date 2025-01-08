@@ -1,6 +1,5 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
-import java.util.Locale;
 import org.gradle.api.Named;
 import org.gradle.api.attributes.Attribute;
 import org.jetbrains.annotations.ApiStatus;

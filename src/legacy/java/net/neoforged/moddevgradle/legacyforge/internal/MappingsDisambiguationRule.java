@@ -1,9 +1,8 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import javax.inject.Inject;
 import org.gradle.api.attributes.AttributeDisambiguationRule;
 import org.gradle.api.attributes.MultipleCandidatesDetails;
-
-import javax.inject.Inject;
 
 /**
  * This disambiguation rule will prefer NAMED over SRG when both are present.
