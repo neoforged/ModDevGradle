@@ -32,6 +32,9 @@ public abstract class ObfuscationExtension {
     private final Configuration installerToolsRuntime;
     private final FileCollection extraMixinMappings;
 
+    private final MinecraftMappings namedMappings;
+    private final MinecraftMappings srgMappings;
+
     @Inject
     public ObfuscationExtension(Project project,
             Configuration autoRenamingToolRuntime,
@@ -41,6 +44,9 @@ public abstract class ObfuscationExtension {
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
         this.installerToolsRuntime = installerToolsRuntime;
         this.extraMixinMappings = extraMixinMappings;
+
+        this.namedMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.NAMED);
+        this.srgMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.SRG);
     }
 
     private <T> Provider<T> assertConfigured(Provider<T> provider) {
@@ -123,7 +129,7 @@ public abstract class ObfuscationExtension {
             var config = configurations.getByName(configurationName);
             // Mark the original configuration as NAMED to be able to disambiguate between it and the reobfuscated jar,
             // this is used for example by the JarJar configuration.
-            config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+            config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
 
             // Now create a reobf configuration
             var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
@@ -132,7 +138,7 @@ public abstract class ObfuscationExtension {
             for (var attribute : config.getAttributes().keySet()) {
                 copyAttribute(project, attribute, config, reobfConfig);
             }
-            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
             project.getArtifacts().add(reobfConfig.getName(), reobf);
 
             // Publish the reobf configuration instead of the original one to Maven
@@ -157,7 +163,7 @@ public abstract class ObfuscationExtension {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.attributes(attributeContainer -> {
-                attributeContainer.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+                attributeContainer.attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
             });
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(false);
@@ -171,20 +177,20 @@ public abstract class ObfuscationExtension {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings));
                         });
                     });
                     externalModuleDependency.setTransitive(false);
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings));
                         });
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings));
                         });
                     });
                     projectDependency.setTransitive(false);
