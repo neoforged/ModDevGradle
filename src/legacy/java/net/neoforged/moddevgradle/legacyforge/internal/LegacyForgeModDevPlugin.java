@@ -1,8 +1,5 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
-import java.net.URI;
-import java.util.stream.Stream;
-import javax.inject.Inject;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
@@ -33,6 +30,10 @@ import org.gradle.jvm.tasks.Jar;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.inject.Inject;
+import java.net.URI;
+import java.util.stream.Stream;
 
 @ApiStatus.Internal
 public class LegacyForgeModDevPlugin implements Plugin<Project> {
@@ -241,7 +242,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         });
 
         project.getDependencies().attributesSchema(schema -> {
-            schema.attribute(MinecraftMappings.ATTRIBUTE);
+            schema.attribute(MinecraftMappings.ATTRIBUTE)
+                    .getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
+                        actionConfiguration.params(namedMappings);
+                    });
         });
         project.getDependencies().getArtifactTypes().named("jar", a -> {
             // By default all produced artifacts are NAMED, this also applies a default value to incoming deps
