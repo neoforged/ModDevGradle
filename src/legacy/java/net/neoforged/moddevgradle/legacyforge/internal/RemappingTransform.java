@@ -3,7 +3,6 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 import java.io.IOException;
 import javax.inject.Inject;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
-import org.gradle.api.artifacts.transform.CacheableTransform;
 import org.gradle.api.artifacts.transform.InputArtifact;
 import org.gradle.api.artifacts.transform.InputArtifactDependencies;
 import org.gradle.api.artifacts.transform.TransformAction;
@@ -20,7 +19,6 @@ import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.ExecOperations;
 
-@CacheableTransform
 abstract class RemappingTransform implements TransformAction<RemappingTransform.Parameters> {
     @InputArtifact
     @PathSensitive(PathSensitivity.NONE)

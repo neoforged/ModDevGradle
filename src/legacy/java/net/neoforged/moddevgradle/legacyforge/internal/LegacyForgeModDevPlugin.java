@@ -214,10 +214,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
+                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
-                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
+                    .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
     }
@@ -229,7 +229,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var configurationName = sourceSet.getTaskName(null, "jarJar");
-            project.getConfigurations().getByName("jarJar").withDependencies(dependencies -> {
+            project.getConfigurations().getByName(configurationName).withDependencies(dependencies -> {
                 dependencies.forEach(dep -> {
                     if (dep instanceof ProjectDependency projectDependency) {
                         projectDependency.attributes(a -> {
@@ -241,12 +241,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         });
 
         project.getDependencies().attributesSchema(schema -> {
-            schema.attribute(MinecraftMappings.ATTRIBUTE).getDisambiguationRules().add(MappingsDisambiguationRule.class, spec -> {
-                spec.params(namedMappings);
-            });
+            schema.attribute(MinecraftMappings.ATTRIBUTE);
         });
         project.getDependencies().getArtifactTypes().named("jar", a -> {
-            // By default all produced artifacts are NAMED
+            // By default all produced artifacts are NAMED, this also applies a default value to incoming deps
             a.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
         });
 
