@@ -242,10 +242,11 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         });
 
         project.getDependencies().attributesSchema(schema -> {
-            schema.attribute(MinecraftMappings.ATTRIBUTE)
-                    .getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
-                        actionConfiguration.params(namedMappings);
-                    });
+            var attr = schema.attribute(MinecraftMappings.ATTRIBUTE);
+            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
+                actionConfiguration.params(namedMappings);
+            });
+            attr.getCompatibilityRules().add(SrgCompatibilityRule.class);
         });
         project.getDependencies().getArtifactTypes().named("jar", a -> {
             // By default all produced artifacts are NAMED, this also applies a default value to incoming deps
