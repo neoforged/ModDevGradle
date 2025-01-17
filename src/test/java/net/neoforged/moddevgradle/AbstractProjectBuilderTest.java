@@ -22,19 +22,25 @@ public abstract class AbstractProjectBuilderTest {
     }
 
     protected final String describeDependency(Dependency dependency) {
+        String result;
         if (dependency instanceof FileCollectionDependency fileCollectionDependency) {
-            return fileCollectionDependency.getFiles().getFiles()
+            result = fileCollectionDependency.getFiles().getFiles()
                     .stream()
                     .map(f -> project.getProjectDir().toPath().relativize(f.toPath()).toString().replace('\\', '/'))
                     .collect(Collectors.joining(";"));
         } else if (dependency instanceof ExternalModuleDependency moduleDependency) {
-            return moduleDependency.getGroup()
+            result = moduleDependency.getGroup()
                     + ":" + moduleDependency.getName()
                     + ":" + moduleDependency.getVersion()
                     + formatCapabilities(moduleDependency);
         } else {
-            return dependency.toString();
+            result = dependency.toString();
         }
+
+        if (dependency.getReason() != null) {
+            result += " (" + dependency.getReason() + ")";
+        }
+        return result;
     }
 
     protected final String formatCapabilities(ExternalModuleDependency moduleDependency) {

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import javax.inject.Inject;
 import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings;
+import net.neoforged.moddevgradle.legacyforge.internal.SrgMappingsRule;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +33,9 @@ public abstract class ObfuscationExtension {
     private final Configuration installerToolsRuntime;
     private final FileCollection extraMixinMappings;
 
+    private final MinecraftMappings namedMappings;
+    private final MinecraftMappings srgMappings;
+
     @Inject
     public ObfuscationExtension(Project project,
             Configuration autoRenamingToolRuntime,
@@ -41,6 +45,9 @@ public abstract class ObfuscationExtension {
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
         this.installerToolsRuntime = installerToolsRuntime;
         this.extraMixinMappings = extraMixinMappings;
+
+        this.namedMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.NAMED);
+        this.srgMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.SRG);
     }
 
     private <T> Provider<T> assertConfigured(Provider<T> provider) {
@@ -123,7 +130,7 @@ public abstract class ObfuscationExtension {
             var config = configurations.getByName(configurationName);
             // Mark the original configuration as NAMED to be able to disambiguate between it and the reobfuscated jar,
             // this is used for example by the JarJar configuration.
-            config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+            config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
 
             // Now create a reobf configuration
             var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
@@ -132,7 +139,7 @@ public abstract class ObfuscationExtension {
             for (var attribute : config.getAttributes().keySet()) {
                 copyAttribute(project, attribute, config, reobfConfig);
             }
-            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
             project.getArtifacts().add(reobfConfig.getName(), reobf);
 
             // Publish the reobf configuration instead of the original one to Maven
@@ -156,11 +163,8 @@ public abstract class ObfuscationExtension {
     public Configuration createRemappingConfiguration(Configuration parent) {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
-            spec.attributes(attributeContainer -> {
-                attributeContainer.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
-            });
             spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(false);
+            spec.setCanBeResolved(true);
             spec.setTransitive(false);
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
@@ -169,29 +173,39 @@ public abstract class ObfuscationExtension {
             // Additionally, we force dependencies to be non-transitive since we cannot apply the attribute hack to transitive dependencies.
             spec.withDependencies(dependencies -> dependencies.forEach(dep -> {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
-                    project.getDependencies().constraints(constraints -> {
-                        constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
-                        });
-                    });
                     externalModuleDependency.setTransitive(false);
+
+                    // This rule ensures that this external module will be enriched with the attribute MAPPINGS=SRG
+                    project.getDependencies().getComponents().withModule(
+                            dep.getGroup() + ":" + dep.getName(), SrgMappingsRule.class, cfg -> {
+                                cfg.params(srgMappings);
+                            });
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
                         });
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
-                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG));
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
                         });
                     });
                     projectDependency.setTransitive(false);
                 }
             }));
         });
-        parent.extendsFrom(remappingConfig);
+
+        var remappedDep = project.getDependencyFactory().create(
+                remappingConfig.getIncoming().artifactView(view -> {
+                    view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                }).getFiles());
+        remappedDep.because("Remapped mods from " + remappingConfig.getName());
+
+        parent.getDependencies().add(
+                remappedDep);
+
         return remappingConfig;
     }
 }

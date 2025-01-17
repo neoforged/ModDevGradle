@@ -18,6 +18,16 @@ import org.gradle.testfixtures.ProjectBuilder;
 import org.junit.jupiter.api.Test;
 
 public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
+    private static final String[] MODDING_COMPILE_DEPENDENCIES = {
+            "build/moddev/artifacts/forge-1.2.3.jar",
+            "net.minecraftforge:forge:1.2.3[net.neoforged:neoforge-dependencies]"
+    };
+    private static final String[] MODDING_RUNTIME_ONLY_DEPENDENCIES = {
+            "build/moddev/artifacts/client-extra-1.2.3.jar",
+            "build/moddev/artifacts/intermediateToNamed.zip",
+    };
+    public static final String VERSION = "1.2.3";
+
     private final LegacyForgeExtension extension;
     private final SourceSet mainSourceSet;
     private final SourceSet testSourceSet;
@@ -39,8 +49,8 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
 
     @Test
     void testModdingCannotBeEnabledTwice() {
-        extension.setVersion("1.2.3");
-        var e = assertThrows(InvalidUserCodeException.class, () -> extension.setVersion("1.2.3"));
+        extension.setVersion(VERSION);
+        var e = assertThrows(InvalidUserCodeException.class, () -> extension.setVersion(VERSION));
         assertThat(e).hasMessage("You cannot enable modding in the same project twice.");
     }
 
@@ -49,11 +59,15 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
         extension.setMcpVersion("1.17.1");
 
         assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
-                .containsOnly(
+                .contains(
                         "build/moddev/artifacts/vanilla-1.17.1.jar",
                         "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]");
+        assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName())
+                .doesNotContain(
+                        "build/moddev/artifacts/vanilla-1.17.1-client-extra-aka-minecraft-resources.jar",
+                        "build/moddev/artifacts/intermediateToNamed.zip");
         assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName())
-                .containsOnly(
+                .contains(
                         "build/moddev/artifacts/vanilla-1.17.1.jar",
                         "build/moddev/artifacts/vanilla-1.17.1-client-extra-aka-minecraft-resources.jar",
                         "de.oceanlabs.mcp:mcp_config:1.17.1[net.neoforged:neoform-dependencies]",
@@ -69,44 +83,47 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
     @Test
     void testEnableForTestSourceSetOnly() {
         extension.enable(settings -> {
-            settings.setForgeVersion("1.2.3");
+            settings.setForgeVersion(VERSION);
             settings.setEnabledSourceSets(Set.of(testSourceSet));
         });
 
         // Both the compile and runtime classpath of the main source set had no dependencies added
-        assertThatDependencies(mainSourceSet.getCompileClasspathConfigurationName()).isEmpty();
-        assertThatDependencies(mainSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
+        assertDoesNotContainModdingDependencies(mainSourceSet.getCompileClasspathConfigurationName());
+        assertDoesNotContainModdingDependencies(mainSourceSet.getRuntimeClasspathConfigurationName());
 
         // While the test classpath should have modding dependencies
-        assertContainsModdingCompileDependencies("1.2.3", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies(testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies(testSourceSet.getRuntimeClasspathConfigurationName());
     }
 
     @Test
     void testAddModdingDependenciesTo() {
-        extension.setVersion("1.2.3");
+        extension.setVersion(VERSION);
 
         // Initially, only the main source set should have the dependencies
-        assertContainsModdingCompileDependencies("1.2.3", mainSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", mainSourceSet.getRuntimeClasspathConfigurationName());
-        assertThatDependencies(testSourceSet.getCompileClasspathConfigurationName()).isEmpty();
-        assertThatDependencies(testSourceSet.getRuntimeClasspathConfigurationName()).isEmpty();
+        assertContainsModdingCompileDependencies(mainSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies(mainSourceSet.getRuntimeClasspathConfigurationName());
+        assertDoesNotContainModdingDependencies(testSourceSet.getCompileClasspathConfigurationName());
+        assertDoesNotContainModdingDependencies(testSourceSet.getRuntimeClasspathConfigurationName());
 
         // Now add it to the test source set too
         extension.addModdingDependenciesTo(testSourceSet);
 
-        assertContainsModdingCompileDependencies("1.2.3", testSourceSet.getCompileClasspathConfigurationName());
-        assertContainsModdingRuntimeDependencies("1.2.3", testSourceSet.getRuntimeClasspathConfigurationName());
+        assertContainsModdingCompileDependencies(testSourceSet.getCompileClasspathConfigurationName());
+        assertContainsModdingRuntimeDependencies(testSourceSet.getRuntimeClasspathConfigurationName());
     }
 
-    private void assertContainsModdingCompileDependencies(String version, String configurationName) {
-        assertThatDependencies(configurationName)
-                .containsOnly(
-                        "build/moddev/artifacts/forge-" + version + ".jar",
-                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]");
+    private void assertDoesNotContainModdingDependencies(String configurationName) {
+        assertThatDependencies(configurationName).doesNotContain(MODDING_COMPILE_DEPENDENCIES);
+        assertThatDependencies(configurationName).doesNotContain(MODDING_RUNTIME_ONLY_DEPENDENCIES);
     }
 
-    private void assertContainsModdingRuntimeDependencies(String version, String configurationName) {
+    private void assertContainsModdingCompileDependencies(String configurationName) {
+        assertThatDependencies(configurationName).contains(MODDING_COMPILE_DEPENDENCIES);
+        assertThatDependencies(configurationName).doesNotContain(MODDING_RUNTIME_ONLY_DEPENDENCIES);
+    }
+
+    private void assertContainsModdingRuntimeDependencies(String configurationName) {
         var configuration = project.getConfigurations().getByName(configurationName);
 
         var dependentTasks = configuration.getBuildDependencies().getDependencies(null);
@@ -114,11 +131,7 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
                 .extracting(Task::getName)
                 .containsOnly("createMinecraftArtifacts");
 
-        assertThatDependencies(configurationName)
-                .containsOnly(
-                        "build/moddev/artifacts/forge-" + version + ".jar",
-                        "build/moddev/artifacts/client-extra-1.2.3.jar",
-                        "build/moddev/artifacts/intermediateToNamed.zip",
-                        "net.minecraftforge:forge:" + version + "[net.neoforged:neoforge-dependencies]");
+        assertThatDependencies(configurationName).contains(MODDING_COMPILE_DEPENDENCIES);
+        assertThatDependencies(configurationName).contains(MODDING_RUNTIME_ONLY_DEPENDENCIES);
     }
 }

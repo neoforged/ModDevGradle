@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 
 import java.net.URI;
 import java.util.stream.Stream;
+import javax.inject.Inject;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.internal.ArtifactNamingStrategy;
 import net.neoforged.moddevgradle.internal.Branding;
@@ -23,6 +24,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ProjectDependency;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.tasks.SourceSet;
@@ -42,6 +44,15 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
     public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
+
+    private final MinecraftMappings namedMappings;
+    private final MinecraftMappings srgMappings;
+
+    @Inject
+    public LegacyForgeModDevPlugin(ObjectFactory objectFactory) {
+        namedMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.NAMED);
+        srgMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.SRG);
+    }
 
     @Override
     public void apply(Project project) {
@@ -203,36 +214,37 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED)
+                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
-                    .attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG)
+                    .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
     }
 
-    private static void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
+    private void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
         // JarJar cross-project dependencies are packaged into the final jar and should be remapped
         // We must however do this without affecting external dependencies since those are usually already in the
         // right namespace.
         var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var configurationName = sourceSet.getTaskName(null, "jarJar");
-            project.getConfigurations().getByName("jarJar").withDependencies(dependencies -> {
+            project.getConfigurations().getByName(configurationName).withDependencies(dependencies -> {
                 dependencies.forEach(dep -> {
                     if (dep instanceof ProjectDependency projectDependency) {
                         projectDependency.attributes(a -> {
-                            a.attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.SRG);
+                            a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
                         });
                     }
                 });
             });
         });
 
-        project.getDependencies().attributesSchema(schema -> schema.attribute(MinecraftMappings.ATTRIBUTE).getDisambiguationRules().add(MappingsDisambiguationRule.class));
-        project.getDependencies().getArtifactTypes().named("jar", a -> {
-            // By default all produced artifacts are NAMED
-            a.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, MinecraftMappings.NAMED);
+        project.getDependencies().attributesSchema(schema -> {
+            var attr = schema.attribute(MinecraftMappings.ATTRIBUTE);
+            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
+                actionConfiguration.params(namedMappings);
+            });
         });
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
