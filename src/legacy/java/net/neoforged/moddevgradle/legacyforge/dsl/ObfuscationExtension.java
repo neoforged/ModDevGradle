@@ -197,11 +197,14 @@ public abstract class ObfuscationExtension {
             }));
         });
 
+        var remappedDep = project.getDependencyFactory().create(
+                remappingConfig.getIncoming().artifactView(view -> {
+                    view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                }).getFiles());
+        remappedDep.because("Remapped mods from " + remappingConfig.getName());
+
         parent.getDependencies().add(
-                project.getDependencyFactory().create(
-                        remappingConfig.getIncoming().artifactView(view -> {
-                            view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
-                        }).getFiles()));
+                remappedDep);
 
         return remappingConfig;
     }

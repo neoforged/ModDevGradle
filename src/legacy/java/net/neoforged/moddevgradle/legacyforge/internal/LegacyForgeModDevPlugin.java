@@ -245,11 +245,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
                 actionConfiguration.params(namedMappings);
             });
-            attr.getCompatibilityRules().add(SrgCompatibilityRule.class);
-        });
-        project.getDependencies().getArtifactTypes().named("jar", a -> {
-            // By default all produced artifacts are NAMED, this also applies a default value to incoming deps
-            a.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
         });
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
