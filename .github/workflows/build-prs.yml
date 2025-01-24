@@ -33,10 +33,7 @@ jobs:
     name: Test ${{ matrix.project }} on ${{ matrix.os }}
     steps:
       - name: Checkout project sources
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1000
-          fetch-tags: true
+        uses: neoforged/actions/checkout@main
 
       - uses: actions/setup-java@v4
         with:
