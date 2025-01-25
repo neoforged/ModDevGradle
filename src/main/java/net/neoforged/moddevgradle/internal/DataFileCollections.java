@@ -4,6 +4,8 @@ import java.io.File;
 import java.util.function.Consumer;
 import net.neoforged.moddevgradle.dsl.DataFileCollection;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
+import net.neoforged.moddevgradle.internal.utils.StringUtils;
+import net.neoforged.moddevgradle.tasks.CopyDataFile;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
@@ -93,6 +95,9 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
             }
         });
 
+        var copyTaskName = "copy" + StringUtils.capitalize(name) + "DataPublications";
+        var copyTask = project.getTasks().register(copyTaskName, CopyDataFile.class);
+
         var depFactory = project.getDependencyFactory();
         Consumer<Object> publishCallback = new Consumer<>() {
             ConfigurablePublishArtifact firstArtifact;
@@ -100,8 +105,22 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
 
             @Override
             public void accept(Object artifactNotation) {
-                elementsConfiguration.getDependencies().add(depFactory.create(project.files(artifactNotation)));
-                project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation, artifact -> {
+                // Create a temporary artifact to resolve file and task dependencies.
+                var dummyArtifact = project.getArtifacts().add(elementsConfiguration.getName(), artifactNotation);
+
+                var artifactFile = dummyArtifact.getFile();
+                var artifactDependencies = dummyArtifact.getBuildDependencies();
+                elementsConfiguration.getArtifacts().remove(dummyArtifact);
+
+                var copyOutput = project.getLayout().getBuildDirectory().file(copyTaskName + "/" + artifactCount + "-" + artifactFile.getName());
+                copyTask.configure(t -> {
+                    t.dependsOn(artifactDependencies);
+                    t.getInputFiles().add(project.getLayout().file(project.provider(() -> artifactFile)));
+                    t.getOutputFiles().add(copyOutput);
+                });
+
+                project.getArtifacts().add(elementsConfiguration.getName(), copyOutput, artifact -> {
+                    artifact.builtBy(copyTask);
                     if (firstArtifact == null) {
                         firstArtifact = artifact;
                         artifact.setClassifier(category);
