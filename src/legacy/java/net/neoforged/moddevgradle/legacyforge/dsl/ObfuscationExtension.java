@@ -11,10 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.ExternalModuleDependency;
-import org.gradle.api.artifacts.FileCollectionDependency;
-import org.gradle.api.artifacts.ProjectDependency;
+import org.gradle.api.artifacts.*;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
@@ -122,8 +119,15 @@ public abstract class ObfuscationExtension {
             // Move plain jars into a subdirectory to be able to maintain the same classifier for the reobfuscated version
             task.getDestinationDirectory().set(task.getProject().getLayout().getBuildDirectory().dir("devlibs"));
         });
+        return reobf;
+    }
 
-        // Replace the publication of the jar task with the reobfuscated jar
+    /**
+     * Replace the publication of the jar task with the reobfuscated jar
+     *
+     * @param reobf the remapJar task to replace
+     */
+    public void publishReobfuscated(TaskProvider<RemapJar> reobf) {
         var configurations = project.getConfigurations();
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
         for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
@@ -146,8 +150,6 @@ public abstract class ObfuscationExtension {
             java.withVariantsFromConfiguration(config, ConfigurationVariantDetails::skip);
             java.addVariantsFromConfiguration(reobfConfig, spec -> {});
         }
-
-        return reobf;
     }
 
     private static <T> void copyAttribute(Project project, Attribute<T> attribute, Configuration fromConfig, Configuration toConfig) {

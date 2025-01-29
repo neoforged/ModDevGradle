@@ -193,6 +193,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var reobfJar = obf.reobfuscate(
                 project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                 project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+        obf.publishReobfuscated(reobfJar);
 
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
