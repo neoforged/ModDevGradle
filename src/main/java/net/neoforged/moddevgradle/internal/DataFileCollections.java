@@ -95,7 +95,7 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
             }
         });
 
-        var copyTaskName = "copy" + StringUtils.capitalize(name) + "DataPublications";
+        var copyTaskName = "copy" + StringUtils.capitalize(name) + "Publications";
         var copyTask = project.getTasks().register(copyTaskName, CopyDataFile.class);
 
         var depFactory = project.getDependencyFactory();

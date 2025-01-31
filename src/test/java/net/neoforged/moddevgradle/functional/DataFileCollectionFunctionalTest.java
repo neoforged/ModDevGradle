@@ -71,8 +71,14 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                 }
                 """, "signing");
 
-        assertThat(Files.exists(atFile.resolveSibling(atFile.getFileName() + ".asc")))
-                .isFalse();
+        assertThat(atFile.resolveSibling(atFile.getFileName() + ".asc"))
+                .doesNotExist();
+        var copiedFile = testProjectDir.toPath()
+                .resolve("build/copyAccessTransformersPublications/0-accesstransformer.cfg");
+        assertThat(copiedFile)
+                .hasSameTextualContentAs(atFile);
+        assertThat(copiedFile.resolveSibling(copiedFile.getFileName() + ".asc"))
+                .exists();
         assertThat(consumeDataFilePublication("accessTransformers", "test:publish-at:1.0")).containsOnly(
                 entry("publish-at-1.0-accesstransformer.cfg", "# hello world"));
     }
