@@ -52,7 +52,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                     useInMemoryPgpKeys(
                         ""\"
                 -----BEGIN PGP PRIVATE KEY BLOCK-----
-                
+
                 lIYEZ50OURYJKwYBBAHaRw8BAQdAjVNqyWTfusmnT3/pNNmjmG9AfOFL8YbFUXCo
                 PZO3dCj+BwMCZ5yIZTjHa2r/WIUWn/nr1+5CLJOI1xzscxZOq6Vyvh9m3TWgPKWh
                 iW/MM/tGGvOnFt4qD+WNYNaHo3GtbG+KoK0584Ddon60yFEAPCdAUrQXTURHIDxt
