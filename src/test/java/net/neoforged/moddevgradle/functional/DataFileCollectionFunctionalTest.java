@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.intellij.lang.annotations.Language;
@@ -67,7 +69,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                     )
                     sign publishing.publications.maven
                 }
-                """);
+                """, "signing");
 
         assertThat(Files.exists(atFile.resolveSibling(atFile.getFileName() + ".asc")))
                 .isFalse();
@@ -164,19 +166,22 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
     private void publishDataFiles(String groupId,
             String artifactId,
             String version,
-            @Language("groovy") String buildScriptBody) throws IOException {
+            @Language("groovy") String buildScriptBody,
+            String... extraPlugins) throws IOException {
+        String extraPluginLines = Stream.of(extraPlugins)
+                .map("id \"%s\""::formatted)
+                .collect(Collectors.joining("\n"));
         writeGroovySettingsScript("""
                 plugins {
                     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
                 }
                 rootProject.name = "{0}"
                 """, artifactId);
-        // TODO we should probably not just always apply the signing plugin?
         writeGroovyBuildScript("""
                 plugins {
                     id "net.neoforged.moddev"
                     id "maven-publish"
-                    id "signing"
+                    {4}
                 }
                 group = "{0}"
                 version = "{1}"
@@ -196,7 +201,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                     }
                 }
                 {2}
-                """, groupId, version, buildScriptBody, publicationTarget);
+                """, groupId, version, buildScriptBody, publicationTarget, extraPluginLines);
 
         var result = GradleRunner.create()
                 .withPluginClasspath()
