@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.gradle.testkit.runner.GradleRunner;
 import org.gradle.testkit.runner.TaskOutcome;
 import org.intellij.lang.annotations.Language;
@@ -33,6 +35,50 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                 }
                 """);
 
+        assertThat(consumeDataFilePublication("accessTransformers", "test:publish-at:1.0")).containsOnly(
+                entry("publish-at-1.0-accesstransformer.cfg", "# hello world"));
+    }
+
+    @Test
+    public void testPublishSignedAccessTransformerFileDoesntProduceGarbageNextToTheFile() throws IOException {
+        var atFile = testProjectDir.toPath().resolve("accesstransformer.cfg");
+        Files.writeString(atFile, "# hello world");
+
+        publishDataFiles("test", "publish-at", "1.0", """
+                neoForge {
+                    accessTransformers {
+                        publish(project.file("accesstransformer.cfg"))
+                    }
+                }
+                signing {
+                    useInMemoryPgpKeys(
+                        ""\"
+                -----BEGIN PGP PRIVATE KEY BLOCK-----
+
+                lIYEZ50OURYJKwYBBAHaRw8BAQdAjVNqyWTfusmnT3/pNNmjmG9AfOFL8YbFUXCo
+                PZO3dCj+BwMCZ5yIZTjHa2r/WIUWn/nr1+5CLJOI1xzscxZOq6Vyvh9m3TWgPKWh
+                iW/MM/tGGvOnFt4qD+WNYNaHo3GtbG+KoK0584Ddon60yFEAPCdAUrQXTURHIDxt
+                ZGdAbmVvZm9yZ2VkLm5ldD6IkwQTFgoAOxYhBN0jxfacUTgqiXj3CnkqaxjDscQa
+                BQJnnQ5RAhsDBQsJCAcCAiICBhUKCQgLAgQWAgMBAh4HAheAAAoJEHkqaxjDscQa
+                93YA/ix1FkHrtF+VglGcSBGUvtqfiBzYPvwrazNdURxCZpaVAP4zWPYtbDJP14dP
+                s8I/jILSUfE61lVl6Y74tpiEvNm8Bg==
+                =3g5S
+                -----END PGP PRIVATE KEY BLOCK-----
+                        ""\",
+                        "123456"
+                    )
+                    sign publishing.publications.maven
+                }
+                """, "signing");
+
+        assertThat(atFile.resolveSibling(atFile.getFileName() + ".asc"))
+                .doesNotExist();
+        var copiedFile = testProjectDir.toPath()
+                .resolve("build/copyAccessTransformersPublications/0-accesstransformer.cfg");
+        assertThat(copiedFile)
+                .hasSameTextualContentAs(atFile);
+        assertThat(copiedFile.resolveSibling(copiedFile.getFileName() + ".asc"))
+                .exists();
         assertThat(consumeDataFilePublication("accessTransformers", "test:publish-at:1.0")).containsOnly(
                 entry("publish-at-1.0-accesstransformer.cfg", "# hello world"));
     }
@@ -126,7 +172,11 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
     private void publishDataFiles(String groupId,
             String artifactId,
             String version,
-            @Language("groovy") String buildScriptBody) throws IOException {
+            @Language("groovy") String buildScriptBody,
+            String... extraPlugins) throws IOException {
+        String extraPluginLines = Stream.of(extraPlugins)
+                .map("id \"%s\""::formatted)
+                .collect(Collectors.joining("\n"));
         writeGroovySettingsScript("""
                 plugins {
                     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
@@ -137,6 +187,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                 plugins {
                     id "net.neoforged.moddev"
                     id "maven-publish"
+                    {4}
                 }
                 group = "{0}"
                 version = "{1}"
@@ -156,7 +207,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
                     }
                 }
                 {2}
-                """, groupId, version, buildScriptBody, publicationTarget);
+                """, groupId, version, buildScriptBody, publicationTarget, extraPluginLines);
 
         var result = GradleRunner.create()
                 .withPluginClasspath()
