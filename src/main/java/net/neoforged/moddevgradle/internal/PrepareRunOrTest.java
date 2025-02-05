@@ -15,6 +15,7 @@ import net.neoforged.moddevgradle.internal.utils.FileUtils;
 import net.neoforged.moddevgradle.internal.utils.OperatingSystem;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
+import net.neoforged.nfrtgradle.DownloadedAssetsReference;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
@@ -274,7 +275,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
         }
 
         lines.add("# NeoForge Run-Type Program Arguments");
-        var assetProperties = RunUtils.loadAssetProperties(getAssetProperties().get().getAsFile());
+        var assetProperties = DownloadedAssetsReference.loadProperties(getAssetProperties().get().getAsFile());
         List<String> args = runConfig.args();
         for (String arg : args) {
             switch (arg) {

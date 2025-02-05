@@ -1,10 +1,13 @@
 package net.neoforged.nfrtgradle;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import javax.inject.Inject;
 import org.gradle.api.GradleException;
+import org.gradle.api.Task;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Optional;
@@ -21,7 +24,9 @@ import org.jetbrains.annotations.ApiStatus;
 @ApiStatus.NonExtendable
 public abstract class DownloadAssets extends NeoFormRuntimeTask {
     @Inject
-    public DownloadAssets() {}
+    public DownloadAssets() {
+        getOutputs().upToDateWhen(DownloadAssets::checkAssetValidity);
+    }
 
     /**
      * Gradle dependency notation for the NeoForm data artifact, from which a Minecraft version will be derived.
@@ -108,5 +113,38 @@ public abstract class DownloadAssets extends NeoFormRuntimeTask {
         }
 
         run(args);
+    }
+
+    private static boolean checkAssetValidity(Task task) {
+        var downloadTask = (DownloadAssets) task;
+        var logger = downloadTask.getLogger();
+
+        var assetReferenceFile = downloadTask.getAssetPropertiesFile();
+        if (assetReferenceFile.isPresent()) {
+            DownloadedAssetsReference assetReference;
+            try {
+                assetReference = DownloadedAssetsReference.loadProperties(assetReferenceFile.getAsFile().get());
+            } catch (Exception e) {
+                logger.error("Failed to read downloaded asset index: {}", assetReferenceFile);
+                return false;
+            }
+            return validateAssetReference(assetReference, logger);
+        }
+
+        return true;
+    }
+
+    private static boolean validateAssetReference(DownloadedAssetsReference assetReference, Logger logger) {
+        File assetRoot = new File(assetReference.assetsRoot());
+        if (!assetRoot.isDirectory()) {
+            logger.info("Downloaded assets directory has gone missing: {}", assetRoot);
+            return false;
+        }
+        File assetIndex = new File(assetRoot, "indexes/" + assetReference.assetIndex() + ".json");
+        if (!assetIndex.isFile()) {
+            logger.info("Downloaded assets index has gone missing: {}", assetIndex);
+            return false;
+        }
+        return true;
     }
 }
