@@ -1,17 +1,13 @@
 package net.neoforged.moddevgradle.internal;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -60,25 +56,6 @@ final class RunUtils {
         return runModel.getType().orElse(project.getProviders().provider(() -> {
             throw new GradleException("The run '" + runModel.getName() + "' did not specify a type property");
         }));
-    }
-
-    public static AssetProperties loadAssetProperties(File file) {
-        Properties assetProperties = new Properties();
-        try (var input = new BufferedInputStream(new FileInputStream(file))) {
-            assetProperties.load(input);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to load asset properties", e);
-        }
-        if (!assetProperties.containsKey("assets_root")) {
-            throw new IllegalStateException("Asset properties file does not contain assets_root");
-        }
-        if (!assetProperties.containsKey("asset_index")) {
-            throw new IllegalStateException("Asset properties file does not contain asset_index");
-        }
-
-        return new AssetProperties(
-                assetProperties.getProperty("asset_index"),
-                assetProperties.getProperty("assets_root"));
     }
 
     public static void writeLog4j2Configuration(Level rootLevel, Path destination) throws IOException {
@@ -289,8 +266,6 @@ final class RunUtils {
         }));
     }
 }
-
-record AssetProperties(String assetIndex, String assetsRoot) {}
 
 abstract class ModFoldersProvider implements CommandLineArgumentProvider {
     @Inject
