@@ -135,6 +135,7 @@ public abstract class ObfuscationExtension {
             // Now create a reobf configuration
             var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
             reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
+            reobfConfig.extendsFrom(config);
             reobfConfig.getArtifacts().clear(); // If this is called multiple times...
             for (var attribute : config.getAttributes().keySet()) {
                 copyAttribute(project, attribute, config, reobfConfig);
