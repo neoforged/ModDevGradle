@@ -44,6 +44,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
     public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
+    public static final String ARTIFACT_TYPE_SRG_JAR = "srgJar";
 
     private final MinecraftMappings namedMappings;
     private final MinecraftMappings srgMappings;
@@ -220,6 +221,20 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                     .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
+        // This second copy of the transform is used for remapping artifact dependencies (i.e. on classifiers)
+        // that circumvent the variant system.
+        project.getDependencies().registerTransform(RemappingTransform.class, params -> {
+            params.parameters(parameters -> {
+                obf.configureSrgToNamedOperation(parameters.getRemapOperation());
+                parameters.getMinecraftDependencies().from(remapDeps);
+            });
+            params.getFrom()
+                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
+                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ARTIFACT_TYPE_SRG_JAR);
+            params.getTo()
+                    .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
+                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
+        });
     }
 
     private void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
@@ -247,6 +262,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             });
         });
 
+        // custom artifact type used to force remapping of artifact dependencies (which circumvent variant selection)
+        project.getDependencies().getArtifactTypes().create(ARTIFACT_TYPE_SRG_JAR, artifactType -> {
+            artifactType.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
+        });
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME));
