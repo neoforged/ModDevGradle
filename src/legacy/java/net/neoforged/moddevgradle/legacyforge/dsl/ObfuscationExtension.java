@@ -3,6 +3,7 @@ package net.neoforged.moddevgradle.legacyforge.dsl;
 import java.util.List;
 import java.util.Objects;
 import javax.inject.Inject;
+import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings;
 import net.neoforged.moddevgradle.legacyforge.internal.SrgMappingsRule;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
@@ -15,6 +16,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ProjectDependency;
+import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
@@ -175,6 +177,12 @@ public abstract class ObfuscationExtension {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
                     externalModuleDependency.setTransitive(false);
 
+                    // artifact dependencies need to be forced to be from our custom artifact type to be able
+                    // to inherit the mapping attribute (and be remapped). Module metadata doesn't apply here.
+                    for (var artifact : externalModuleDependency.getArtifacts()) {
+                        artifact.setType(LegacyForgeModDevPlugin.ARTIFACT_TYPE_SRG_JAR);
+                    }
+
                     // This rule ensures that this external module will be enriched with the attribute MAPPINGS=SRG
                     project.getDependencies().getComponents().withModule(
                             dep.getGroup() + ":" + dep.getName(), SrgMappingsRule.class, cfg -> {
@@ -200,11 +208,12 @@ public abstract class ObfuscationExtension {
         var remappedDep = project.getDependencyFactory().create(
                 remappingConfig.getIncoming().artifactView(view -> {
                     view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                    // Forcing resolution to JAR here allows our SRG_JAR artifact transform to work
+                    view.attributes(a -> a.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
                 }).getFiles());
         remappedDep.because("Remapped mods from " + remappingConfig.getName());
 
-        parent.getDependencies().add(
-                remappedDep);
+        parent.getDependencies().add(remappedDep);
 
         return remappingConfig;
     }
