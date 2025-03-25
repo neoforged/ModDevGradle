@@ -4,8 +4,8 @@ import java.io.Serializable;
 import java.util.regex.Pattern;
 import net.neoforged.moddevgradle.dsl.VersionCapabilities;
 import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.gradle.api.logging.Logger;
+import org.gradle.api.logging.Logging;
 
 /**
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
         boolean testFixtures, boolean modLocatorRework) implements VersionCapabilities, Serializable {
 
-    private static final Logger LOG = LoggerFactory.getLogger(VersionCapabilitiesInternal.class);
+    private static final Logger LOG = Logging.getLogger(VersionCapabilitiesInternal.class);
 
     private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
 
@@ -39,7 +39,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     public static VersionCapabilitiesInternal ofMinecraftVersion(String minecraftVersion) {
         var versionIndex = MinecraftVersionList.VERSIONS.indexOf(minecraftVersion);
         if (versionIndex == -1) {
-            LOG.info("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
+            LOG.lifecycle("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
             return LATEST.withMinecraftVersion(minecraftVersion);
         }
 
@@ -112,7 +112,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 capabilities = capabilities.withMinecraftVersion(minecraftVersion);
             }
 
-            LOG.warn("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
+            LOG.lifecycle("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
             return capabilities;
         }
 
@@ -132,7 +132,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 capabilities = capabilities.withMinecraftVersion(version);
             }
 
-            LOG.warn("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
+            LOG.lifecycle("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
             return capabilities;
         }
 
@@ -147,7 +147,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     public static VersionCapabilitiesInternal ofForgeVersion(String version) {
         var index = indexOfForgeVersion(version);
         if (index == -1) {
-            LOG.warn("Failed to parse MC version from Forge version {}. Using capabilities of latest known Minecraft version.", version);
+            LOG.lifecycle("Failed to parse MC version from Forge version {}. Using capabilities of latest known Minecraft version.", version);
             return LATEST;
         }
 
