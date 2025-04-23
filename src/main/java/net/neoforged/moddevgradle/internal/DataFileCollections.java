@@ -11,6 +11,7 @@ import org.gradle.api.artifacts.ConfigurablePublishArtifact;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.ApiStatus;
 
@@ -64,10 +65,10 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
 
         return new DataFileCollections(accessTransformers, interfaceInjectionData);
     }
-    public record CollectionWrapper(DataFileCollection extension, Configuration configuration) {}
+    public record CollectionWrapper(DataFileCollection extension, Provider<Configuration> configuration) {}
 
     private static CollectionWrapper createCollection(Project project, String name, String description, String category) {
-        var configuration = project.getConfigurations().create(name, spec -> {
+        var configuration = project.getConfigurations().register(name, spec -> {
             spec.setDescription(description);
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -76,7 +77,7 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
             });
         });
 
-        var elementsConfiguration = project.getConfigurations().create(name + "Elements", spec -> {
+        var elementsConfiguration = project.getConfigurations().register(name + "Elements", spec -> {
             spec.setDescription("Published data files for " + name);
             spec.setCanBeConsumed(true);
             spec.setCanBeResolved(false);
@@ -87,7 +88,8 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
 
         // Set up the variant publishing conditionally
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-        java.addVariantsFromConfiguration(elementsConfiguration, variant -> {
+        // TODO: no better way?
+        java.addVariantsFromConfiguration(elementsConfiguration.get(), variant -> {
             // This should be invoked lazily, so checking if the artifacts are empty is fine:
             // "The details object used to determine what to do with a configuration variant **when publishing**."
             if (variant.getConfigurationVariant().getArtifacts().isEmpty()) {
@@ -110,7 +112,8 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
 
                 var artifactFile = dummyArtifact.getFile();
                 var artifactDependencies = dummyArtifact.getBuildDependencies();
-                elementsConfiguration.getArtifacts().remove(dummyArtifact);
+                // TODO: no better way?
+                elementsConfiguration.get().getArtifacts().remove(dummyArtifact);
 
                 var copyOutput = project.getLayout().getBuildDirectory().file(copyTaskName + "/" + artifactCount + "-" + artifactFile.getName());
                 copyTask.configure(t -> {
@@ -136,7 +139,9 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
         };
 
         var extension = project.getObjects().newInstance(DataFileCollection.class, publishCallback);
-        configuration.getDependencies().add(depFactory.create(extension.getFiles()));
+        configuration.configure(c -> {
+            c.getDependencies().add(depFactory.create(extension.getFiles()));
+        });
 
         return new CollectionWrapper(extension, configuration);
     }

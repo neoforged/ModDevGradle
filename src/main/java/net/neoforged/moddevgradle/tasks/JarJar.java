@@ -30,6 +30,7 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileSystemOperations;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
@@ -78,26 +79,27 @@ public abstract class JarJar extends DefaultTask {
      * the dependencies to embed are sourced.
      */
     public static TaskProvider<JarJar> registerWithConfiguration(Project project, String name) {
-        var configuration = project.getConfigurations().create(name);
-        configuration.setTransitive(false);
-        // jarJar configurations should be resolvable, but ought not to be exposed to consumers;
-        // as it has attributes, it could conflict with normal exposed configurations
-        configuration.setCanBeResolved(true);
-        configuration.setCanBeConsumed(false);
+        var configuration = project.getConfigurations().register(name, c -> {
+            c.setTransitive(false);
+            // jarJar configurations should be resolvable, but ought not to be exposed to consumers;
+            // as it has attributes, it could conflict with normal exposed configurations
+            c.setCanBeResolved(true);
+            c.setCanBeConsumed(false);
 
-        var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
+            var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
 
-        configuration.attributes(attributes -> {
-            // Unfortunately, while we can hopefully rely on disambiguation rules to get us some of these, others run
-            // into issues. The target JVM version is the most worrying - we don't want to pull in a variant for a newer
-            // jvm version. We could copy DefaultJvmFeature, and search for the target version of the compile task,
-            // but this is difficult - we only have a feature name, not the linked source set. For this reason, we use
-            // the toolchain version, which is the most likely to be correct.
-            attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().orElse(JavaLanguageVersion.current()).map(JavaLanguageVersion::asInt));
-            attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
-            attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
-            attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
-            attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
+            c.attributes(attributes -> {
+                // Unfortunately, while we can hopefully rely on disambiguation rules to get us some of these, others run
+                // into issues. The target JVM version is the most worrying - we don't want to pull in a variant for a newer
+                // jvm version. We could copy DefaultJvmFeature, and search for the target version of the compile task,
+                // but this is difficult - we only have a feature name, not the linked source set. For this reason, we use
+                // the toolchain version, which is the most likely to be correct.
+                attributes.attributeProvider(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, javaPlugin.getToolchain().getLanguageVersion().orElse(JavaLanguageVersion.current()).map(JavaLanguageVersion::asInt));
+                attributes.attribute(Usage.USAGE_ATTRIBUTE, project.getObjects().named(Usage.class, Usage.JAVA_RUNTIME));
+                attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, project.getObjects().named(LibraryElements.class, LibraryElements.JAR));
+                attributes.attribute(Category.CATEGORY_ATTRIBUTE, project.getObjects().named(Category.class, Category.LIBRARY));
+                attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, project.getObjects().named(Bundling.class, Bundling.EXTERNAL));
+            });
         });
 
         return project.getTasks().register(name, JarJar.class, jarJar -> {
@@ -187,6 +189,10 @@ public abstract class JarJar extends DefaultTask {
     }
 
     public void configuration(Configuration jarJarConfiguration) {
+        configuration(getProject().provider(() -> jarJarConfiguration));
+    }
+
+    public void configuration(Provider<Configuration> jarJarConfiguration) {
         getInputFiles().from(jarJarConfiguration);
         getJarJarArtifacts().configuration(jarJarConfiguration);
         dependsOn(jarJarConfiguration);

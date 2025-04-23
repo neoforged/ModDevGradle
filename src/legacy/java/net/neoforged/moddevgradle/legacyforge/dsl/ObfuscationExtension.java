@@ -11,6 +11,7 @@ import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserCodeException;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -135,6 +136,7 @@ public abstract class ObfuscationExtension {
             config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
 
             // Now create a reobf configuration
+            // TODO: not lazy!
             var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
             reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
             reobfConfig.getArtifacts().clear(); // If this is called multiple times...
@@ -158,12 +160,18 @@ public abstract class ObfuscationExtension {
         }));
     }
 
+    public Configuration createRemappingConfiguration(Configuration parent) {
+        // TODO: what if parent comes from a different project? We should at least warn in that case...
+        return registerRemappingConfiguration(project.getConfigurations().named(parent.getName())).get();
+    }
+
     /**
      * Creates a configuration that will remap its dependencies, and adds it as a children of the provided {@code parent}.
      * The created configuration uses the name of its parent capitalized and prefixed by "mod".
      */
-    public Configuration createRemappingConfiguration(Configuration parent) {
-        var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
+    public NamedDomainObjectProvider<Configuration> registerRemappingConfiguration(NamedDomainObjectProvider<Configuration> parent) {
+        String remappingConfigName = "mod" + StringUtils.capitalize(parent.getName());
+        var remappingConfig = project.getConfigurations().register(remappingConfigName, spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -203,17 +211,19 @@ public abstract class ObfuscationExtension {
                     projectDependency.setTransitive(false);
                 }
             }));
+
+            var remappedDep = project.getDependencyFactory().create(
+                    spec.getIncoming().artifactView(view -> {
+                        view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                        // Forcing resolution to JAR here allows our SRG_JAR artifact transform to work
+                        view.attributes(a -> a.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
+                    }).getFiles());
+            remappedDep.because("Remapped mods from " + remappingConfigName);
+
+            parent.configure(p -> {
+                p.getDependencies().add(remappedDep);
+            });
         });
-
-        var remappedDep = project.getDependencyFactory().create(
-                remappingConfig.getIncoming().artifactView(view -> {
-                    view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
-                    // Forcing resolution to JAR here allows our SRG_JAR artifact transform to work
-                    view.attributes(a -> a.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
-                }).getFiles());
-        remappedDep.because("Remapped mods from " + remappingConfig.getName());
-
-        parent.getDependencies().add(remappedDep);
 
         return remappingConfig;
     }

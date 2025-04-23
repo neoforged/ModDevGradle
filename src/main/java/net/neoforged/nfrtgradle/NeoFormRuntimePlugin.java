@@ -16,7 +16,7 @@ public class NeoFormRuntimePlugin implements Plugin<Project> {
 
         var nfrtDependency = extension.getVersion().map(version -> dependencyFactory.create("net.neoforged:neoform-runtime:" + version));
 
-        var toolConfiguration = configurations.create("neoFormRuntimeTool", spec -> {
+        var toolConfiguration = configurations.register("neoFormRuntimeTool", spec -> {
             spec.setDescription("The NeoFormRuntime CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -27,7 +27,7 @@ public class NeoFormRuntimePlugin implements Plugin<Project> {
             });
         });
 
-        var externalToolsConfiguration = configurations.create("neoFormRuntimeExternalTools", spec -> {
+        var externalToolsConfiguration = configurations.register("neoFormRuntimeExternalTools", spec -> {
             spec.setDescription("The external tools used by NeoFormRuntime");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
