@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -55,6 +56,17 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @OutputFile
     public abstract RegularFileProperty getProgramArgsFile();
 
+    /**
+     * A file to use for the {@code log4j2.xml} config file that will be written.
+     * If absent, the standard log4j2.xml file produced by {@link RunUtils#writeLog4j2Configuration} will be used.
+     */
+    @InputFile
+    @Optional
+    public abstract RegularFileProperty getLog4jConfigFileOverride();
+
+    /**
+     * Where the {@code log4j2.xml} config file will be written.
+     */
     @OutputFile
     @Optional
     public abstract RegularFileProperty getLog4jConfigFile();
@@ -239,7 +251,11 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         if (getLog4jConfigFile().isPresent()) {
             var log4jConfigFile = getLog4jConfigFile().get().getAsFile();
-            RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), log4jConfigFile.toPath());
+            if (getLog4jConfigFileOverride().isPresent()) {
+                Files.copy(getLog4jConfigFileOverride().get().getAsFile().toPath(), log4jConfigFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } else {
+                RunUtils.writeLog4j2Configuration(getGameLogLevel().get(), log4jConfigFile.toPath());
+            }
             lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4jConfigFile.getAbsolutePath()));
         }
 

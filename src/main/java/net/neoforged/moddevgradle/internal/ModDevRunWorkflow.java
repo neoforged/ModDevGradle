@@ -332,6 +332,7 @@ public class ModDevRunWorkflow {
             task.getGameDirectory().set(run.getGameDirectory());
             task.getVmArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.VMARGS));
             task.getProgramArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.PROGRAMARGS));
+            task.getLog4jConfigFileOverride().set(run.getLoggingConfigFile());
             task.getLog4jConfigFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.LOG4J_CONFIG));
             task.getRunType().set(run.getType());
             task.getRunTypeTemplatesSource().from(runTemplatesFile);
