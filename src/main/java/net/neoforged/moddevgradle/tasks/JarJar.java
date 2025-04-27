@@ -198,6 +198,7 @@ public abstract class JarJar extends DefaultTask {
         dependsOn(jarJarConfiguration);
     }
 
+    // TODO: do something about this?
     public void setConfigurations(Collection<? extends Configuration> configurations) {
         var newConfig = getObjects().fileCollection();
         newConfig.from(configurations.toArray());

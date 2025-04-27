@@ -286,12 +286,11 @@ public class ModDevRunWorkflow {
         var tasks = project.getTasks();
 
         var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
-                .map(configurations::getByName);
+                .map(configurations::named);
 
         // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
         project.afterEvaluate(ignored -> {
-            // TODO: this .get() forces a resolution
-            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig.get());
+            runtimeClasspathConfig.get().configure(c -> c.extendsFrom(devLaunchConfig.get()));
         });
 
         var type = RunUtils.getRequiredType(project, run);
