@@ -1,13 +1,12 @@
 package net.neoforged.nfrtgradle;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import javax.inject.Inject;
+import net.neoforged.moddevgradle.internal.utils.ProblemReportingUtil;
+import net.neoforged.problems.FileProblemReporter;
+import net.neoforged.problems.Problem;
 import org.gradle.api.GradleException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.problems.Problems;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
@@ -19,6 +18,14 @@ import org.gradle.api.tasks.OutputFiles;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
+
+import javax.inject.Inject;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 
 /**
  * The primary task for creating the Minecraft artifacts that mods will be compiled against,
@@ -54,6 +61,16 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @InputFiles
     public abstract ConfigurableFileCollection getAccessTransformers();
 
+
+    /**
+     * Files added to this collection will be passed to NFRT via the {@code --validated-access-transformer}
+     * command line option and will fail the build if they contain errors.
+     * <p>
+     * This is a more precise version of setting {@link #getValidateAccessTransformers()} to {@code true}.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getValidatedAccessTransformers();
+
     /**
      * Files added to this collection will be passed to NFRT via the {@code --interface-injection-data}
      * command line option.
@@ -62,10 +79,13 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract ConfigurableFileCollection getInterfaceInjectionData();
 
     /**
-     * If set to true, passes {@code --validate-access-transformers} to NFRT.
+     * If set to true, all files from {@link #getAccessTransformers()} are added as validated ATs and will fail the build
+     * if they contain errors, or they target non-existent code elements.
+     * <p>
      * Defaults to false.
      */
     @Input
+    @Deprecated
     public abstract Property<Boolean> getValidateAccessTransformers();
 
     /**
@@ -172,6 +192,9 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @Optional
     public abstract RegularFileProperty getResourcesArtifact();
 
+    @Inject
+    protected abstract Problems getProblems();
+
     @TaskAction
     public void createArtifacts() {
         var args = new ArrayList<String>();
@@ -182,18 +205,29 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             args.add(getToolsJavaExecutable().get());
         }
 
+        // If an AT path is added twice, the validated variant takes precedence
+        var accessTransformersAdded = new HashSet<File>();
+        for (var accessTransformer : getValidatedAccessTransformers().getFiles()) {
+            if (accessTransformersAdded.add(accessTransformer)) {
+                args.add("--validated-access-transformer");
+                args.add(accessTransformer.getAbsolutePath());
+            }
+        }
+
         for (var accessTransformer : getAccessTransformers().getFiles()) {
-            args.add("--access-transformer");
-            args.add(accessTransformer.getAbsolutePath());
+            if (accessTransformersAdded.add(accessTransformer)) {
+                if (getValidateAccessTransformers().get()) {
+                    args.add("--validated-access-transformer");
+                } else {
+                    args.add("--access-transformer");
+                }
+                args.add(accessTransformer.getAbsolutePath());
+            }
         }
 
         for (var interfaceInjectionFile : getInterfaceInjectionData().getFiles()) {
             args.add("--interface-injection-data");
             args.add(interfaceInjectionFile.getAbsolutePath());
-        }
-
-        if (getValidateAccessTransformers().get()) {
-            args.add("--validate-access-transformers");
         }
 
         if (getParchmentEnabled().get()) {
@@ -275,8 +309,35 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             args.add(requestedResult.id() + ":" + requestedResult.destination().getAbsolutePath());
         }
 
-        run(args);
+        var problemsReport = new File(getTemporaryDir(), "nfrt-problem-report.json");
+        args.add("--problems-report");
+        args.add(problemsReport.getAbsolutePath());
+
+        try {
+            run(args);
+        } finally {
+            reportProblems(problemsReport);
+        }
     }
 
-    record RequestedResult(String id, File destination) {}
+    private void reportProblems(File problemsReport) {
+        if (!problemsReport.exists()) {
+            return; // Not created -> nothing to report
+        }
+
+        List<Problem> problems;
+        try {
+            problems = FileProblemReporter.loadRecords(problemsReport.toPath());
+        } catch (IOException e) {
+            getLogger().warn("Failed to load NFRT problems report from {}", problemsReport, e);
+            return;
+        }
+
+        for (Problem problem : problems) {
+            ProblemReportingUtil.report(getProblems(), problem);
+        }
+    }
+
+    record RequestedResult(String id, File destination) {
+    }
 }
