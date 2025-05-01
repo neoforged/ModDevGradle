@@ -16,6 +16,10 @@ repositories {
             includeGroup "curse.maven"
         }
     }
+    maven {
+        name "ModMaven"
+        url "https://modmaven.dev"
+    }
 }
 
 java {
@@ -28,6 +32,7 @@ dependencies {
     modCompileOnly('mezz.jei:jei-1.20.1-forge:15.17.0.76')
     modRuntimeOnly('curse.maven:mekanism-268560:5662583')
     modImplementation('curse.maven:applied-energistics-2-223794:5641282')
+    modImplementation('appeng:appliedenergistics2-forge:15.3.4:api')
     modImplementation('com.example.examplemod:example-mod:1.0.0')
     jarJar('curse.maven:applied-energistics-2-223794:5641282')
     jarJar(project(':nonmc'))

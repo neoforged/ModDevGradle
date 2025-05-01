@@ -182,13 +182,6 @@ public abstract class ObfuscationExtension {
                         });
                     });
                     externalModuleDependency.setTransitive(false);
-
-                    // TODO: what?
-//                    // artifact dependencies need to be forced to be from our custom artifact type to be able
-//                    // to inherit the mapping attribute (and be remapped). Module metadata doesn't apply here.
-//                    for (var artifact : externalModuleDependency.getArtifacts()) {
-//                        artifact.setType(LegacyForgeModDevPlugin.ARTIFACT_TYPE_SRG_JAR);
-//                    }
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
