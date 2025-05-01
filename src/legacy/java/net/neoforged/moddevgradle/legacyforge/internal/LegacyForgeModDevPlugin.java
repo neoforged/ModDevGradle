@@ -251,7 +251,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 config.params(namedMappings);
             });
         });
-        // Give every single jar with no attribute the unknown mappings attribute
+        // Give every single jar the srg mappings attribute so it can be force-remapped by requesting named
         project.getDependencies().getArtifactTypes().named(ArtifactTypeDefinition.JAR_TYPE, type -> {
             type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
         });
