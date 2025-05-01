@@ -36,7 +36,6 @@ public abstract class ObfuscationExtension {
     private final FileCollection extraMixinMappings;
 
     private final MinecraftMappings namedMappings;
-    private final MinecraftMappings srgMappings;
 
     @Inject
     public ObfuscationExtension(Project project,
@@ -49,7 +48,6 @@ public abstract class ObfuscationExtension {
         this.extraMixinMappings = extraMixinMappings;
 
         this.namedMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.NAMED);
-        this.srgMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.SRG);
     }
 
     private <T> Provider<T> assertConfigured(Provider<T> provider) {
@@ -139,9 +137,12 @@ public abstract class ObfuscationExtension {
             reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
             reobfConfig.getArtifacts().clear(); // If this is called multiple times...
             for (var attribute : config.getAttributes().keySet()) {
-                copyAttribute(project, attribute, config, reobfConfig);
+                // Don't copy the mappings attribute because we don't want to leak it in the published metadata
+                // and there is no way to unset it later.
+                if (attribute != MinecraftMappings.ATTRIBUTE) {
+                    copyAttribute(project, attribute, config, reobfConfig);
+                }
             }
-            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
             project.getArtifacts().add(reobfConfig.getName(), reobf);
 
             // Publish the reobf configuration instead of the original one to Maven
@@ -168,7 +169,6 @@ public abstract class ObfuscationExtension {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(false);
             spec.setTransitive(false);
-
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
             // If the parent were to request remapped deps, we'd be remapping everything in it.

@@ -4,6 +4,21 @@ plugins {
     id 'net.neoforged.moddev.legacyforge'
 }
 
+repositories {
+    mavenLocal()
+    maven {
+        name 'cursemaven'
+        url 'https://cursemaven.com'
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+    maven {
+        name "ModMaven"
+        url "https://modmaven.dev"
+    }
+}
+
 configurations {
     upstream {
         transitive = false
@@ -13,6 +28,7 @@ configurations {
 dependencies {
     jarJar(project(":forge"))
     upstream(project(":forge"))
+    runtimeOnly(project(":forge"))
 }
 
 legacyForge {

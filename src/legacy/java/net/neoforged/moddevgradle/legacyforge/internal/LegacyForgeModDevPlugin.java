@@ -47,13 +47,11 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     private final MinecraftMappings namedMappings;
     private final MinecraftMappings srgMappings;
-    private final MinecraftMappings unknownMappings;
 
     @Inject
     public LegacyForgeModDevPlugin(ObjectFactory objectFactory) {
         namedMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.NAMED);
         srgMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.SRG);
-        unknownMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.UNKNOWN);
     }
 
     @Override
@@ -216,7 +214,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(MinecraftMappings.ATTRIBUTE, unknownMappings)
+                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
                     .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
@@ -228,6 +226,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         // JarJar cross-project dependencies are packaged into the final jar and should be remapped
         // We must however do this without affecting external dependencies since those are usually already in the
         // right namespace.
+        // For cross-project dependencies, both the named (with the named attribute) and obfuscated (with no attribute)
+        // variants are available. Requesting the srg attribute seemingly excludes the named variant from the selection.
         var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var configurationName = sourceSet.getTaskName(null, "jarJar");
@@ -244,14 +244,16 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         project.getDependencies().attributesSchema(schema -> {
             var attr = schema.attribute(MinecraftMappings.ATTRIBUTE);
-//            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
-//                actionConfiguration.params(namedMappings);
-//            });
+            // Add a disambiguation rule that will prefer named variants.
+            // This is needed for cross-project dependencies: in that setting both the named (with the named attribute)
+            // and obfuscated (with no attribute) variants are available, and we want to choose named by default.
+            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, config -> {
+                config.params(namedMappings);
+            });
         });
         // Give every single jar with no attribute the unknown mappings attribute
-        // TODO: this is not used for deps with Gradle metadata apparently? only maven
         project.getDependencies().getArtifactTypes().named(ArtifactTypeDefinition.JAR_TYPE, type -> {
-            type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, unknownMappings);
+            type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
         });
 
         obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
