@@ -48,11 +48,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     private final MinecraftMappings namedMappings;
     private final MinecraftMappings srgMappings;
+    private final MinecraftMappings unknownMappings;
 
     @Inject
     public LegacyForgeModDevPlugin(ObjectFactory objectFactory) {
         namedMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.NAMED);
         srgMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.SRG);
+        unknownMappings = objectFactory.named(MinecraftMappings.class, MinecraftMappings.UNKNOWN);
     }
 
     @Override
@@ -215,7 +217,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 parameters.getMinecraftDependencies().from(remapDeps);
             });
             params.getFrom()
-                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
+                    .attribute(MinecraftMappings.ATTRIBUTE, unknownMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
             params.getTo()
                     .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
@@ -257,9 +259,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         project.getDependencies().attributesSchema(schema -> {
             var attr = schema.attribute(MinecraftMappings.ATTRIBUTE);
-            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
-                actionConfiguration.params(namedMappings);
-            });
+//            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
+//                actionConfiguration.params(namedMappings);
+//            });
+        });
+        // Give every single jar with no attribute the unknown mappings attribute
+        // TODO: this is not used for deps with Gradle metadata apparently? only maven
+        project.getDependencies().getArtifactTypes().named(ArtifactTypeDefinition.JAR_TYPE, type -> {
+            type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, unknownMappings);
         });
 
         // custom artifact type used to force remapping of artifact dependencies (which circumvent variant selection)

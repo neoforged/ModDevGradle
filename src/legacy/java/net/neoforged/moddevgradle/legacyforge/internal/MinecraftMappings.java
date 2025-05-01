@@ -8,6 +8,8 @@ import org.jetbrains.annotations.ApiStatus;
 public interface MinecraftMappings extends Named {
     String NAMED = "named";
     String SRG = "srg";
+    String UNKNOWN = "unknown";
 
-    Attribute<MinecraftMappings> ATTRIBUTE = Attribute.of("net.neoforged.moddevgradle.legacy.minecraft_mappings", MinecraftMappings.class);
+    // TODO: not v2 :P
+    Attribute<MinecraftMappings> ATTRIBUTE = Attribute.of("net.neoforged.moddevgradle.legacy.minecraft_mappings.v2", MinecraftMappings.class);
 }

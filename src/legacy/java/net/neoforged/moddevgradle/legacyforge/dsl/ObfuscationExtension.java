@@ -166,8 +166,9 @@ public abstract class ObfuscationExtension {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
+            spec.setCanBeResolved(false);
             spec.setTransitive(false);
+
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
             // If the parent were to request remapped deps, we'd be remapping everything in it.
@@ -175,19 +176,19 @@ public abstract class ObfuscationExtension {
             // Additionally, we force dependencies to be non-transitive since we cannot apply the attribute hack to transitive dependencies.
             spec.withDependencies(dependencies -> dependencies.forEach(dep -> {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
+                    project.getDependencies().constraints(constraints -> {
+                        constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                        });
+                    });
                     externalModuleDependency.setTransitive(false);
 
-                    // artifact dependencies need to be forced to be from our custom artifact type to be able
-                    // to inherit the mapping attribute (and be remapped). Module metadata doesn't apply here.
-                    for (var artifact : externalModuleDependency.getArtifacts()) {
-                        artifact.setType(LegacyForgeModDevPlugin.ARTIFACT_TYPE_SRG_JAR);
-                    }
-
-                    // This rule ensures that this external module will be enriched with the attribute MAPPINGS=SRG
-                    project.getDependencies().getComponents().withModule(
-                            dep.getGroup() + ":" + dep.getName(), SrgMappingsRule.class, cfg -> {
-                                cfg.params(srgMappings);
-                            });
+                    // TODO: what?
+//                    // artifact dependencies need to be forced to be from our custom artifact type to be able
+//                    // to inherit the mapping attribute (and be remapped). Module metadata doesn't apply here.
+//                    for (var artifact : externalModuleDependency.getArtifacts()) {
+//                        artifact.setType(LegacyForgeModDevPlugin.ARTIFACT_TYPE_SRG_JAR);
+//                    }
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
@@ -204,16 +205,7 @@ public abstract class ObfuscationExtension {
                 }
             }));
         });
-
-        var remappedDep = project.getDependencyFactory().create(
-                remappingConfig.getIncoming().artifactView(view -> {
-                    view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
-                    // Forcing resolution to JAR here allows our SRG_JAR artifact transform to work
-                    view.attributes(a -> a.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
-                }).getFiles());
-        remappedDep.because("Remapped mods from " + remappingConfig.getName());
-
-        parent.getDependencies().add(remappedDep);
+        parent.extendsFrom(remappingConfig);
 
         return remappingConfig;
     }
