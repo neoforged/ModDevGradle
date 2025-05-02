@@ -244,6 +244,13 @@ public class ModDevRunWorkflow {
                 // This will explicitly be replaced in RunUtils to make this work for IDEs
                 run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null).getClassesArgument());
             }
+
+            //Intellij support colors and control characters,
+            //but TerminalConsoleAppender doesn't implement it correctly,so we force its support to be turned on
+            if (ideIntegration instanceof IntelliJIntegration) {
+                run.getSystemProperties().put("terminal.jline", "true");
+            }
+
             var prepareRunTask = setupRunInGradle(
                     project,
                     branding,
