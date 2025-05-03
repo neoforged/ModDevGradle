@@ -3,9 +3,7 @@ package net.neoforged.moddevgradle.legacyforge.dsl;
 import java.util.List;
 import java.util.Objects;
 import javax.inject.Inject;
-import net.neoforged.moddevgradle.legacyforge.internal.LegacyForgeModDevPlugin;
 import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings;
-import net.neoforged.moddevgradle.legacyforge.internal.SrgMappingsRule;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapJar;
 import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
@@ -16,7 +14,6 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
 import org.gradle.api.artifacts.ProjectDependency;
-import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.attributes.Attribute;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
@@ -36,7 +33,6 @@ public abstract class ObfuscationExtension {
     private final FileCollection extraMixinMappings;
 
     private final MinecraftMappings namedMappings;
-    private final MinecraftMappings srgMappings;
 
     @Inject
     public ObfuscationExtension(Project project,
@@ -49,7 +45,6 @@ public abstract class ObfuscationExtension {
         this.extraMixinMappings = extraMixinMappings;
 
         this.namedMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.NAMED);
-        this.srgMappings = project.getObjects().named(MinecraftMappings.class, MinecraftMappings.SRG);
     }
 
     private <T> Provider<T> assertConfigured(Provider<T> provider) {
@@ -139,9 +134,12 @@ public abstract class ObfuscationExtension {
             reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
             reobfConfig.getArtifacts().clear(); // If this is called multiple times...
             for (var attribute : config.getAttributes().keySet()) {
-                copyAttribute(project, attribute, config, reobfConfig);
+                // Don't copy the mappings attribute because we don't want to leak it in the published metadata
+                // and there is no way to unset it later.
+                if (attribute != MinecraftMappings.ATTRIBUTE) {
+                    copyAttribute(project, attribute, config, reobfConfig);
+                }
             }
-            reobfConfig.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
             project.getArtifacts().add(reobfConfig.getName(), reobf);
 
             // Publish the reobf configuration instead of the original one to Maven
@@ -166,7 +164,7 @@ public abstract class ObfuscationExtension {
         var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.setCanBeConsumed(false);
-            spec.setCanBeResolved(true);
+            spec.setCanBeResolved(false);
             spec.setTransitive(false);
 
             // Unfortunately, if we simply try to make the parent extend this config, transformations will not run because the parent doesn't request remapped deps
@@ -175,19 +173,12 @@ public abstract class ObfuscationExtension {
             // Additionally, we force dependencies to be non-transitive since we cannot apply the attribute hack to transitive dependencies.
             spec.withDependencies(dependencies -> dependencies.forEach(dep -> {
                 if (dep instanceof ExternalModuleDependency externalModuleDependency) {
+                    project.getDependencies().constraints(constraints -> {
+                        constraints.add(parent.getName(), externalModuleDependency.getGroup() + ":" + externalModuleDependency.getName() + ":" + externalModuleDependency.getVersion(), c -> {
+                            c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
+                        });
+                    });
                     externalModuleDependency.setTransitive(false);
-
-                    // artifact dependencies need to be forced to be from our custom artifact type to be able
-                    // to inherit the mapping attribute (and be remapped). Module metadata doesn't apply here.
-                    for (var artifact : externalModuleDependency.getArtifacts()) {
-                        artifact.setType(LegacyForgeModDevPlugin.ARTIFACT_TYPE_SRG_JAR);
-                    }
-
-                    // This rule ensures that this external module will be enriched with the attribute MAPPINGS=SRG
-                    project.getDependencies().getComponents().withModule(
-                            dep.getGroup() + ":" + dep.getName(), SrgMappingsRule.class, cfg -> {
-                                cfg.params(srgMappings);
-                            });
                 } else if (dep instanceof FileCollectionDependency fileCollectionDependency) {
                     project.getDependencies().constraints(constraints -> {
                         constraints.add(parent.getName(), fileCollectionDependency.getFiles(), c -> {
@@ -204,16 +195,7 @@ public abstract class ObfuscationExtension {
                 }
             }));
         });
-
-        var remappedDep = project.getDependencyFactory().create(
-                remappingConfig.getIncoming().artifactView(view -> {
-                    view.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
-                    // Forcing resolution to JAR here allows our SRG_JAR artifact transform to work
-                    view.attributes(a -> a.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
-                }).getFiles());
-        remappedDep.because("Remapped mods from " + remappingConfig.getName());
-
-        parent.getDependencies().add(remappedDep);
+        parent.extendsFrom(remappingConfig);
 
         return remappingConfig;
     }
