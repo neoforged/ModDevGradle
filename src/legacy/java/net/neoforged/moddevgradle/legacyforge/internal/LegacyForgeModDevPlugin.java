@@ -97,7 +97,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
-            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.10:fatjar"));
+            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:3.0.4:fatjar"));
         });
 
         // This collection is used to share the files added by mixin with the obfuscation extension
