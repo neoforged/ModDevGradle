@@ -1,7 +1,10 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import net.neoforged.problems.Problem;
-import net.neoforged.problems.ProblemLocation;
 import org.gradle.api.Action;
 import org.gradle.api.problems.ProblemGroup;
 import org.gradle.api.problems.ProblemId;
@@ -11,11 +14,6 @@ import org.gradle.api.problems.Severity;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.lang.reflect.InvocationTargetException;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Our lowest supported Gradle version is 8.8. The Problems Api has significantly changed
@@ -32,16 +30,14 @@ public final class ProblemReportingUtil {
     private static final Map<net.neoforged.problems.ProblemGroup, ProblemGroup> PROBLEM_GROUPS = new ConcurrentHashMap<>();
     private static final Map<net.neoforged.problems.ProblemId, ProblemId> PROBLEM_IDS = new ConcurrentHashMap<>();
 
-    private ProblemReportingUtil() {
-    }
+    private ProblemReportingUtil() {}
 
     public static void report(Problems problems, Problem problem) {
         try {
             var id = getProblemId(problem.problemId());
             Gradle813Adapter.report(problems, id, spec -> applyProblemToProblemSpec(problem, spec));
             return;
-        } catch (ProblemsApiUnsupported ignored) {
-        }
+        } catch (ProblemsApiUnsupported ignored) {}
 
         // As a fallback, report on the console
         switch (problem.severity()) {
@@ -101,8 +97,7 @@ public final class ProblemReportingUtil {
         return Gradle813Adapter.createProblemId(
                 problemId.id(),
                 problemId.displayName(),
-                getProblemGroup(problemId.group())
-        );
+                getProblemGroup(problemId.group()));
     }
 
     private static ProblemGroup getProblemGroup(net.neoforged.problems.ProblemGroup problemGroup) {
@@ -113,8 +108,7 @@ public final class ProblemReportingUtil {
         return Gradle813Adapter.createProblemGroup(
                 problemGroup.id(),
                 problemGroup.displayName(),
-                problemGroup.parent() == null ? null : getProblemGroup(problemGroup.parent())
-        );
+                problemGroup.parent() == null ? null : getProblemGroup(problemGroup.parent()));
     }
 
     /**
@@ -157,14 +151,12 @@ public final class ProblemReportingUtil {
 
                 var problemConsumer = reporter.getClass().getMethod("report", problemClass);
                 problemConsumer.invoke(reporter, problem);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException |
-                     ClassNotFoundException e) {
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
                 LOG.debug("Problems API is unsupported.", e);
                 throw new ProblemsApiUnsupported();
             }
         }
     }
 
-    private static class ProblemsApiUnsupported extends RuntimeException {
-    }
+    private static class ProblemsApiUnsupported extends RuntimeException {}
 }

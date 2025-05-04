@@ -59,18 +59,6 @@ repositories {
     }
     mavenCentral()
     gradlePluginPortal()
-    maven {
-        name 'Maven for PR #15' // https://github.com/neoforged/InstallerTools/pull/15
-        url 'https://prmaven.neoforged.net/InstallerTools/pr15'
-        content {
-            includeModule('net.neoforged.installertools', 'binarypatcher')
-            includeModule('net.neoforged.installertools', 'cli-utils')
-            includeModule('net.neoforged.installertools', 'installertools')
-            includeModule('net.neoforged.installertools', 'jarsplitter')
-            includeModule('net.neoforged.installertools', 'problems-api')
-            includeModule('net.neoforged.installertools', 'zipinject')
-        }
-    }
 }
 
 sourceSets {
@@ -131,7 +119,7 @@ dependencies {
     shaded("net.neoforged:JarJarMetadata:0.4.2") {
         exclude group: 'org.slf4j'
     }
-    shaded 'net.neoforged.installertools:problems-api:3.0.11-pr-15-problems'
+    shaded 'net.neoforged.installertools:problems-api:3.0.4'
 
     java8CompileOnly gradleApi()
 

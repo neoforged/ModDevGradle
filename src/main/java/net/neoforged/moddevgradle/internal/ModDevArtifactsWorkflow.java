@@ -133,8 +133,7 @@ public record ModDevArtifactsWorkflow(
                         } else {
                             return project.files();
                         }
-                    })
-            );
+                    }));
             task.getInterfaceInjectionData().from(interfaceInjectionData);
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());

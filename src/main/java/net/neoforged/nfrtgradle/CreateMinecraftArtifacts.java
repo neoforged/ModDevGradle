@@ -1,5 +1,12 @@
 package net.neoforged.nfrtgradle;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.ProblemReportingUtil;
 import net.neoforged.problems.FileProblemReporter;
 import net.neoforged.problems.Problem;
@@ -18,14 +25,6 @@ import org.gradle.api.tasks.OutputFiles;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 
 /**
  * The primary task for creating the Minecraft artifacts that mods will be compiled against,
@@ -60,7 +59,6 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
      */
     @InputFiles
     public abstract ConfigurableFileCollection getAccessTransformers();
-
 
     /**
      * Files added to this collection will be passed to NFRT via the {@code --validated-access-transformer}
@@ -338,6 +336,5 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         }
     }
 
-    record RequestedResult(String id, File destination) {
-    }
+    record RequestedResult(String id, File destination) {}
 }
