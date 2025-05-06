@@ -33,6 +33,7 @@ neoForge {
     version = project.neoforge_version
     addModdingDependenciesTo(sourceSets.api)
 
+    validateAccessTransformers = true
     interfaceInjectionData = files("interfaces.json")
 
     runs {
