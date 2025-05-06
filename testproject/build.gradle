@@ -5,6 +5,10 @@ plugins {
 
 evaluationDependsOn(":subproject") // Because of the sourceset reference
 
+tasks.named('wrapper') {
+    distributionType = Wrapper.DistributionType.ALL
+}
+
 sourceSets {
     api
 }
