@@ -81,6 +81,8 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
      * if they contain errors, or they target non-existent code elements.
      * <p>
      * Defaults to false.
+     *
+     * @deprecated Prefer the more precise {@link #getValidatedAccessTransformers()} setting.
      */
     @Input
     @Deprecated
