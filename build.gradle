@@ -119,6 +119,7 @@ dependencies {
     shaded("net.neoforged:JarJarMetadata:0.4.2") {
         exclude group: 'org.slf4j'
     }
+    shaded 'net.neoforged.installertools:problems-api:3.0.4'
 
     java8CompileOnly gradleApi()
 
