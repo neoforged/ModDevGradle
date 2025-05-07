@@ -131,12 +131,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
             }
 
-            versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
-            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", forgeVersion);
+            var version = forgeVersion != null ? forgeVersion : neoForgeVersion;
+            versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(version);
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", version);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
-            var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
-            var neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
+            var neoForge = depFactory.create(groupId + ":forge:" + version);
+            var neoForgeNotation = groupId + ":forge:" + version + ":userdev";
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
             versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
