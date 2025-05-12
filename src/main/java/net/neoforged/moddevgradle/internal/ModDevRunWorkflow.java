@@ -295,11 +295,12 @@ public class ModDevRunWorkflow {
 
         var type = RunUtils.getRequiredType(project, run);
 
+        // TODO: should potentially move the .get().get() to afterEvaluate to give the modder a chance to change the source set?
         var modulePathConfiguration = configurations.register(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get().get());
             configureModulePath.accept(spec);
         });
 
@@ -307,7 +308,7 @@ public class ModDevRunWorkflow {
             spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get().get());
             spec.attributes(attributes -> {
                 attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
                     var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;

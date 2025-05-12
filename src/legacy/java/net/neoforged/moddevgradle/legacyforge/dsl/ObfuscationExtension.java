@@ -29,16 +29,17 @@ import org.jetbrains.annotations.ApiStatus;
 
 public abstract class ObfuscationExtension {
     private final Project project;
-    private final Configuration autoRenamingToolRuntime;
-    private final Configuration installerToolsRuntime;
+    private final Provider<Configuration> autoRenamingToolRuntime;
+    private final Provider<Configuration> installerToolsRuntime;
     private final FileCollection extraMixinMappings;
 
     private final MinecraftMappings namedMappings;
 
+    @ApiStatus.Internal
     @Inject
     public ObfuscationExtension(Project project,
-            Configuration autoRenamingToolRuntime,
-            Configuration installerToolsRuntime,
+            Provider<Configuration> autoRenamingToolRuntime,
+            Provider<Configuration> installerToolsRuntime,
             FileCollection extraMixinMappings) {
         this.project = project;
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;

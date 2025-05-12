@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
 import java.net.URI;
+import java.util.List;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
@@ -19,6 +20,7 @@ import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.ObfuscationExtension;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -56,6 +58,11 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
+        project.getConfigurations().configureEach(c -> {
+            LOG.warn("Configuring configuration " + c.getName());
+            throw new GradleException("Configuring configuration " + c.getName());
+        });
+
         project.getPlugins().apply(JavaLibraryPlugin.class);
         project.getPlugins().apply(NeoFormRuntimePlugin.class);
         project.getPlugins().apply(MinecraftDependenciesPlugin.class);
