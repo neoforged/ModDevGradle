@@ -121,11 +121,16 @@ public abstract class DownloadAssets extends NeoFormRuntimeTask {
 
         var assetReferenceFile = downloadTask.getAssetPropertiesFile();
         if (assetReferenceFile.isPresent()) {
+            var file = assetReferenceFile.getAsFile().get();
+            if (!file.exists()) {
+                logger.info("Asset reference file {} does not exist.", file);
+                return false;
+            }
             DownloadedAssetsReference assetReference;
             try {
-                assetReference = DownloadedAssetsReference.loadProperties(assetReferenceFile.getAsFile().get());
+                assetReference = DownloadedAssetsReference.loadProperties(file);
             } catch (Exception e) {
-                logger.error("Failed to read downloaded asset index: {}", assetReferenceFile);
+                logger.error("Failed to read downloaded asset index: {}", file, e);
                 return false;
             }
             return validateAssetReference(assetReference, logger);

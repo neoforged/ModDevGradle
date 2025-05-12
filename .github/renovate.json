@@ -8,7 +8,7 @@
     {
       "customType": "regex",
       "fileMatch": [
-        "NeoFormRuntime\\.java$"
+        "NeoFormRuntimeExtension\\.java$"
       ],
       "depNameTemplate": "net.neoforged:neoform-runtime",
       "matchStrings": [

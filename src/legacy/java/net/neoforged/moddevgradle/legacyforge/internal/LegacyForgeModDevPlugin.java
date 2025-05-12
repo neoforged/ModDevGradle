@@ -44,7 +44,6 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     public static final String CONFIGURATION_TOOL_ART = "autoRenamingToolRuntime";
     public static final String CONFIGURATION_TOOL_INSTALLERTOOLS = "installerToolsRuntime";
-    public static final String ARTIFACT_TYPE_SRG_JAR = "srgJar";
 
     private final MinecraftMappings namedMappings;
     private final MinecraftMappings srgMappings;
@@ -97,7 +96,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
-            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:2.1.10:fatjar"));
+            spec.getDependencies().add(depFactory.create("net.neoforged.installertools:installertools:3.0.4:fatjar"));
         });
 
         // This collection is used to share the files added by mixin with the obfuscation extension
@@ -132,12 +131,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 throw new InvalidUserCodeException("Specifying a Forge version is mutually exclusive with NeoForge or MCP");
             }
 
-            versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(forgeVersion);
-            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", forgeVersion);
+            var version = forgeVersion != null ? forgeVersion : neoForgeVersion;
+            versionCapabilities = VersionCapabilitiesInternal.ofForgeVersion(version);
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "forge", version);
 
             String groupId = forgeVersion != null ? "net.minecraftforge" : "net.neoforged";
-            var neoForge = depFactory.create(groupId + ":forge:" + forgeVersion);
-            var neoForgeNotation = groupId + ":forge:" + forgeVersion + ":userdev";
+            var neoForge = depFactory.create(groupId + ":forge:" + version);
+            var neoForgeNotation = groupId + ":forge:" + version + ":userdev";
             dependencies = ModdingDependencies.create(neoForge, neoForgeNotation, null, null, versionCapabilities);
         } else if (mcpVersion != null) {
             versionCapabilities = VersionCapabilitiesInternal.ofMinecraftVersion(mcpVersion);
@@ -223,26 +223,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                     .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
                     .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
         });
-        // This second copy of the transform is used for remapping artifact dependencies (i.e. on classifiers)
-        // that circumvent the variant system.
-        project.getDependencies().registerTransform(RemappingTransform.class, params -> {
-            params.parameters(parameters -> {
-                obf.configureSrgToNamedOperation(parameters.getRemapOperation());
-                parameters.getMinecraftDependencies().from(remapDeps);
-            });
-            params.getFrom()
-                    .attribute(MinecraftMappings.ATTRIBUTE, srgMappings)
-                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ARTIFACT_TYPE_SRG_JAR);
-            params.getTo()
-                    .attribute(MinecraftMappings.ATTRIBUTE, namedMappings)
-                    .attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE);
-        });
     }
 
     private void configureDependencyRemapping(Project project, ObfuscationExtension obf) {
         // JarJar cross-project dependencies are packaged into the final jar and should be remapped
         // We must however do this without affecting external dependencies since those are usually already in the
         // right namespace.
+        // For cross-project dependencies, both the named (with the named attribute) and obfuscated (with no attribute)
+        // variants are available. Requesting the srg attribute seemingly excludes the named variant from the selection.
         var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var configurationName = sourceSet.getTaskName(null, "jarJar");
@@ -261,15 +249,18 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         project.getDependencies().attributesSchema(schema -> {
             var attr = schema.attribute(MinecraftMappings.ATTRIBUTE);
-            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, actionConfiguration -> {
-                actionConfiguration.params(namedMappings);
+            // Add a disambiguation rule that will prefer named variants.
+            // This is needed for cross-project dependencies: in that setting both the named (with the named attribute)
+            // and obfuscated (with no attribute) variants are available, and we want to choose named by default.
+            attr.getDisambiguationRules().add(MappingsDisambiguationRule.class, config -> {
+                config.params(namedMappings);
             });
         });
-
-        // custom artifact type used to force remapping of artifact dependencies (which circumvent variant selection)
-        project.getDependencies().getArtifactTypes().create(ARTIFACT_TYPE_SRG_JAR, artifactType -> {
-            artifactType.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
+        // Give every single jar the srg mappings attribute so it can be force-remapped by requesting named
+        project.getDependencies().getArtifactTypes().named(ArtifactTypeDefinition.JAR_TYPE, type -> {
+            type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
         });
+
         obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
         obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));
         obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME));

@@ -125,8 +125,17 @@ public record ModDevArtifactsWorkflow(
                     .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
 
             task.getAccessTransformers().from(accessTransformers);
+            // If AT validation is enabled, add the user-supplied AT paths as files to be validated,
+            // they're also part of the normal AT collection, so if AT validation is disabled, just return an empty list.
+            task.getValidatedAccessTransformers().from(
+                    extension.getValidateAccessTransformers().map(validate -> {
+                        if (validate) {
+                            return extension.getAccessTransformers().getFiles();
+                        } else {
+                            return project.files();
+                        }
+                    }));
             task.getInterfaceInjectionData().from(interfaceInjectionData);
-            task.getValidateAccessTransformers().set(extension.getValidateAccessTransformers());
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());

@@ -9,5 +9,5 @@ public interface MinecraftMappings extends Named {
     String NAMED = "named";
     String SRG = "srg";
 
-    Attribute<MinecraftMappings> ATTRIBUTE = Attribute.of("net.neoforged.moddevgradle.legacy.minecraft_mappings", MinecraftMappings.class);
+    Attribute<MinecraftMappings> ATTRIBUTE = Attribute.of("net.neoforged.moddevgradle.legacy.minecraft_mappings.v2", MinecraftMappings.class);
 }

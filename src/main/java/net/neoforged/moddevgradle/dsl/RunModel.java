@@ -15,6 +15,7 @@ import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.dsl.Dependencies;
 import org.gradle.api.file.DirectoryProperty;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -241,8 +242,16 @@ public abstract class RunModel implements Named, Dependencies {
 
     /**
      * Changes the games log-level.
+     *
+     * <p>Note that this property is ignored if {@link #getLoggingConfigFile()} is set.
      */
     public abstract Property<Level> getLogLevel();
+
+    /**
+     * Overrides the {@code log4j2.xml} configuration file.
+     * If unset, MDG will use a default configuration file with the chosen {@link #getLogLevel() log level}.
+     */
+    public abstract RegularFileProperty getLoggingConfigFile();
 
     /**
      * Sets the source set to be used as the main classpath of this run.
