@@ -123,7 +123,7 @@ public abstract class ObfuscationExtension {
         // Replace the publication of the jar task with the reobfuscated jar
         var configurations = project.getConfigurations();
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-        for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
+        for (var configurationName : List.of(sourceSet.getRuntimeElementsConfigurationName(), sourceSet.getApiElementsConfigurationName())) {
             var config = configurations.getByName(configurationName);
             // Mark the original configuration as NAMED to be able to disambiguate between it and the reobfuscated jar,
             // this is used for example by the JarJar configuration.
