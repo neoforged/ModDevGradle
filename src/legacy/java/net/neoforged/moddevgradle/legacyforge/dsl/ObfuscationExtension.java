@@ -19,7 +19,6 @@ import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.ConfigurationVariantDetails;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
@@ -123,7 +122,7 @@ public abstract class ObfuscationExtension {
         // Replace the publication of the jar task with the reobfuscated jar
         var configurations = project.getConfigurations();
         var java = (AdhocComponentWithVariants) project.getComponents().getByName("java");
-        for (var configurationName : List.of(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME, JavaPlugin.API_ELEMENTS_CONFIGURATION_NAME)) {
+        for (var configurationName : List.of(sourceSet.getRuntimeElementsConfigurationName(), sourceSet.getApiElementsConfigurationName())) {
             var config = configurations.getByName(configurationName);
             // Mark the original configuration as NAMED to be able to disambiguate between it and the reobfuscated jar,
             // this is used for example by the JarJar configuration.
