@@ -1,7 +1,7 @@
 package net.neoforged.moddevgradle.internal.utils;
 
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
-import org.gradle.internal.component.external.model.ModuleComponentArtifactIdentifier;
 import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
@@ -23,15 +23,15 @@ public final class DependencyUtils {
             filename = filename.substring(0, startOfExt);
         }
 
-        if (result.getId() instanceof ModuleComponentArtifactIdentifier moduleId) {
-            var artifact = moduleId.getComponentIdentifier().getModule();
-            var version = moduleId.getComponentIdentifier().getVersion();
+        if (result.getId().getComponentIdentifier() instanceof ModuleComponentIdentifier moduleId) {
+            var artifact = moduleId.getModule();
+            var version = moduleId.getVersion();
             var expectedBasename = artifact + "-" + version;
 
             if (filename.startsWith(expectedBasename + "-")) {
                 classifier = filename.substring((expectedBasename + "-").length());
             }
-            artifactId = moduleId.getComponentIdentifier().getGroup() + ":" + artifact + ":" + version;
+            artifactId = moduleId.getGroup() + ":" + artifact + ":" + version;
         } else {
             // When we encounter a project reference, the component identifier does not expose the group or module name.
             // But we can access the list of capabilities associated with the published variant the artifact originates from.
@@ -40,7 +40,14 @@ public final class DependencyUtils {
             var capabilities = result.getVariant().getCapabilities();
             if (capabilities.size() == 1) {
                 var capability = capabilities.get(0);
-                artifactId = capability.getGroup() + ":" + capability.getName() + ":" + capability.getVersion();
+                var artifact = capability.getName();
+                var version = capability.getVersion();
+                var expectedBasename = artifact + "-" + version;
+
+                if (filename.startsWith(expectedBasename + "-")) {
+                    classifier = filename.substring((expectedBasename + "-").length());
+                }
+                artifactId = capability.getGroup() + ":" + artifact + ":" + version;
             } else {
                 artifactId = result.getId().getComponentIdentifier().toString();
             }
