@@ -28,6 +28,8 @@ import org.gradle.api.artifacts.result.ResolvedVariantResult;
 import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Provider;
+import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
@@ -53,6 +55,9 @@ public abstract class JarJarArtifacts {
     @Inject
     protected abstract ObjectFactory getObjectFactory();
 
+    @Inject
+    protected abstract ProviderFactory getProviderFactory();
+
     @Nested
     public abstract ListProperty<ResolvedJarJarArtifact> getResolvedArtifacts();
 
@@ -67,11 +72,15 @@ public abstract class JarJarArtifacts {
     }
 
     public void configuration(Configuration jarJarConfiguration) {
-        getIncludedArtifacts().addAll(jarJarConfiguration.getIncoming().artifactView(config -> {
+        configuration(getProviderFactory().provider(() -> jarJarConfiguration));
+    }
+
+    public void configuration(Provider<Configuration> jarJarConfiguration) {
+        getIncludedArtifacts().addAll(jarJarConfiguration.flatMap(c -> c.getIncoming().artifactView(config -> {
             config.attributes(
                     attr -> attr.attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.JAR_TYPE));
-        }).getArtifacts().getResolvedArtifacts());
-        getIncludedRootComponents().add(jarJarConfiguration.getIncoming().getResolutionResult().getRootComponent());
+        }).getArtifacts().getResolvedArtifacts()));
+        getIncludedRootComponents().add(jarJarConfiguration.flatMap(c -> c.getIncoming().getResolutionResult().getRootComponent()));
     }
 
     public void setConfigurations(Collection<? extends Configuration> configurations) {

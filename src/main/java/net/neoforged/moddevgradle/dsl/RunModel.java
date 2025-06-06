@@ -9,6 +9,7 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.StringUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Named;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
@@ -32,7 +33,7 @@ public abstract class RunModel implements Named, Dependencies {
 
     private final String name;
 
-    private final Configuration configuration;
+    private final NamedDomainObjectProvider<Configuration> configuration;
 
     /**
      * The Gradle tasks that should be run before running this run.
@@ -50,7 +51,7 @@ public abstract class RunModel implements Named, Dependencies {
 
         getGameDirectory().convention(project.getLayout().getProjectDirectory().dir("run"));
 
-        configuration = project.getConfigurations().create(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
+        configuration = project.getConfigurations().register(InternalModelHelper.nameOfRun(this, "", "additionalRuntimeClasspath"), configuration -> {
             configuration.setCanBeResolved(false);
             configuration.setCanBeConsumed(false);
         });
@@ -236,7 +237,7 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     public Configuration getAdditionalRuntimeClasspathConfiguration() {
-        return configuration;
+        return configuration.get();
     }
 
     /**

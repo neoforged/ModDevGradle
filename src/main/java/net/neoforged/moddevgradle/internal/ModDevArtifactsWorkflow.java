@@ -14,6 +14,7 @@ import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
@@ -45,8 +46,8 @@ public record ModDevArtifactsWorkflow(
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
         Provider<? extends Dependency> minecraftClassesDependency,
         TaskProvider<DownloadAssets> downloadAssets,
-        Configuration runtimeDependencies,
-        Configuration compileDependencies,
+        NamedDomainObjectProvider<Configuration> runtimeDependencies,
+        NamedDomainObjectProvider<Configuration> compileDependencies,
         Provider<Directory> modDevBuildDir,
         Provider<Directory> artifactsBuildDir) {
 
@@ -102,7 +103,7 @@ public record ModDevArtifactsWorkflow(
         }
 
         var parchment = extension.getParchment();
-        var parchmentData = configurations.create("parchmentData", spec -> {
+        var parchmentData = configurations.register("parchmentData", spec -> {
             spec.setDescription("Data used to add parameter names and javadoc to Minecraft sources");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -177,7 +178,7 @@ public record ModDevArtifactsWorkflow(
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
         // We cannot use "runtimeOnly", since the contents of that are published.
-        var runtimeDependencies = configurations.create("modDevRuntimeDependencies", config -> {
+        var runtimeDependencies = configurations.register("modDevRuntimeDependencies", config -> {
             config.setDescription("The runtime dependencies to develop a mod for, including Minecraft classes and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -191,7 +192,7 @@ public record ModDevArtifactsWorkflow(
 
         // Configuration in which we place the required dependencies to develop mods for use in the compile-classpath.
         // While compile only is not published, we also use a configuration here to be consistent.
-        var compileDependencies = configurations.create("modDevCompileDependencies", config -> {
+        var compileDependencies = configurations.register("modDevCompileDependencies", config -> {
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
@@ -231,7 +232,7 @@ public record ModDevArtifactsWorkflow(
     /**
      * Collects all dependencies needed by the NeoFormRuntime
      */
-    private static List<Configuration> configureArtifactManifestConfigurations(
+    private static List<Provider<Configuration>> configureArtifactManifestConfigurations(
             Project project,
             @Nullable ModuleDependency moddingPlatformDependency,
             @Nullable ModuleDependency recompilableMinecraftWorkflowDependency) {
@@ -239,11 +240,11 @@ public record ModDevArtifactsWorkflow(
 
         var configurationPrefix = "neoFormRuntimeDependencies";
 
-        var result = new ArrayList<Configuration>();
+        var result = new ArrayList<Provider<Configuration>>();
 
         // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
         // What constitutes incompatible cannot be overridden on a per-configuration basis.
-        var neoForgeClassesAndData = configurations.create(configurationPrefix + "NeoForgeClasses", spec -> {
+        var neoForgeClassesAndData = configurations.register(configurationPrefix + "NeoForgeClasses", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge classes)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -261,7 +262,7 @@ public record ModDevArtifactsWorkflow(
         result.add(neoForgeClassesAndData);
 
         if (moddingPlatformDependency != null) {
-            var neoForgeSources = configurations.create(configurationPrefix + "NeoForgeSources", spec -> {
+            var neoForgeSources = configurations.register(configurationPrefix + "NeoForgeSources", spec -> {
                 spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (NeoForge sources)");
                 spec.setCanBeConsumed(false);
                 spec.setCanBeResolved(true);
@@ -276,7 +277,7 @@ public record ModDevArtifactsWorkflow(
 
         // Compile-time dependencies used by NeoForm, NeoForge and Minecraft.
         // Also includes any classes referenced by compiled Minecraft code (used by decompilers, renamers, etc.)
-        var compileClasspath = configurations.create(configurationPrefix + "CompileClasspath", spec -> {
+        var compileClasspath = configurations.register(configurationPrefix + "CompileClasspath", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -297,7 +298,7 @@ public record ModDevArtifactsWorkflow(
         result.add(compileClasspath);
 
         // Runtime-time dependencies used by NeoForm, NeoForge and Minecraft.
-        var runtimeClasspath = configurations.create(configurationPrefix + "RuntimeClasspath", spec -> {
+        var runtimeClasspath = configurations.register(configurationPrefix + "RuntimeClasspath", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -331,8 +332,9 @@ public record ModDevArtifactsWorkflow(
             throw new GradleException("Cannot add to the source set in another project: " + sourceSet);
         }
 
-        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
-        configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
+        // TODO: no better way?
+        configurations.named(sourceSet.getRuntimeClasspathConfigurationName(), c -> c.extendsFrom(runtimeDependencies.get()));
+        configurations.named(sourceSet.getCompileClasspathConfigurationName(), c -> c.extendsFrom(compileDependencies.get()));
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, String filename) {
