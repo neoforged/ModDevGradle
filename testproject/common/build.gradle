@@ -10,6 +10,7 @@ neoForge {
     neoFormVersion = "1.21-20240613.152323"
 
     accessTransformers {
+        validateAccessTransformers = true
         from(project.file('accesstransformer.cfg'))
         publish(project.file('accesstransformer.cfg'))
     }
