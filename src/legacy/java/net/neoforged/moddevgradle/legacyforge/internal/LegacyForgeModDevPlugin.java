@@ -61,19 +61,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getPlugins().apply(MinecraftDependenciesPlugin.class);
         project.getPlugins().apply(JarJarPlugin.class);
 
-        // TODO: Introduce a LegacyRepositoryPLugin to still allow repo management in settings.gradle
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
-        if (!project.getGradle().getPlugins().hasPlugin(RepositoriesPlugin.class)) {
-            project.getPlugins().apply(RepositoriesPlugin.class);
+        if (!project.getGradle().getPlugins().hasPlugin(LegacyRepositoriesPlugin.class)) {
+            project.getPlugins().apply(LegacyRepositoriesPlugin.class);
         } else {
-            LOG.info("Not enabling NeoForged repositories since they were applied at the settings level");
+            LOG.info("Not enabling legacy repositories since they were applied at the settings level");
         }
-
-        project.getRepositories().maven(repo -> {
-            repo.setName("MinecraftForge");
-            repo.setUrl(URI.create("https://maven.minecraftforge.net/"));
-        });
 
         // This module is for supporting NeoForge 1.20.1, which is technically the same as Legacy Forge 1.20.1
         project.getDependencies().getComponents().withModule("net.neoforged:forge", LegacyForgeMetadataTransform.class);

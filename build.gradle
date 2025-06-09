@@ -215,6 +215,13 @@ gradlePlugin {
             description = "This plugin adds the repositories needed for developing Minecraft mods. It is applied automatically by the moddev plugin, but can be applied manually in settings.gradle to make use of Gradle dependency management."
             tags = ["minecraft", "neoforge", "java", "mod"]
         }
+        legacyrepositories {
+            id = 'net.neoforged.moddev.legacyforge.repositories'
+            implementationClass = 'net.neoforged.moddevgradle.boot.LegacyRepositoriesPlugin'
+            displayName = "Mod Development Repositories Plugin for Legacy Forge"
+            description = "This plugin adds the repositories needed for developing Minecraft mods for legacy forge. It is applied automatically by the legacyforge plugin, but can be applied manually in settings.gradle to make use of Gradle dependency management."
+            tags = ["minecraft", "neoforge", "forge", "java", "mod"]
+        }
     }
 }
 
