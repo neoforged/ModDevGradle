@@ -1,6 +1,5 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
-import java.net.URI;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
@@ -10,7 +9,6 @@ import net.neoforged.moddevgradle.internal.DataFileCollections;
 import net.neoforged.moddevgradle.internal.ModDevArtifactsWorkflow;
 import net.neoforged.moddevgradle.internal.ModDevRunWorkflow;
 import net.neoforged.moddevgradle.internal.ModdingDependencies;
-import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarPlugin;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;

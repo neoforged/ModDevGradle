@@ -1,5 +1,6 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
+import java.net.URI;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -8,8 +9,6 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.PluginAware;
-
-import java.net.URI;
 
 /**
  * Like {@link net.neoforged.moddevgradle.internal.RepositoriesPlugin}, this plugin acts differently depending on where
