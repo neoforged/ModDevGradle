@@ -9,6 +9,7 @@ import net.neoforged.moddevgradle.legacyforge.tasks.RemapOperation;
 import org.apache.commons.lang3.StringUtils;
 import org.gradle.api.Action;
 import org.gradle.api.InvalidUserCodeException;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ExternalModuleDependency;
@@ -27,16 +28,17 @@ import org.jetbrains.annotations.ApiStatus;
 
 public abstract class ObfuscationExtension {
     private final Project project;
-    private final Configuration autoRenamingToolRuntime;
-    private final Configuration installerToolsRuntime;
+    private final Provider<Configuration> autoRenamingToolRuntime;
+    private final Provider<Configuration> installerToolsRuntime;
     private final FileCollection extraMixinMappings;
 
     private final MinecraftMappings namedMappings;
 
+    @ApiStatus.Internal
     @Inject
     public ObfuscationExtension(Project project,
-            Configuration autoRenamingToolRuntime,
-            Configuration installerToolsRuntime,
+            Provider<Configuration> autoRenamingToolRuntime,
+            Provider<Configuration> installerToolsRuntime,
             FileCollection extraMixinMappings) {
         this.project = project;
         this.autoRenamingToolRuntime = autoRenamingToolRuntime;
@@ -129,6 +131,7 @@ public abstract class ObfuscationExtension {
             config.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, namedMappings);
 
             // Now create a reobf configuration
+            // TODO: not lazy!
             var reobfConfig = configurations.maybeCreate("reobf" + StringUtils.capitalize(configurationName));
             reobfConfig.setDescription("The artifacts remapped to intermediate (SRG) Minecraft names for use in a production environment");
             reobfConfig.getArtifacts().clear(); // If this is called multiple times...
@@ -155,12 +158,18 @@ public abstract class ObfuscationExtension {
         }));
     }
 
+    public Configuration createRemappingConfiguration(Configuration parent) {
+        // TODO: what if parent comes from a different project? We should at least warn in that case...
+        return registerRemappingConfiguration(project.getConfigurations().named(parent.getName())).get();
+    }
+
     /**
      * Creates a configuration that will remap its dependencies, and adds it as a children of the provided {@code parent}.
      * The created configuration uses the name of its parent capitalized and prefixed by "mod".
      */
-    public Configuration createRemappingConfiguration(Configuration parent) {
-        var remappingConfig = project.getConfigurations().create("mod" + StringUtils.capitalize(parent.getName()), spec -> {
+    public NamedDomainObjectProvider<Configuration> registerRemappingConfiguration(NamedDomainObjectProvider<Configuration> parent) {
+        String remappingConfigName = "mod" + StringUtils.capitalize(parent.getName());
+        var remappingConfig = project.getConfigurations().register(remappingConfigName, spec -> {
             spec.setDescription("Configuration for dependencies of " + parent.getName() + " that needs to be remapped");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(false);
@@ -194,7 +203,7 @@ public abstract class ObfuscationExtension {
                 }
             }));
         });
-        parent.extendsFrom(remappingConfig);
+        parent.configure(p -> p.extendsFrom(remappingConfig.get()));
 
         return remappingConfig;
     }

@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
 import java.net.URI;
+import java.util.List;
 import java.util.stream.Stream;
 import javax.inject.Inject;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
@@ -19,6 +20,7 @@ import net.neoforged.moddevgradle.legacyforge.dsl.LegacyForgeModdingSettings;
 import net.neoforged.moddevgradle.legacyforge.dsl.MixinExtension;
 import net.neoforged.moddevgradle.legacyforge.dsl.ObfuscationExtension;
 import net.neoforged.nfrtgradle.NeoFormRuntimePlugin;
+import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -56,6 +58,11 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
     @Override
     public void apply(Project project) {
+        project.getConfigurations().configureEach(c -> {
+            LOG.warn("Configuring configuration " + c.getName());
+            throw new GradleException("Configuring configuration " + c.getName());
+        });
+
         project.getPlugins().apply(JavaLibraryPlugin.class);
         project.getPlugins().apply(NeoFormRuntimePlugin.class);
         project.getPlugins().apply(MinecraftDependenciesPlugin.class);
@@ -84,14 +91,14 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getDependencies().getComponents().withModule("net.neoforged:minecraft-dependencies", NonStrictDependencyTransform.class);
 
         var depFactory = project.getDependencyFactory();
-        var autoRenamingToolRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_ART, spec -> {
+        var autoRenamingToolRuntime = project.getConfigurations().register(CONFIGURATION_TOOL_ART, spec -> {
             spec.setDescription("The AutoRenamingTool CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
             spec.setTransitive(false);
             spec.getDependencies().add(depFactory.create("net.neoforged:AutoRenamingTool:2.0.4:all"));
         });
-        var installerToolsRuntime = project.getConfigurations().create(CONFIGURATION_TOOL_INSTALLERTOOLS, spec -> {
+        var installerToolsRuntime = project.getConfigurations().register(CONFIGURATION_TOOL_INSTALLERTOOLS, spec -> {
             spec.setDescription("The InstallerTools CLI tool");
             spec.setCanBeConsumed(false);
             spec.setCanBeResolved(true);
@@ -198,15 +205,17 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
 
         // Forge expects the mapping csv files on the root classpath
-        artifacts.runtimeDependencies()
-                .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
+        artifacts.runtimeDependencies().configure(c -> {
+            c.getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
+        });
 
-        var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
+        var remapDeps = project.getConfigurations().register("remappingDependencies", spec -> {
             spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");
             spec.setCanBeConsumed(false);
             spec.setCanBeDeclared(false);
             spec.setCanBeResolved(true);
-            spec.extendsFrom(artifacts.runtimeDependencies());
+            // TODO: is there no better way?
+            spec.extendsFrom(artifacts.runtimeDependencies().get());
         });
 
         project.getDependencies().registerTransform(RemappingTransform.class, params -> {
@@ -232,13 +241,15 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var sourceSets = ExtensionUtils.getSourceSets(project);
         sourceSets.all(sourceSet -> {
             var configurationName = sourceSet.getTaskName(null, "jarJar");
-            project.getConfigurations().getByName(configurationName).withDependencies(dependencies -> {
-                dependencies.forEach(dep -> {
-                    if (dep instanceof ProjectDependency projectDependency) {
-                        projectDependency.attributes(a -> {
-                            a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
-                        });
-                    }
+            project.getConfigurations().named(configurationName, c -> {
+                c.withDependencies(dependencies -> {
+                    dependencies.forEach(dep -> {
+                        if (dep instanceof ProjectDependency projectDependency) {
+                            projectDependency.attributes(a -> {
+                                a.attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
+                            });
+                        }
+                    });
                 });
             });
         });
@@ -257,10 +268,10 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             type.getAttributes().attribute(MinecraftMappings.ATTRIBUTE, srgMappings);
         });
 
-        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
-        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));
-        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME));
-        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.API_CONFIGURATION_NAME));
-        obf.createRemappingConfiguration(project.getConfigurations().getByName(JavaPlugin.COMPILE_ONLY_API_CONFIGURATION_NAME));
+        obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.IMPLEMENTATION_CONFIGURATION_NAME));
+        obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.RUNTIME_ONLY_CONFIGURATION_NAME));
+        obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME));
+        obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.API_CONFIGURATION_NAME));
+        obf.registerRemappingConfiguration(project.getConfigurations().named(JavaPlugin.COMPILE_ONLY_API_CONFIGURATION_NAME));
     }
 }

@@ -17,6 +17,7 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
@@ -161,9 +162,20 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
      * dependency coordinate, instead of downloading them.
      */
     public final void addArtifactsToManifest(Configuration configuration) {
-        artifactManifestEntries.addAll(configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(results -> {
-            return results.stream().map(ArtifactManifestEntry::new).collect(Collectors.toSet());
-        }));
+        addArtifactsToManifest(getProject().provider(() -> configuration));
+    }
+
+    /**
+     * Add all incoming dependencies in the given configuration to the artifact manifest passed to NFRT.
+     * This causes NFRT to use files from the configuration when trying to resolve the same
+     * dependency coordinate, instead of downloading them.
+     */
+    public final void addArtifactsToManifest(Provider<Configuration> configuration) {
+        artifactManifestEntries.addAll(configuration
+                .flatMap(c -> c.getIncoming().getArtifacts().getResolvedArtifacts())
+                .map(results -> {
+                    return results.stream().map(ArtifactManifestEntry::new).collect(Collectors.toSet());
+                }));
 
         artifacts.from(configuration);
     }

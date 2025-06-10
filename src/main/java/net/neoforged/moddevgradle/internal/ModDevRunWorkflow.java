@@ -18,6 +18,7 @@ import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.DomainObjectCollection;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
@@ -59,8 +60,8 @@ public class ModDevRunWorkflow {
     @Nullable
     private final ModuleDependency testFixturesDependency;
     private final ModuleDependency gameLibrariesDependency;
-    private final Configuration additionalClasspath;
-    private final Configuration userDevConfigOnly;
+    private final NamedDomainObjectProvider<Configuration> additionalClasspath;
+    private final NamedDomainObjectProvider<Configuration> userDevConfigOnly;
 
     /**
      * @param gameLibrariesDependency A module dependency that represents the library dependencies of the game.
@@ -87,7 +88,7 @@ public class ModDevRunWorkflow {
 
         // Let's try to get the userdev JSON out of the universal jar
         // I don't like having to use a configuration for this...
-        userDevConfigOnly = configurations.create("neoForgeConfigOnly", spec -> {
+        userDevConfigOnly = configurations.register("neoForgeConfigOnly", spec -> {
             spec.setDescription("Resolves exclusively the NeoForge userdev JSON for configuring runs");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -97,7 +98,7 @@ public class ModDevRunWorkflow {
             }
         });
 
-        additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
+        additionalClasspath = configurations.register("additionalRuntimeClasspath", spec -> {
             spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -122,7 +123,7 @@ public class ModDevRunWorkflow {
                         modulePath.getDependencies().add(modulePathDependency);
                     }
                 },
-                legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
+                legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath.get()),
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                 versionCapabilities);
     }
@@ -224,7 +225,7 @@ public class ModDevRunWorkflow {
 
         // Create a configuration to resolve DevLaunch and DevLogin without leaking them to consumers
         var supplyDevLogin = project.provider(() -> runs.stream().anyMatch(model -> model.getDevLogin().get()));
-        var devLaunchConfig = project.getConfigurations().create("devLaunchConfig", spec -> {
+        var devLaunchConfig = project.getConfigurations().register("devLaunchConfig", spec -> {
             spec.setDescription("This configuration is used to inject DevLaunch and optionally DevLogin into the runtime classpaths of runs.");
             spec.getDependencies().add(dependencyFactory.create(RunUtils.DEV_LAUNCH_GAV));
             spec.getDependencies().addAllLater(supplyDevLogin.map(
@@ -276,7 +277,7 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath, // TODO: can be removed in favor of directly passing a configuration for the moddev libraries
             Provider<RegularFile> assetPropertiesFile,
-            Configuration devLaunchConfig,
+            Provider<Configuration> devLaunchConfig,
             VersionCapabilitiesInternal versionCapabilities,
             TaskProvider<Task> createLaunchScriptsTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -285,28 +286,29 @@ public class ModDevRunWorkflow {
         var tasks = project.getTasks();
 
         var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
-                .map(configurations::getByName);
+                .map(configurations::named);
 
         // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
         project.afterEvaluate(ignored -> {
-            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
+            runtimeClasspathConfig.get().configure(c -> c.extendsFrom(devLaunchConfig.get()));
         });
 
         var type = RunUtils.getRequiredType(project, run);
 
-        var modulePathConfiguration = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
+        // TODO: should potentially move the .get().get() to afterEvaluate to give the modder a chance to change the source set?
+        var modulePathConfiguration = configurations.register(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get().get());
             configureModulePath.accept(spec);
         });
 
-        var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
+        var legacyClasspathConfiguration = configurations.register(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
             spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get().get());
             spec.attributes(attributes -> {
                 attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
                     var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
@@ -415,7 +417,7 @@ public class ModDevRunWorkflow {
 
         var testRuntimeClasspath = configurations.getByName(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME);
 
-        var neoForgeModDevModules = project.getConfigurations().create("neoForgeTestModules", spec -> {
+        var neoForgeModDevModules = configurations.register("neoForgeTestModules", spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -423,7 +425,7 @@ public class ModDevRunWorkflow {
             configureModulePath.accept(spec);
         });
 
-        var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
+        var legacyClasspathConfiguration = configurations.register("neoForgeTestLibraries", spec -> {
             spec.setDescription("Contains the legacy classpath of unit tests.");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
@@ -483,10 +485,6 @@ public class ModDevRunWorkflow {
         });
 
         ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
-    }
-
-    public Configuration getAdditionalClasspath() {
-        return additionalClasspath;
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {
