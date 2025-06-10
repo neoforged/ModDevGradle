@@ -38,7 +38,7 @@ import org.slf4j.event.Level;
 final class RunUtils {
     private RunUtils() {}
 
-    public static final String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.1"; // renovate
+    public static final String DEV_LAUNCH_GAV = "net.neoforged:DevLaunch:1.0.2"; // renovate
     public static final String DEV_LAUNCH_MAIN_CLASS = "net.neoforged.devlaunch.Main";
     public static final String DEV_LOGIN_GAV = "net.covers1624:DevLogin:0.1.0.5"; // renovate
     public static final String DEV_LOGIN_MAIN_CLASS = "net.covers1624.devlogin.DevLogin";
