@@ -95,6 +95,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @InputFiles
     abstract ConfigurableFileCollection getModules();
 
+    @Classpath
+    @InputFiles
+    abstract ConfigurableFileCollection getJavaAgent();
+
     @Input
     public abstract MapProperty<String, String> getSystemProperties();
 
@@ -236,6 +240,10 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     private void writeJvmArguments(UserDevRunType runConfig, Map<String, String> additionalProperties) throws IOException {
         var lines = new ArrayList<String>();
+
+        for (var file : getJavaAgent()) {
+            lines.add("-javaagent:" + file.getAbsolutePath());
+        }
 
         lines.addAll(getInterpolatedJvmArgs(runConfig));
 
