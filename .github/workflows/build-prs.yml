@@ -29,6 +29,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         project: [testproject, legacytest]
+        gradle_version: ['wrapper', 'release-nightly']
     runs-on: ${{ matrix.os }}
     name: Test ${{ matrix.project }} on ${{ matrix.os }}
     steps:
@@ -41,16 +42,18 @@ jobs:
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ matrix.gradle_version }}
 
       - name: Run build
-        run: ./gradlew build neoForgeIdeSync publish
+        run: gradle build neoForgeIdeSync publish
         working-directory: ./${{ matrix.project }}
 
       - name: Ensure clean, build and test work in the same run
-        run: ./gradlew clean build check
+        run: gradle clean build check
         working-directory: ./${{ matrix.project }}
 
       - name: Ensure runData runs
-        run: ./gradlew runData
+        run: gradle runData
         working-directory: ./${{ matrix.project }}
