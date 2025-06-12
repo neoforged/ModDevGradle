@@ -7,7 +7,7 @@ plugins {
     id 'maven-publish'
     id 'net.neoforged.gradleutils'
     id 'com.gradle.plugin-publish' version '1.2.1'
-    id 'com.gradleup.shadow' version '8.3.0'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 group = 'net.neoforged'
