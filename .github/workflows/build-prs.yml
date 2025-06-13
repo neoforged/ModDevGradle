@@ -31,7 +31,7 @@ jobs:
         project: [testproject, legacytest]
         gradle_version: ['wrapper', 'release-nightly']
     runs-on: ${{ matrix.os }}
-    name: Test ${{ matrix.project }} on ${{ matrix.os }} (Gradle ${{ matrix.gradle_version }})
+    name: Test ${{ matrix.project }} on ${{ matrix.os }}
     steps:
       - name: Checkout project sources
         uses: neoforged/actions/checkout@main
