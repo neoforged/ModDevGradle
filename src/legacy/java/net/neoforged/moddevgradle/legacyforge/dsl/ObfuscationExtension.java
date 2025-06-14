@@ -186,7 +186,7 @@ public abstract class ObfuscationExtension {
                     });
                 } else if (dep instanceof ProjectDependency projectDependency) {
                     project.getDependencies().constraints(constraints -> {
-                        constraints.add(parent.getName(), projectDependency.getDependencyProject(), c -> {
+                        constraints.add(parent.getName(), getProjectDependencyProject(project, projectDependency), c -> {
                             c.attributes(a -> a.attribute(MinecraftMappings.ATTRIBUTE, namedMappings));
                         });
                     });
@@ -197,5 +197,22 @@ public abstract class ObfuscationExtension {
         parent.extendsFrom(remappingConfig);
 
         return remappingConfig;
+    }
+
+    private static Project getProjectDependencyProject(Project project, ProjectDependency projectDependency) {
+        // Gradle 9 requires using getPath(), but it was only added in 8.11, and we currently target 8.9
+        try {
+            var clazz = ProjectDependency.class;
+            try {
+                var getPathMethod = clazz.getMethod("getPath");
+                var path = (String) getPathMethod.invoke(projectDependency);
+                return project.project(path);
+            } catch (NoSuchMethodException ignored) {
+                var getDependencyProjectMethod = clazz.getMethod("getDependencyProject");
+                return (Project) getDependencyProjectMethod.invoke(projectDependency);
+            }
+        } catch (ReflectiveOperationException exception) {
+            throw new RuntimeException("Failed to access project of ProjectDependency", exception);
+        }
     }
 }
