@@ -83,7 +83,8 @@ public final class NeoDevFacade {
                 argFileDir,
                 configureModulePath,
                 configureAdditionalClasspath,
-                assetPropertiesFile);
+                assetPropertiesFile,
+                project.files());
     }
 
     public static void runTaskOnProjectSync(Project project, Object task) {
