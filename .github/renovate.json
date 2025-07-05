@@ -47,7 +47,7 @@
     {
       "matchDatasources": ["custom.minecraft-versions"],
       "dependencyDashboardApproval": false,
-      "addLabels": ["generated-files"]
+      "addLabels": ["generated-files"],
       "postUpgradeTasks": {
         "commands": [
           "./gradlew :generateVersionOrder :generateMojangRepositoryFilter",
