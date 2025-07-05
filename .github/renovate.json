@@ -4,7 +4,23 @@
     "github>neoforged/actions:renovate_preset"
   ],
   "baseBranches": ["main", "/^\\d+\\.x/"],
+  "customDatasources": {
+    "minecraft-versions": {
+      "defaultRegistryUrlTemplate": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
+      "transformTemplates": [
+        "{\"releases\": versions.{ \"version\": id, \"releaseTimestamp\": releaseTime }}"
+      ]
+    }
+  },
   "customManagers": [
+    {
+      "customType": "regex",
+      "depTypeTemplate": "generated",
+      "fileMatch": ["MinecraftVersionList\\.java$"],
+      "matchStrings": ["public static final List<String> VERSIONS = List\\.of\\(\"(?<currentValue>[\\w\\.]+)\""],
+      "depNameTemplate": "minecraft-version-list",
+      "datasourceTemplate": "custom.minecraft-versions"
+    },
     {
       "customType": "regex",
       "fileMatch": [
@@ -25,6 +41,18 @@
         "String\\s+[A-Z_]+\\s*=\\s*\"(?<depName>[\\w:\\.-]+):(?<currentValue>[\\d\\.]+)(:(?<depClassifier>[a-z]+))?\"\\s*;\\s*\\/\\/\\s*renovate"
       ],
       "datasourceTemplate": "maven"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["custom.minecraft-versions"],
+      "postUpgradeTasks": {
+        "commands": [
+          "./gradlew :generateVersionOrder :generateMojangRepositoryFilter",
+          "./gradlew :immaculateApply"
+        ]
+      },
+      "commitMessageTopic": "generated Minecraft versions list"
     }
   ]
 }
