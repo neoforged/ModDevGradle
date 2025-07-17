@@ -8,4 +8,14 @@ public class MyMod {
     public void run() {
         DetectedVersion.tryDetectVersion();
     }
+
+    @javax.annotation.Nullable
+    private static Object javaxNullableTest() {
+        return null;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static Object jetbrainsNullableTest() {
+        return null;
+    }
 }
