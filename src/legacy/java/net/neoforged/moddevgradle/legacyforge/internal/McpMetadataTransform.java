@@ -2,7 +2,6 @@ package net.neoforged.moddevgradle.legacyforge.internal;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.util.List;
 import javax.inject.Inject;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.CacheableRule;
@@ -72,16 +71,6 @@ class McpMetadataTransform extends LegacyMetadataTransform {
                 dependencies.add(library.getAsString());
             }
         });
-
-        // Use a fake capability to make it impossible for the implicit variants to be selected
-        for (var implicitVariantName : List.of("compile", "runtime")) {
-            details.withVariant(implicitVariantName, variant -> {
-                variant.withCapabilities(caps -> {
-                    caps.removeCapability(id.getGroup(), id.getName());
-                    caps.addCapability("___dummy___", "___dummy___", "___dummy___");
-                });
-            });
-        }
     }
 
     private void dependencies(ComponentMetadataContext context, String name, int javaTarget, String usage, Action<DirectDependenciesMetadata> deps) {

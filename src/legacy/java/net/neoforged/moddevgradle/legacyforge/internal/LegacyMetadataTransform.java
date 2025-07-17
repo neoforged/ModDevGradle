@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.jar.JarInputStream;
 import org.gradle.api.GradleException;
 import org.gradle.api.artifacts.ComponentMetadataContext;
@@ -40,6 +41,17 @@ abstract class LegacyMetadataTransform implements ComponentMetadataRule {
             throw new GradleException("Couldn't find config.json in " + path);
         }
         adaptWithConfig(context, configRootHolder[0]);
+
+        // Use a fake capability to make it impossible for the implicit variants to be selected
+        for (var implicitVariantName : List.of("compile", "runtime")) {
+            var details = context.getDetails();
+            details.withVariant(implicitVariantName, variant -> {
+                variant.withCapabilities(caps -> {
+                    caps.removeCapability(details.getId().getGroup(), details.getId().getName());
+                    caps.addCapability("___dummy___", "___dummy___", "___dummy___");
+                });
+            });
+        }
     }
 
     protected abstract void adaptWithConfig(ComponentMetadataContext context, JsonObject config);
