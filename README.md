@@ -623,7 +623,7 @@ The NeoForm process executed to create the Minecraft jars contains additional in
 
 You can request those results to be written to specific output files by using the `additionalMinecraftArtifacts` property.
 
-Which results are available depends on the NeoForm/NeoForge version used.
+Which results are available depends on the NeoForm/NeoForge and NFRT versions used. (See below to pin the NFRT version.)
 
 ```groovy
 neoForge {
