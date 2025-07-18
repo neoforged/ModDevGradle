@@ -1,0 +1,19 @@
+---
+
+name: Minecraft Assets Cache
+
+on:
+  schedule:
+    - cron: "34 3 * * *" # Update daily
+  workflow_dispatch:
+
+jobs:
+  update-cache:
+    runs-on: ubuntu-latest
+    name: Update Assets Cache
+    steps:
+      - uses: neoforged/actions-modding/minecraft-assets-cache/create@v1
+        with:
+          minecraft-versions: |
+            1.21.1
+            1.21.8
