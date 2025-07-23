@@ -78,7 +78,6 @@ public abstract class LegacyForgeModdingSettings {
         this.enabledSourceSets = enabledSourceSets;
     }
 
-
     /**
      * {@return true if default reobfuscation task should be created}
      */
