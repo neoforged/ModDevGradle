@@ -20,7 +20,7 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean createDefaultReobfuscationTask = true;
+    private boolean obfuscateJar = true;
 
     @Inject
     public LegacyForgeModdingSettings(Project project) {
@@ -81,11 +81,11 @@ public abstract class LegacyForgeModdingSettings {
     /**
      * {@return true if default reobfuscation task should be created}
      */
-    public boolean shouldCreateDefaultReobfuscationTask() {
-        return createDefaultReobfuscationTask;
+    public boolean isObfuscateJar() {
+        return obfuscateJar;
     }
 
-    public void setCreateDefaultReobfuscationTask(boolean createDefaultReobfuscationTask) {
-        this.createDefaultReobfuscationTask = createDefaultReobfuscationTask;
+    public void setObfuscateJar(boolean obfuscateJar) {
+        this.obfuscateJar = obfuscateJar;
     }
 }

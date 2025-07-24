@@ -183,7 +183,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
         });
 
-        if (settings.shouldCreateDefaultReobfuscationTask()) {
+        if (settings.isObfuscateJar()) {
             var reobfJar = obf.reobfuscate(
                     project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
                     project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));

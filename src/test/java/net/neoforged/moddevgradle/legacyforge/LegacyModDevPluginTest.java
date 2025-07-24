@@ -118,7 +118,7 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
     void testEnableWithoutReobfTask() {
         extension.enable(settings -> {
             settings.setForgeVersion(VERSION);
-            settings.setCreateDefaultReobfuscationTask(false);
+            settings.setObfuscateJar(false);
         });
 
         assertNull(project.getTasks().findByName("reobfJar"));
