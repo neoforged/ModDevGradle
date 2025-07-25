@@ -20,6 +20,8 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
+    private boolean obfuscateJar = true;
+
     @Inject
     public LegacyForgeModdingSettings(Project project) {
         // By default, enable modding deps only for the main source set
@@ -68,16 +70,22 @@ public abstract class LegacyForgeModdingSettings {
      * Contains the list of source sets for which access to Minecraft classes should be configured.
      * Defaults to the main source set, but can also be set to an empty list.
      */
-
-    /**
-     * Contains the list of source sets for which access to Minecraft classes should be configured.
-     * Defaults to the main source set, but can also be set to an empty list.
-     */
     public Set<SourceSet> getEnabledSourceSets() {
         return enabledSourceSets;
     }
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    /**
+     * {@return true if default reobfuscation task should be created}
+     */
+    public boolean isObfuscateJar() {
+        return obfuscateJar;
+    }
+
+    public void setObfuscateJar(boolean obfuscateJar) {
+        this.obfuscateJar = obfuscateJar;
     }
 }

@@ -183,11 +183,13 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
             run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
         });
 
-        var reobfJar = obf.reobfuscate(
-                project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
-                project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
+        if (settings.isObfuscateJar()) {
+            var reobfJar = obf.reobfuscate(
+                    project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class),
+                    project.getExtensions().getByType(SourceSetContainer.class).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
 
-        project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
+            project.getTasks().named("assemble", assemble -> assemble.dependsOn(reobfJar));
+        }
 
         // Forge expects the mapping csv files on the root classpath
         artifacts.runtimeDependencies()
