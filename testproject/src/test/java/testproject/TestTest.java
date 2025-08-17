@@ -1,5 +1,6 @@
 package testproject;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Items;
@@ -14,7 +15,7 @@ public class TestTest {
     @Test
     public void testIngredient(MinecraftServer server) { // required to load tags
         Assertions.assertTrue(
-                Ingredient.of(ItemTags.AXES).test(Items.DIAMOND_AXE.getDefaultInstance())
+                Ingredient.of(BuiltInRegistries.ITEM.get(ItemTags.AXES).get()).test(Items.DIAMOND_AXE.getDefaultInstance())
         );
     }
 }

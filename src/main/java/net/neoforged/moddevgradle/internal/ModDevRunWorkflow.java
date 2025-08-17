@@ -1,12 +1,5 @@
 package net.neoforged.moddevgradle.internal;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
@@ -40,6 +33,15 @@ import org.gradle.testing.base.TestingExtension;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.event.Level;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
+
 /**
  * After modding has been enabled, this will be attached as an extension to the project.
  */
@@ -69,14 +71,14 @@ public class ModDevRunWorkflow {
      *                                (apiElements vs. runtimeElements).
      */
     private ModDevRunWorkflow(Project project,
-            Branding branding,
-            ModDevArtifactsWorkflow artifactsWorkflow,
-            @Nullable ModuleDependency modulePathDependency,
-            @Nullable ModuleDependency runTypesConfigDependency,
-            @Nullable ModuleDependency testFixturesDependency,
-            ModuleDependency gameLibrariesDependency,
-            DomainObjectCollection<RunModel> runs,
-            VersionCapabilitiesInternal versionCapabilities) {
+                              Branding branding,
+                              ModDevArtifactsWorkflow artifactsWorkflow,
+                              @Nullable ModuleDependency modulePathDependency,
+                              @Nullable ModuleDependency runTypesConfigDependency,
+                              @Nullable ModuleDependency testFixturesDependency,
+                              ModuleDependency gameLibrariesDependency,
+                              DomainObjectCollection<RunModel> runs,
+                              VersionCapabilitiesInternal versionCapabilities) {
         this.project = project;
         this.branding = branding;
         this.modulePathDependency = modulePathDependency;
@@ -107,7 +109,7 @@ public class ModDevRunWorkflow {
             if (!versionCapabilities.modLocatorRework()) {
                 // Forge expects to find the Forge and client-extra jar on the legacy classpath
                 // Newer FML versions also search for it on the java.class.path.
-                spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependency());
+                artifactsWorkflow.minecraftRuntimeDependencies().forEach(spec.getDependencies()::addLater);
             }
         });
 
@@ -136,9 +138,9 @@ public class ModDevRunWorkflow {
     }
 
     public static ModDevRunWorkflow create(Project project,
-            Branding branding,
-            ModDevArtifactsWorkflow artifactsWorkflow,
-            DomainObjectCollection<RunModel> runs) {
+                                           Branding branding,
+                                           ModDevArtifactsWorkflow artifactsWorkflow,
+                                           DomainObjectCollection<RunModel> runs) {
         var dependencies = artifactsWorkflow.dependencies();
         var versionCapabilites = artifactsWorkflow.versionCapabilities();
 
@@ -203,10 +205,17 @@ public class ModDevRunWorkflow {
     }
 
     // FML searches for client resources on the legacy classpath
-    private static void addClientResources(Project project, Configuration spec, TaskProvider<CreateMinecraftArtifacts> createArtifacts) {
+    private static void addClientResources(Project project, Configuration spec, TaskProvider<? extends Task> createArtifacts) {
         spec.getDependencies().add(
                 project.getDependencyFactory().create(
-                        project.files(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact))));
+                        project.files(createArtifacts.flatMap(task -> {
+                            if (task instanceof CreateMinecraftArtifacts createMinecraftArtifacts) {
+                                return createMinecraftArtifacts.getResourcesArtifact();
+                            } else {
+                                return project.provider(() -> project.files());
+                            }
+                        })))
+        );
     }
 
     public static void setupRuns(
@@ -397,15 +406,15 @@ public class ModDevRunWorkflow {
      * @see #setupRunInGradle for a description of the parameters
      */
     static void setupTestTask(Project project,
-            Branding branding,
-            Object runTemplatesSourceFile,
-            TaskProvider<Test> testTask,
-            Provider<Set<ModModel>> loadedMods,
-            Provider<ModModel> testedMod,
-            Provider<Directory> argFileDir,
-            Consumer<Configuration> configureModulePath,
-            Consumer<Configuration> configureLegacyClasspath,
-            Provider<RegularFile> assetPropertiesFile) {
+                              Branding branding,
+                              Object runTemplatesSourceFile,
+                              TaskProvider<Test> testTask,
+                              Provider<Set<ModModel>> loadedMods,
+                              Provider<ModModel> testedMod,
+                              Provider<Directory> argFileDir,
+                              Consumer<Configuration> configureModulePath,
+                              Consumer<Configuration> configureLegacyClasspath,
+                              Provider<RegularFile> assetPropertiesFile) {
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var ideIntegration = IdeIntegration.of(project, branding);
