@@ -3,7 +3,10 @@
   "extends": [
     "github>neoforged/actions:renovate_preset"
   ],
-  "baseBranches": ["main", "/^\\d+\\.x/"],
+  "baseBranchPatterns": [
+    "main",
+    "/^\\d+\\.x/"
+  ],
   "customDatasources": {
     "minecraft-versions": {
       "defaultRegistryUrlTemplate": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
@@ -16,15 +19,19 @@
     {
       "customType": "regex",
       "depTypeTemplate": "generated",
-      "fileMatch": ["MinecraftVersionList\\.java$"],
-      "matchStrings": ["public static final List<String> VERSIONS = List\\.of\\(\"(?<currentValue>[\\w\\.]+)\""],
+      "managerFilePatterns": [
+        "/MinecraftVersionList\\.java$/"
+      ],
+      "matchStrings": [
+        "public static final List<String> VERSIONS = List\\.of\\(\"(?<currentValue>[\\w\\.]+)\""
+      ],
       "depNameTemplate": "minecraft-version-list",
       "datasourceTemplate": "custom.minecraft-versions"
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "NeoFormRuntimeExtension\\.java$"
+      "managerFilePatterns": [
+        "/NeoFormRuntimeExtension\\.java$/"
       ],
       "depNameTemplate": "net.neoforged:neoform-runtime",
       "matchStrings": [
@@ -34,8 +41,8 @@
     },
     {
       "customType": "regex",
-      "fileMatch": [
-        "RunUtils\\.java$"
+      "managerFilePatterns": [
+        "/RunUtils\\.java$/"
       ],
       "matchStrings": [
         "String\\s+[A-Z_]+\\s*=\\s*\"(?<depName>[\\w:\\.-]+):(?<currentValue>[\\d\\.]+)(:(?<depClassifier>[a-z]+))?\"\\s*;\\s*\\/\\/\\s*renovate"
@@ -45,9 +52,13 @@
   ],
   "packageRules": [
     {
-      "matchDatasources": ["custom.minecraft-versions"],
+      "matchDatasources": [
+        "custom.minecraft-versions"
+      ],
       "dependencyDashboardApproval": false,
-      "addLabels": ["generated-files"],
+      "addLabels": [
+        "generated-files"
+      ],
       "postUpgradeTasks": {
         "commands": [
           "./gradlew :generateVersionOrder :generateMojangRepositoryFilter",
