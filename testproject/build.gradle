@@ -30,7 +30,10 @@ test {
 }
 
 neoForge {
-    version = project.neoforge_version
+    enable {
+        version = project.neoforge_version
+        // binaryPatches = true
+    }
     addModdingDependenciesTo(sourceSets.api)
 
     validateAccessTransformers = true
@@ -62,7 +65,7 @@ neoForge {
             disableIdeRun()
         }
         data {
-            data()
+            clientData()
         }
         server {
             server()

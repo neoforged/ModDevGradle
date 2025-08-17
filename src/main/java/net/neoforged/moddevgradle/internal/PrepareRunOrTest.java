@@ -231,7 +231,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
                     true, "net.minecraft.data.Main", commonArgs, List.of(), Map.of(), Map.of()));
         }
 
-        return new UserDevConfig(runTypes);
+        return new UserDevConfig(runTypes, null);
     }
 
     private void writeJvmArguments(UserDevRunType runConfig, Map<String, String> additionalProperties) throws IOException {

@@ -1,20 +1,18 @@
 package net.neoforged.moddevgradle.internal;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
 import net.neoforged.minecraftdependencies.MinecraftDistribution;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
+import net.neoforged.moddevgradle.tasks.CreateMinecraftJar;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.GradleException;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Named;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -34,6 +32,14 @@ import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+
 /**
  * The workflow needed to produce artifacts and assets for compiling and running a mod.
  */
@@ -42,8 +48,9 @@ public record ModDevArtifactsWorkflow(
         Project project,
         ModdingDependencies dependencies,
         VersionCapabilitiesInternal versionCapabilities,
-        TaskProvider<CreateMinecraftArtifacts> createArtifacts,
-        Provider<? extends Dependency> minecraftClassesDependency,
+        TaskProvider<? extends Task> createArtifacts,
+        List<Provider<? extends Dependency>> minecraftCompileDependencies,
+        List<Provider<? extends Dependency>> minecraftRuntimeDependencies,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
@@ -51,6 +58,7 @@ public record ModDevArtifactsWorkflow(
         Provider<Directory> artifactsBuildDir) {
 
     private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
+
     public static ModDevArtifactsWorkflow get(Project project) {
         var result = ExtensionUtils.findExtension(project, EXTENSION_NAME, ModDevArtifactsWorkflow.class);
         if (result == null) {
@@ -60,14 +68,15 @@ public record ModDevArtifactsWorkflow(
     }
 
     public static ModDevArtifactsWorkflow create(Project project,
-            Collection<SourceSet> enabledSourceSets,
-            Branding branding,
-            ModDevExtension extension,
-            ModdingDependencies moddingDependencies,
-            ArtifactNamingStrategy artifactNamingStrategy,
-            Configuration accessTransformers,
-            Configuration interfaceInjectionData,
-            VersionCapabilitiesInternal versionCapabilities) {
+                                                 Collection<SourceSet> enabledSourceSets,
+                                                 Branding branding,
+                                                 ModDevExtension extension,
+                                                 ModdingDependencies moddingDependencies,
+                                                 ArtifactNamingStrategy artifactNamingStrategy,
+                                                 Configuration accessTransformers,
+                                                 Configuration interfaceInjectionData,
+                                                 VersionCapabilitiesInternal versionCapabilities,
+                                                 boolean useBinaryPatches) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -111,45 +120,117 @@ public record ModDevArtifactsWorkflow(
         });
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
-            task.setGroup(branding.internalTaskGroup());
-            task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
-            for (var configuration : createManifestConfigurations) {
-                task.addArtifactsToManifest(configuration);
+        List<Provider<? extends Dependency>> minecraftRuntimeDependencies = new ArrayList<>();
+        List<Provider<? extends Dependency>> minecraftCompileDependencies = new ArrayList<>();
+        TaskProvider<? extends Task> createArtifacts;
+        Provider<RegularFile> compiledMinecraftJar;
+        Optional<Provider<RegularFile>> sourceArtifact;
+        if (useBinaryPatches) {
+            // Gradle prevents us from having dependencies with "incompatible attributes" in the same configuration.
+            // What constitutes incompatible cannot be overridden on a per-configuration basis.
+            var modDevDataConfig = configurations.dependencyScope("modDevData", spec -> {
+                spec.setDescription("Mod development bundle dependencies for NeoForge/NeoForm");
+                if (moddingDependencies.neoForgeDependency() != null) {
+                    spec.getDependencies().add(moddingDependencies.neoForgeDependency().copy()
+                            .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-bundle")));
+                }
+
+                // This dependency is used when the NeoForm version is overridden or when we run in Vanilla-only mode
+                if (moddingDependencies.neoFormDependency() != null) {
+                    spec.getDependencies().add(moddingDependencies.neoFormDependency().copy()
+                            .capabilities(caps -> caps.requireCapability("net.neoforged:neoform")));
+                }
+            });
+            var modDevDataConfigResolvable = configurations.resolvable("modDevDataResolvable", spec -> {
+                spec.setDescription("Mod development bundle dependencies for NeoForge/NeoForm");
+                spec.extendsFrom(modDevDataConfig.get());
+            });
+            var installerttools = configurations.create("modDevInstallerTools", spec -> {
+                spec.setTransitive(false);
+                spec.getDependencies().add(dependencyFactory.create("net.neoforged.installertools:installertools:3.0.25-moddev-support:fatjar"));
+            });
+
+            var createMinecraftJar = tasks.register("createMinecraftArtifacts", CreateMinecraftJar.class, task -> {
+                task.setGroup(branding.internalTaskGroup());
+                task.setDescription("Creates the Minecraft jar.");
+
+                task.getAccessTransformers().from(accessTransformers);
+                task.getInterfaceInjectionData().from(interfaceInjectionData);
+                task.getInstallerTools().from(installerttools);
+
+                Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
+
+                task.getMinecraftJar().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
+
+                task.getNeoForgeUserDevConfig().from(findArtifactWithCapability(modDevDataConfigResolvable, "net.neoforged:neoforge-moddev-bundle"));
+                task.getNeoFormConfig().fileProvider(findArtifactWithCapability(modDevDataConfigResolvable, "net.neoforged:neoform"));
+            });
+
+            compiledMinecraftJar = createMinecraftJar.flatMap(CreateMinecraftJar::getMinecraftJar);
+            sourceArtifact = Optional.empty();
+            createArtifacts = createMinecraftJar;
+
+            minecraftRuntimeDependencies.add(createMinecraftJar.map(task -> project.files(task.getMinecraftJar())).map(dependencyFactory::create));
+            minecraftRuntimeDependencies.add(project.provider(moddingDependencies::neoForgeDependency));
+            minecraftCompileDependencies.add(createMinecraftJar.map(task -> project.files(task.getMinecraftJar())).map(dependencyFactory::create));
+            minecraftCompileDependencies.add(project.provider(moddingDependencies::neoForgeDependency));
+        } else {
+            var neoformTask = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
+                task.setGroup(branding.internalTaskGroup());
+                task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
+                for (var configuration : createManifestConfigurations) {
+                    task.addArtifactsToManifest(configuration);
+                }
+
+                // NFRT needs access to a JDK of the right version to be able to correctly decompile and recompile the code
+                task.getToolsJavaExecutable().set(javaToolchainService
+                        .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
+                        .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
+
+                task.getAccessTransformers().from(accessTransformers);
+                // If AT validation is enabled, add the user-supplied AT paths as files to be validated,
+                // they're also part of the normal AT collection, so if AT validation is disabled, just return an empty list.
+                task.getValidatedAccessTransformers().from(
+                        extension.getValidateAccessTransformers().map(validate -> {
+                            if (validate) {
+                                return extension.getAccessTransformers().getFiles();
+                            } else {
+                                return project.files();
+                            }
+                        }));
+                task.getInterfaceInjectionData().from(interfaceInjectionData);
+                task.getParchmentData().from(parchmentData);
+                task.getParchmentEnabled().set(parchment.getEnabled());
+                task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
+
+                Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
+
+                task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
+                task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
+                task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+                task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
+
+                task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
+                task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
+                task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
+            });
+
+            compiledMinecraftJar = neoformTask.flatMap(CreateMinecraftArtifacts::getCompiledArtifact);
+            sourceArtifact = Optional.of(neoformTask.flatMap(CreateMinecraftArtifacts::getSourcesArtifact));
+            createArtifacts = neoformTask;
+
+            // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
+            // Otherwise, attaching sources is a pain for IJ users.
+            Provider<? extends Dependency> minecraftClassesDependency;
+            if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+                minecraftClassesDependency = neoformTask.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
+            } else {
+                minecraftClassesDependency = neoformTask.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
             }
-
-            // NFRT needs access to a JDK of the right version to be able to correctly decompile and recompile the code
-            task.getToolsJavaExecutable().set(javaToolchainService
-                    .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
-                    .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
-
-            task.getAccessTransformers().from(accessTransformers);
-            // If AT validation is enabled, add the user-supplied AT paths as files to be validated,
-            // they're also part of the normal AT collection, so if AT validation is disabled, just return an empty list.
-            task.getValidatedAccessTransformers().from(
-                    extension.getValidateAccessTransformers().map(validate -> {
-                        if (validate) {
-                            return extension.getAccessTransformers().getFiles();
-                        } else {
-                            return project.files();
-                        }
-                    }));
-            task.getInterfaceInjectionData().from(interfaceInjectionData);
-            task.getParchmentData().from(parchmentData);
-            task.getParchmentEnabled().set(parchment.getEnabled());
-            task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
-
-            Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
-
-            task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
-            task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
-            task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
-            task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
-
-            task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
-            task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
-            task.getAdditionalResults().putAll(extension.getAdditionalMinecraftArtifacts());
-        });
+            minecraftRuntimeDependencies.add(minecraftClassesDependency);
+            minecraftCompileDependencies.add(minecraftClassesDependency);
+            minecraftRuntimeDependencies.add(neoformTask.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+        }
         ideIntegration.runTaskOnProjectSync(createArtifacts);
 
         var downloadAssets = tasks.register("downloadAssets", DownloadAssets.class, task -> {
@@ -166,15 +247,6 @@ public record ModDevArtifactsWorkflow(
             task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
         });
 
-        // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
-        // Otherwise, attaching sources is a pain for IJ users.
-        Provider<? extends Dependency> minecraftClassesDependency;
-        if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
-        } else {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
-        }
-
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
         // We cannot use "runtimeOnly", since the contents of that are published.
         var runtimeDependencies = configurations.create("modDevRuntimeDependencies", config -> {
@@ -182,8 +254,8 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
 
-            config.getDependencies().addLater(minecraftClassesDependency);
-            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            minecraftRuntimeDependencies.forEach(config.getDependencies()::addLater);
+
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
@@ -195,16 +267,14 @@ public record ModDevArtifactsWorkflow(
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.getDependencies().addLater(minecraftClassesDependency);
+
+            minecraftCompileDependencies.forEach(config.getDependencies()::addLater);
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
-        if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            ideIntegration.attachSources(
-                    Map.of(
-                            createArtifacts.get().getCompiledArtifact(),
-                            createArtifacts.get().getSourcesArtifact()));
+        if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact() && sourceArtifact.isPresent()) {
+            ideIntegration.attachSources(Map.of(compiledMinecraftJar, sourceArtifact.get()));
         }
 
         var result = new ModDevArtifactsWorkflow(
@@ -212,7 +282,8 @@ public record ModDevArtifactsWorkflow(
                 moddingDependencies,
                 versionCapabilities,
                 createArtifacts,
-                minecraftClassesDependency,
+                minecraftCompileDependencies,
+                minecraftRuntimeDependencies,
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,
@@ -226,6 +297,26 @@ public record ModDevArtifactsWorkflow(
         }
 
         return result;
+    }
+
+    /**
+     * Searches the resolved artifacts of a configuration for the first artifact that was resolved for a given capability.
+     */
+    private static Provider<File> findArtifactWithCapability(NamedDomainObjectProvider<? extends Configuration> modDevDataConfigResolvable, String capability) {
+        String[] parts = capability.split(":", 2);
+        String capabilityGroup = parts[0];
+        String capabilityName = parts[1];
+
+        return modDevDataConfigResolvable.flatMap(configuration -> {
+            return configuration.getIncoming().getArtifacts().getResolvedArtifacts().map(resolvedArtifacts -> {
+                for (var resolvedArtifact : resolvedArtifacts) {
+                    if (resolvedArtifact.getVariant().getCapabilities().stream().anyMatch(cap -> cap.getGroup().equals(capabilityGroup) && cap.getName().equals(capabilityName))) {
+                        return resolvedArtifact.getFile();
+                    }
+                }
+                return null;
+            });
+        });
     }
 
     /**
@@ -340,9 +431,21 @@ public record ModDevArtifactsWorkflow(
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, Provider<RegularFile> path) {
-        createArtifacts.configure(task -> task.getAdditionalResults().put(id, path.map(RegularFile::getAsFile)));
+        createArtifacts.configure(task -> {
+            if (task instanceof CreateMinecraftArtifacts createMinecraftArtifacts) {
+                createMinecraftArtifacts.getAdditionalResults().put(id, path.map(RegularFile::getAsFile));
+            } else {
+                throw new InvalidUserCodeException("Cannot request additional Minecraft artifact '" + id + "' from task " + task.getName() + " when using binary patches.");
+            }
+        });
         return project.getLayout().file(
-                createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id)));
+                createArtifacts.flatMap(task -> {
+                    if (task instanceof CreateMinecraftArtifacts createMinecraftArtifacts) {
+                        return createMinecraftArtifacts.getAdditionalResults().getting(id);
+                    } else {
+                        throw new InvalidUserCodeException("Cannot request additional Minecraft artifact '" + id + "' from task " + task.getName() + " when using binary patches.");
+                    }
+                }));
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {
