@@ -524,12 +524,12 @@ neoForge {
 If there is a single access transformer, it will be published under the `accesstransformer` classifier.
 If there are multiple, they will be published under the `accesstransformer1`, `accesstransformer2`, etc... classifiers.
 
-To consume an access transformer, add it as an `accessTransformer` dependency.
+To consume an access transformer, add it as an `accessTransformers` dependency.
 This will find all the published access transformers regardless of their file names.
 For example:
 ```groovy
 dependencies {
-    accessTransformer "<group>:<artifact>:<version>"
+    accessTransformers "<group>:<artifact>:<version>"
 }
 ```
 
