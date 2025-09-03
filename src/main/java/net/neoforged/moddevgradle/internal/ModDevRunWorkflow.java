@@ -27,6 +27,7 @@ import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.Directory;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
@@ -61,6 +62,7 @@ public class ModDevRunWorkflow {
     private final ModuleDependency gameLibrariesDependency;
     private final Configuration additionalClasspath;
     private final Configuration userDevConfigOnly;
+    private final Configuration javaAgent;
 
     /**
      * @param gameLibrariesDependency A module dependency that represents the library dependencies of the game.
@@ -74,6 +76,7 @@ public class ModDevRunWorkflow {
             @Nullable ModuleDependency modulePathDependency,
             @Nullable ModuleDependency runTypesConfigDependency,
             @Nullable ModuleDependency testFixturesDependency,
+            @Nullable ModuleDependency javaAgentDependency,
             ModuleDependency gameLibrariesDependency,
             DomainObjectCollection<RunModel> runs,
             VersionCapabilitiesInternal versionCapabilities) {
@@ -94,6 +97,16 @@ public class ModDevRunWorkflow {
             spec.setTransitive(false);
             if (runTypesConfigDependency != null) {
                 spec.getDependencies().add(runTypesConfigDependency);
+            }
+        });
+
+        javaAgent = configurations.create("neoForgeJavaAgent", spec -> {
+            spec.setDescription("Any jar in this configuration will be added as a javagent to the Minecraft and JUnit command lines in this project.");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.setTransitive(false); // Java agents can't load transitive dependencies
+            if (javaAgentDependency != null) {
+                spec.getDependencies().add(javaAgentDependency);
             }
         });
 
@@ -149,6 +162,7 @@ public class ModDevRunWorkflow {
                 dependencies.modulePathDependency(),
                 dependencies.runTypesConfigDependency(),
                 dependencies.testFixturesDependency(),
+                dependencies.javaAgentDependency(),
                 dependencies.gameLibrariesDependency(),
                 runs,
                 versionCapabilites);
@@ -198,7 +212,8 @@ public class ModDevRunWorkflow {
                         legacyClassPath.getDependencies().add(gameLibrariesDependency);
                         addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
                     },
-                    artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile));
+                    artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
+                    javaAgent);
         }
     }
 
@@ -405,7 +420,8 @@ public class ModDevRunWorkflow {
             Provider<Directory> argFileDir,
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath,
-            Provider<RegularFile> assetPropertiesFile) {
+            Provider<RegularFile> assetPropertiesFile,
+            FileCollection javaAgent) {
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -456,6 +472,7 @@ public class ModDevRunWorkflow {
             task.getProgramArgsFile().set(programArgsFile);
             task.getLog4jConfigFile().set(log4j2ConfigFile);
             task.getRunTypeTemplatesSource().from(runTemplatesSourceFile);
+            task.getJavaAgent().from(javaAgent);
             task.getModules().from(neoForgeModDevModules);
             task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
             task.getAssetProperties().set(assetPropertiesFile);

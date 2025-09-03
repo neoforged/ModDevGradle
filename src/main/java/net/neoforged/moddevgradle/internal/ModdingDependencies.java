@@ -11,6 +11,7 @@ public record ModdingDependencies(
         @Nullable ModuleDependency neoFormDependency,
         @Nullable String neoFormDependencyNotation,
         ModuleDependency gameLibrariesDependency,
+        @Nullable ModuleDependency javaAgentDependency,
         @Nullable ModuleDependency modulePathDependency,
         @Nullable ModuleDependency runTypesConfigDependency,
         @Nullable ModuleDependency testFixturesDependency) {
@@ -34,12 +35,19 @@ public record ModdingDependencies(
                     .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-test-fixtures"));
         }
 
+        ModuleDependency javaAgentDependency = null;
+        if (versionCapabilities.javaAgent()) {
+            javaAgentDependency = neoForge.copy()
+                    .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-javaagent"));
+        }
+
         return new ModdingDependencies(
                 neoForge,
                 neoForgeNotation,
                 neoForm,
                 neoFormNotation,
                 librariesDependency,
+                javaAgentDependency,
                 modulePathDependency,
                 runTypesDataDependency,
                 testFixturesDependency);
@@ -55,6 +63,7 @@ public record ModdingDependencies(
                 neoForm,
                 neoFormNotation,
                 librariesDependency,
+                null,
                 null,
                 null,
                 null);
