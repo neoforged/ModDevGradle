@@ -42,6 +42,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("io.netty", "netty-all");
         filter.includeModule("io.netty", "netty-buffer");
         filter.includeModule("io.netty", "netty-codec");
+        filter.includeModule("io.netty", "netty-codec-http");
         filter.includeModule("io.netty", "netty-common");
         filter.includeModule("io.netty", "netty-handler");
         filter.includeModule("io.netty", "netty-resolver");
