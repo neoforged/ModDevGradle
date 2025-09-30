@@ -57,6 +57,7 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
             repo.setName("NeoForged Releases");
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
         });
+        repositories.mavenLocal();
     }
 
     private static void sortFirst(RepositoryHandler repositories, MavenArtifactRepository repo) {

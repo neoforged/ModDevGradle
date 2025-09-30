@@ -23,3 +23,32 @@ include 'jijtest'
 include 'coremod'
 
 enableFeaturePreview "STABLE_CONFIGURATION_CACHE"
+
+gradle.lifecycle.afterProject {
+    it.repositories.maven {
+        name = "Maven for PR #2547" // https://github.com/neoforged/NeoForge/pull/2547
+        url = uri("https://prmaven.neoforged.net/NeoForge/pr2547")
+        content {
+            includeModule("net.neoforged", "neoforge")
+            includeModule("net.neoforged", "testframework")
+        }
+    }
+    it.repositories.maven {
+        name = "Maven for PR #13" // https://github.com/neoforged/NeoForm/pull/13
+        url = uri("https://prmaven.neoforged.net/NeoForm/pr13")
+        content {
+            includeModule("net.neoforged", "neoform")
+        }
+    }
+    it.repositories.maven {
+        name = "Maven for PR #337" // https://github.com/neoforged/FancyModLoader/pull/337
+        url = uri("https://prmaven.neoforged.net/FancyModLoader/pr337")
+        content {
+            includeModule("net.neoforged.fancymodloader", "bootstraplauncher")
+            includeModule("net.neoforged.fancymodloader", "earlydisplay")
+            includeModule("net.neoforged.fancymodloader", "junit-fml")
+            includeModule("net.neoforged.fancymodloader", "loader")
+            includeModule("net.neoforged.fancymodloader", "securejarhandler")
+        }
+    }
+}
