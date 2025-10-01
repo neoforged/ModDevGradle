@@ -452,7 +452,6 @@ public class ModDevRunWorkflow {
             configureModulePath.accept(spec);
         });
 
-
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
         var runArgsDir = argFileDir.map(dir -> dir.dir("junit"));
 

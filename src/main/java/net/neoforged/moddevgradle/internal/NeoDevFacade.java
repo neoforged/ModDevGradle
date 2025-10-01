@@ -88,7 +88,6 @@ public final class NeoDevFacade {
                 VersionCapabilitiesInternal.ofMinecraftVersion("1.21.8"));
     }
 
-
     public static void setupTestTask(Project project,
             Provider<Directory> argFileDir,
             TaskProvider<Test> testTask,
