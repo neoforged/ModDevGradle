@@ -59,7 +59,6 @@ public class ModDevRunWorkflow {
     @Nullable
     private final ModuleDependency testFixturesDependency;
     private final ModuleDependency gameLibrariesDependency;
-    private final Configuration additionalClasspath;
     private final Configuration userDevConfigOnly;
 
     /**
@@ -97,19 +96,27 @@ public class ModDevRunWorkflow {
             }
         });
 
-        additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
-            spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
+        Consumer<Configuration> configureLegacyClasspath;
+        if (versionCapabilities.legacyClasspath()) {
+            var additionalClasspath = configurations.create("additionalRuntimeClasspath", spec -> {
+                spec.setDescription("Contains dependencies of every run, that should not be considered boot classpath modules.");
+                spec.setCanBeResolved(true);
+                spec.setCanBeConsumed(false);
 
-            spec.getDependencies().add(gameLibrariesDependency);
-            addClientResources(project, spec, artifactsWorkflow.createArtifacts());
-            if (!versionCapabilities.modLocatorRework()) {
-                // Forge expects to find the Forge and client-extra jar on the legacy classpath
-                // Newer FML versions also search for it on the java.class.path.
-                spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependency());
-            }
-        });
+                spec.getDependencies().add(gameLibrariesDependency);
+                addClientResources(project, spec, artifactsWorkflow.createArtifacts());
+                if (!versionCapabilities.modLocatorRework()) {
+                    // Forge expects to find the Forge and client-extra jar on the legacy classpath
+                    // Newer FML versions also search for it on the java.class.path.
+                    spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependency());
+                }
+            });
+            configureLegacyClasspath = legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath);
+        } else {
+            configureLegacyClasspath = legacyClassPath -> {
+                throw new IllegalStateException("There is no legacy classpath for Minecraft " + versionCapabilities.minecraftVersion());
+            };
+        }
 
         setupRuns(
                 project,
@@ -122,7 +129,7 @@ public class ModDevRunWorkflow {
                         modulePath.getDependencies().add(modulePathDependency);
                     }
                 },
-                legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath),
+                configureLegacyClasspath,
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                 versionCapabilities);
     }
@@ -198,7 +205,8 @@ public class ModDevRunWorkflow {
                         legacyClassPath.getDependencies().add(gameLibrariesDependency);
                         addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
                     },
-                    artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile));
+                    artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
+                    artifactsWorkflow.versionCapabilities());
         }
     }
 
@@ -302,28 +310,46 @@ public class ModDevRunWorkflow {
             configureModulePath.accept(spec);
         });
 
-        var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
-            spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
-            spec.attributes(attributes -> {
-                attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
-                    var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
-                    return project.getObjects().named(MinecraftDistribution.class, name);
-                }));
-                setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+        Provider<RegularFile> legacyClasspathFile;
+        if (versionCapabilities.legacyClasspath()) {
+            var legacyClasspathConfiguration = configurations.create(InternalModelHelper.nameOfRun(run, "", "legacyClasspath"), spec -> {
+                spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
+                spec.setCanBeResolved(true);
+                spec.setCanBeConsumed(false);
+                spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+                spec.attributes(attributes -> {
+                    attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
+                        var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                        return project.getObjects().named(MinecraftDistribution.class, name);
+                    }));
+                    setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+                });
+                configureLegacyClasspath.accept(spec);
+                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
             });
-            configureLegacyClasspath.accept(spec);
-            spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
-        });
 
-        var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.setGroup(branding.internalTaskGroup());
-            writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
-            writeLcp.getLegacyClasspathFile().set(argFileDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
-            writeLcp.addEntries(legacyClasspathConfiguration);
-        });
+            var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.setGroup(branding.internalTaskGroup());
+                writeLcp.setDescription("Writes the legacyClasspath file for the " + run.getName() + " Minecraft run, containing all dependencies that shouldn't be considered boot modules.");
+                writeLcp.getLegacyClasspathFile().set(argFileDir.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "legacyClasspath") + ".txt")));
+                writeLcp.addEntries(legacyClasspathConfiguration);
+            });
+            legacyClasspathFile = writeLcpTask.get().getLegacyClasspathFile();
+        } else {
+            legacyClasspathFile = null;
+
+            // Disallow adding dependencies to the run's additional classpath configuration since it would have no effect.
+            // We cannot use withDependencies() since the configuration should never get resolved,
+            // but we want to inform the user anyway.
+            run.getAdditionalRuntimeClasspathConfiguration().getDependencies().all(dependency -> {
+                throw new IllegalStateException(String.format(
+                        "Tried to add a dependency to configuration %s, but there is no additional classpath anymore for Minecraft %s. "
+                                + "Add the dependency to a standard configuration such as implementation or runtimeOnly. Dependency: %s",
+                        run.getAdditionalRuntimeClasspathConfiguration(),
+                        versionCapabilities.minecraftVersion(),
+                        dependency));
+            });
+        }
 
         var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
             task.setGroup(branding.internalTaskGroup());
@@ -337,7 +363,9 @@ public class ModDevRunWorkflow {
             task.getRunType().set(run.getType());
             task.getRunTypeTemplatesSource().from(runTemplatesFile);
             task.getModules().from(modulePathConfiguration);
-            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            if (legacyClasspathFile != null) {
+                task.getLegacyClasspathFile().set(legacyClasspathFile);
+            }
             task.getAssetProperties().set(assetPropertiesFile);
             task.getSystemProperties().set(run.getSystemProperties().map(props -> {
                 props = new HashMap<>(props);
@@ -405,7 +433,8 @@ public class ModDevRunWorkflow {
             Provider<Directory> argFileDir,
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureLegacyClasspath,
-            Provider<RegularFile> assetPropertiesFile) {
+            Provider<RegularFile> assetPropertiesFile,
+            VersionCapabilitiesInternal versionCapabilities) {
         var gameDirectory = new File(project.getProjectDir(), JUNIT_GAME_DIR);
 
         var ideIntegration = IdeIntegration.of(project, branding);
@@ -423,27 +452,34 @@ public class ModDevRunWorkflow {
             configureModulePath.accept(spec);
         });
 
-        var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
-            spec.setDescription("Contains the legacy classpath of unit tests.");
-            spec.setCanBeResolved(true);
-            spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(testRuntimeClasspath);
-            spec.attributes(attributes -> {
-                setNamedAttribute(project, attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
-                setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
-            });
-            configureLegacyClasspath.accept(spec);
-        });
 
         // Place files for junit runtime in a subdirectory to avoid conflicting with other runs
         var runArgsDir = argFileDir.map(dir -> dir.dir("junit"));
 
-        var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
-            writeLcp.setGroup(branding.internalTaskGroup());
-            writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
-            writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
-            writeLcp.addEntries(legacyClasspathConfiguration);
-        });
+        Provider<RegularFile> legacyClasspathFile;
+        if (versionCapabilities.legacyClasspath()) {
+            var legacyClasspathConfiguration = configurations.create("neoForgeTestLibraries", spec -> {
+                spec.setDescription("Contains the legacy classpath of unit tests.");
+                spec.setCanBeResolved(true);
+                spec.setCanBeConsumed(false);
+                spec.shouldResolveConsistentlyWith(testRuntimeClasspath);
+                spec.attributes(attributes -> {
+                    setNamedAttribute(project, attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
+                    setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+                });
+                configureLegacyClasspath.accept(spec);
+            });
+
+            var writeLcpTask = tasks.register("writeNeoForgeTestClasspath", WriteLegacyClasspath.class, writeLcp -> {
+                writeLcp.setGroup(branding.internalTaskGroup());
+                writeLcp.setDescription("Writes the legacyClasspath file for the test run, containing all dependencies that shouldn't be considered boot modules.");
+                writeLcp.getLegacyClasspathFile().convention(runArgsDir.map(dir -> dir.file("legacyClasspath.txt")));
+                writeLcp.addEntries(legacyClasspathConfiguration);
+            });
+            legacyClasspathFile = writeLcpTask.get().getLegacyClasspathFile();
+        } else {
+            legacyClasspathFile = null;
+        }
 
         var vmArgsFile = runArgsDir.map(dir -> dir.file("vmArgs.txt"));
         var programArgsFile = runArgsDir.map(dir -> dir.file("programArgs.txt"));
@@ -457,7 +493,9 @@ public class ModDevRunWorkflow {
             task.getLog4jConfigFile().set(log4j2ConfigFile);
             task.getRunTypeTemplatesSource().from(runTemplatesSourceFile);
             task.getModules().from(neoForgeModDevModules);
-            task.getLegacyClasspathFile().set(writeLcpTask.get().getLegacyClasspathFile());
+            if (legacyClasspathFile != null) {
+                task.getLegacyClasspathFile().set(legacyClasspathFile);
+            }
             task.getAssetProperties().set(assetPropertiesFile);
             task.getGameLogLevel().set(Level.INFO);
         });
@@ -483,10 +521,6 @@ public class ModDevRunWorkflow {
         });
 
         ideIntegration.configureTesting(loadedMods, testedMod, runArgsDir, gameDirectory, programArgsFile, vmArgsFile);
-    }
-
-    public Configuration getAdditionalClasspath() {
-        return additionalClasspath;
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {
