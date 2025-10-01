@@ -323,6 +323,11 @@ To decrease the likelihood of conflicts if no explicit module name is set,
 we prefix the filename of embedded subprojects with the group id.
 
 ### External Dependencies: Runs
+As of Minecraft 1.21.9, external dependencies do not need special handling anymore to be loaded in runs.
+
+<details>
+<summary>Show information for 1.21.8 and older Minecraft versions</summary>
+
 External dependencies will only be loaded in your runs if they are mods (with a `META-INF/neoforge.mods.toml` file),
 or if they have the `FMLModType` entry set in their `META-INF/MANIFEST.MF` file.
 Usually, Java libraries do not fit either of these requirements,
@@ -340,6 +345,7 @@ dependencies {
 
 _Advanced_: The additional runtime classpath can be configured per-run.
 For example, to add a dependency to the `client` run only, it can be added to `clientAdditionalRuntimeClasspath`.
+</details>
 
 ### Isolated Source Sets
 
