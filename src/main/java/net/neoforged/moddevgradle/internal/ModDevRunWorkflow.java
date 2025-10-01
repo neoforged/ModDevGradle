@@ -113,6 +113,11 @@ public class ModDevRunWorkflow {
             });
             configureLegacyClasspath = legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath);
         } else {
+            // Create the configuration but disallow adding anything to it, to notify users about potential mistakes.
+            // We might decide to remove it entirely in the future
+            var additionalClasspath = configurations.create("additionalRuntimeClasspath");
+            forbidAdditionalRuntimeDependencies(additionalClasspath, versionCapabilities);
+
             configureLegacyClasspath = legacyClassPath -> {
                 throw new IllegalStateException("There is no legacy classpath for Minecraft " + versionCapabilities.minecraftVersion());
             };
@@ -132,6 +137,19 @@ public class ModDevRunWorkflow {
                 configureLegacyClasspath,
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                 versionCapabilities);
+    }
+
+    private static void forbidAdditionalRuntimeDependencies(Configuration configuration, VersionCapabilitiesInternal versionCapabilities) {
+        // We cannot use withDependencies() since the configuration should never get resolved,
+        // but we want to inform the user anyway.
+        configuration.getDependencies().all(dependency -> {
+            throw new IllegalStateException(String.format(
+                    "Tried to add a dependency to configuration %s, but there is no additional classpath anymore for Minecraft %s. "
+                            + "Add the dependency to a standard configuration such as implementation or runtimeOnly. Dependency: %s",
+                    configuration,
+                    versionCapabilities.minecraftVersion(),
+                    dependency));
+        });
     }
 
     public static ModDevRunWorkflow get(Project project) {
@@ -336,19 +354,9 @@ public class ModDevRunWorkflow {
             });
             legacyClasspathFile = writeLcpTask.get().getLegacyClasspathFile();
         } else {
+            // Disallow adding dependencies to the additional classpath configuration since it would have no effect.
+            forbidAdditionalRuntimeDependencies(run.getAdditionalRuntimeClasspathConfiguration(), versionCapabilities);
             legacyClasspathFile = null;
-
-            // Disallow adding dependencies to the run's additional classpath configuration since it would have no effect.
-            // We cannot use withDependencies() since the configuration should never get resolved,
-            // but we want to inform the user anyway.
-            run.getAdditionalRuntimeClasspathConfiguration().getDependencies().all(dependency -> {
-                throw new IllegalStateException(String.format(
-                        "Tried to add a dependency to configuration %s, but there is no additional classpath anymore for Minecraft %s. "
-                                + "Add the dependency to a standard configuration such as implementation or runtimeOnly. Dependency: %s",
-                        run.getAdditionalRuntimeClasspathConfiguration(),
-                        versionCapabilities.minecraftVersion(),
-                        dependency));
-            });
         }
 
         var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
