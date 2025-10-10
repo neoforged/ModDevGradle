@@ -30,26 +30,6 @@ public final class NeoDevFacade {
             Object runTemplatesSourceFile,
             Consumer<Configuration> configureModulePath,
             Consumer<Configuration> configureAdditionalClasspath,
-            Provider<RegularFile> assetPropertiesFile) {
-        ModDevRunWorkflow.setupRuns(
-                project,
-                Branding.NEODEV,
-                argFileDir,
-                runs,
-                runTemplatesSourceFile,
-                configureModulePath,
-                configureAdditionalClasspath,
-                assetPropertiesFile,
-                // This overload of the method was only used by NeoForge 1.21.3
-                VersionCapabilitiesInternal.ofMinecraftVersion("1.21.3"));
-    }
-
-    public static void setupRuns(Project project,
-            Provider<Directory> argFileDir,
-            DomainObjectCollection<RunModel> runs,
-            Object runTemplatesSourceFile,
-            Consumer<Configuration> configureModulePath,
-            Consumer<Configuration> configureAdditionalClasspath,
             Provider<RegularFile> assetPropertiesFile,
             Provider<String> neoFormVersion) {
         ModDevRunWorkflow.setupRuns(
@@ -62,30 +42,6 @@ public final class NeoDevFacade {
                 configureAdditionalClasspath,
                 assetPropertiesFile,
                 neoFormVersion.map(VersionCapabilitiesInternal::ofNeoFormVersion).getOrElse(VersionCapabilitiesInternal.latest()));
-    }
-
-    public static void setupTestTask(Project project,
-            Provider<Directory> argFileDir,
-            TaskProvider<Test> testTask,
-            Object runTemplatesSourceFile,
-            Provider<Set<ModModel>> loadedMods,
-            Provider<ModModel> testedMod,
-            Consumer<Configuration> configureModulePath,
-            Consumer<Configuration> configureAdditionalClasspath,
-            Provider<RegularFile> assetPropertiesFile) {
-        ModDevRunWorkflow.setupTestTask(
-                project,
-                Branding.NEODEV,
-                runTemplatesSourceFile,
-                testTask,
-                loadedMods,
-                testedMod,
-                argFileDir,
-                configureModulePath,
-                configureAdditionalClasspath,
-                assetPropertiesFile,
-                // This overload of the method was only used by NeoForge before 1.21.9
-                VersionCapabilitiesInternal.ofMinecraftVersion("1.21.8"));
     }
 
     public static void setupTestTask(Project project,
