@@ -1,5 +1,3 @@
-modLoader = "javafml"
-loaderVersion = "[4,)"
 license = "CC0"
 [[mods]]
 modId = "jijtest"

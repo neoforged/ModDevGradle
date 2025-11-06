@@ -44,7 +44,7 @@ neoForge {
 
     runs {
         data {
-            data()
+            clientData()
         }
     }
 
