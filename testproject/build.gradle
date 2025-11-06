@@ -62,7 +62,7 @@ neoForge {
             disableIdeRun()
         }
         data {
-            data()
+            clientData()
         }
         server {
             server()
