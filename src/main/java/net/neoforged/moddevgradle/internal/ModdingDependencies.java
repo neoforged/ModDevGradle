@@ -13,6 +13,7 @@ public record ModdingDependencies(
         @Nullable ModuleDependency neoFormDependency,
         @Nullable String neoFormDependencyNotation,
         ModuleDependency gameLibrariesDependency,
+        // TODO: terrible name
         boolean gameLibrariesContainUniversalJar,
         @Nullable ModuleDependency modulePathDependency,
         @Nullable ModuleDependency runTypesConfigDependency,
@@ -67,7 +68,7 @@ public record ModdingDependencies(
                 neoForm,
                 neoFormNotation,
                 librariesDependency,
-                false,
+                true, // TODO: might not work on old NeoForm versions?
                 null,
                 null,
                 null);

@@ -104,7 +104,9 @@ public class ModDevRunWorkflow {
                 spec.setCanBeConsumed(false);
 
                 spec.getDependencies().add(gameLibrariesDependency);
-                addClientResources(project, spec, artifactsWorkflow.createArtifacts());
+                if (!artifactsWorkflow.dependencies().gameLibrariesContainUniversalJar()) {
+                    addClientResources(project, spec, artifactsWorkflow.createArtifacts());
+                }
                 if (!versionCapabilities.modLocatorRework()) {
                     // Forge expects to find the Forge and client-extra jar on the legacy classpath
                     // Newer FML versions also search for it on the java.class.path.
@@ -221,7 +223,9 @@ public class ModDevRunWorkflow {
                     },
                     legacyClassPath -> {
                         legacyClassPath.getDependencies().add(gameLibrariesDependency);
-                        addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
+                        if (!artifactsWorkflow.dependencies().gameLibrariesContainUniversalJar()) {
+                            addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
+                        }
                     },
                     artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                     artifactsWorkflow.versionCapabilities());

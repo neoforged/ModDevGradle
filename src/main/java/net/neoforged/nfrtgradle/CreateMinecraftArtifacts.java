@@ -298,14 +298,15 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
                 requestedResults.add(new RequestedResult("sourcesAndCompiledWithNeoForge", getCompiledWithSourcesArtifact().get().getAsFile()));
             }
         } else {
+            boolean withResources = !getPutNeoForgeInTheMcJar().get();
             if (getCompiledArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("compiled", getCompiledArtifact().get().getAsFile()));
+                requestedResults.add(new RequestedResult(withResources ? "compiledWithResources" : "compiled", getCompiledArtifact().get().getAsFile()));
             }
             if (getResourcesArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("sources", getSourcesArtifact().get().getAsFile()));
             }
             if (getCompiledWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sourcesAndCompiled", getCompiledWithSourcesArtifact().get().getAsFile()));
+                requestedResults.add(new RequestedResult(withResources ? "sourcesAndCompiledWithResources" : "sourcesAndCompiled", getCompiledWithSourcesArtifact().get().getAsFile()));
             }
         }
 
