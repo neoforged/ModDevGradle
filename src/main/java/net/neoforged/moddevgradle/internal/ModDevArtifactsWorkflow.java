@@ -147,7 +147,9 @@ public record ModDevArtifactsWorkflow(
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
             task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
-            task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
+            if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+                task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
+            }
 
             task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
             task.getNeoFormArtifact().set(moddingDependencies.neoFormDependencyNotation());
@@ -186,7 +188,9 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
 
             config.getDependencies().addLater(minecraftClassesDependency);
-            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+                config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            }
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());

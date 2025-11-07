@@ -12,6 +12,10 @@ public interface ArtifactNamingStrategy {
         };
     }
 
+    static ArtifactNamingStrategy createVanillaPatched(String loaderVersion) {
+        return artifact -> "vanilla-patched-%s%s.jar".formatted(loaderVersion, artifact.defaultSuffix);
+    }
+
     static ArtifactNamingStrategy createNeoForge(VersionCapabilitiesInternal versionCapabilities, String loader, String version) {
         return (artifact) -> {
             if (artifact != WorkflowArtifact.CLIENT_RESOURCES || versionCapabilities.modLocatorRework()) {
