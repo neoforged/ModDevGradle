@@ -141,6 +141,9 @@ public record ModDevArtifactsWorkflow(
 
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
+            if (moddingDependencies.gameLibrariesContainUniversalJar()) {
+                task.getPutNeoForgeInTheMcJar().set(false);
+            }
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
             task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));

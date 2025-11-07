@@ -42,6 +42,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         getAnalyzeCacheMisses().convention(false);
         getValidateAccessTransformers().convention(false);
         getParchmentEnabled().convention(false);
+        getPutNeoForgeInTheMcJar().convention(true);
     }
 
     /**
@@ -192,6 +193,11 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @Optional
     public abstract RegularFileProperty getResourcesArtifact();
 
+    // TODO: better name
+    // TODO: we should however put the resources in the MC jar
+    @Input
+    public abstract Property<Boolean> getPutNeoForgeInTheMcJar();
+
     @Inject
     protected abstract Problems getProblems();
 
@@ -281,7 +287,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         }
 
         // NOTE: When we use NeoForm standalone, the result-ids also change, a.k.a. "Vanilla Mode"
-        if (getNeoForgeArtifact().isPresent()) {
+        if (getNeoForgeArtifact().isPresent() && getPutNeoForgeInTheMcJar().get()) {
             if (getCompiledArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("compiledWithNeoForge", getCompiledArtifact().get().getAsFile()));
             }
