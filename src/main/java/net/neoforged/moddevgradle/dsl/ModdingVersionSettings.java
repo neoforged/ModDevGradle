@@ -16,6 +16,7 @@ public abstract class ModdingVersionSettings {
     private String neoFormVersion;
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
+    private boolean splitSources = false;
 
     @Inject
     public ModdingVersionSettings(Project project) {
@@ -59,5 +60,13 @@ public abstract class ModdingVersionSettings {
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    public boolean isSplitSources() {
+        return splitSources;
+    }
+
+    public void setSplitSources(boolean splitSources) {
+        this.splitSources = splitSources;
     }
 }

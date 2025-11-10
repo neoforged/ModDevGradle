@@ -43,7 +43,7 @@ public record ModDevArtifactsWorkflow(
         ModdingDependencies dependencies,
         VersionCapabilitiesInternal versionCapabilities,
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
-        Provider<? extends Dependency> minecraftClassesDependency,
+        List<Provider<? extends Dependency>> minecraftClassesDependencies,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
@@ -67,7 +67,8 @@ public record ModDevArtifactsWorkflow(
             ArtifactNamingStrategy artifactNamingStrategy,
             Configuration accessTransformers,
             Configuration interfaceInjectionData,
-            VersionCapabilitiesInternal versionCapabilities) {
+            VersionCapabilitiesInternal versionCapabilities,
+            boolean splitSources) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -144,11 +145,29 @@ public record ModDevArtifactsWorkflow(
             if (moddingDependencies.gameLibrariesContainUniversalJar()) {
                 task.getPutNeoForgeInTheMcJar().set(false);
             }
-            task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
-            task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
-            task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
-            if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
-                task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
+            // TODO: should probably just always use the extra outputs?
+            if (splitSources) {
+                if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+                    throw new IllegalStateException("TODO message");
+                }
+
+                for (var artifact : List.of(
+                        WorkflowArtifact.COMPILED_COMMON,
+                        WorkflowArtifact.COMPILED_CLIENT,
+                        WorkflowArtifact.COMPILED_WITH_SOURCES_COMMON,
+                        WorkflowArtifact.COMPILED_WITH_SOURCES_CLIENT,
+                        WorkflowArtifact.SOURCES_COMMON,
+                        WorkflowArtifact.SOURCES_CLIENT)) {
+                    task.getAdditionalResults().put(artifact.nfrtOutput, artifactPathStrategy.apply(artifact).map(RegularFile::getAsFile));
+                }
+
+            } else {
+                task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
+                task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
+                task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+                if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+                    task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
+                }
             }
 
             task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
@@ -173,11 +192,29 @@ public record ModDevArtifactsWorkflow(
 
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
-        Provider<? extends Dependency> minecraftClassesDependency;
+        List<Provider<? extends Dependency>> minecraftClassesDependencies;
+        Function<WorkflowArtifact, Provider<Dependency>> getDependency = artifact -> {
+            return createArtifacts.map(t -> {
+                // We have to convert the File back to a RegularFile
+                return project.files(t.getAdditionalResults().getting(artifact.nfrtOutput));
+            }).map(dependencyFactory::create);
+        };
         if (ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
+            if (splitSources) {
+                minecraftClassesDependencies = List.of(
+                        getDependency.apply(WorkflowArtifact.COMPILED_WITH_SOURCES_COMMON),
+                        getDependency.apply(WorkflowArtifact.COMPILED_WITH_SOURCES_CLIENT));
+            } else {
+                minecraftClassesDependencies = List.of(createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create));
+            }
         } else {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
+            if (splitSources) {
+                minecraftClassesDependencies = List.of(
+                        getDependency.apply(WorkflowArtifact.COMPILED_COMMON),
+                        getDependency.apply(WorkflowArtifact.COMPILED_CLIENT));
+            } else {
+                minecraftClassesDependencies = List.of(createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create));
+            }
         }
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
@@ -187,7 +224,10 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
 
-            config.getDependencies().addLater(minecraftClassesDependency);
+            // TODO: be smarter based on dist
+            for (var dep : minecraftClassesDependencies) {
+                config.getDependencies().addLater(dep);
+            }
             if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
                 config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
             }
@@ -202,16 +242,33 @@ public record ModDevArtifactsWorkflow(
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            config.getDependencies().addLater(minecraftClassesDependency);
+            for (var dep : minecraftClassesDependencies) {
+                config.getDependencies().addLater(dep);
+            }
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
         if (!ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            ideIntegration.attachSources(
-                    Map.of(
-                            createArtifacts.get().getCompiledArtifact(),
-                            createArtifacts.get().getSourcesArtifact()));
+            if (splitSources) {
+                Function<WorkflowArtifact, Provider<RegularFile>> getArtifact = artifact -> {
+                    return createArtifacts.flatMap(t -> {
+                        // We have to convert the File back to a RegularFile
+                        return project.getLayout().file(t.getAdditionalResults().getting(artifact.nfrtOutput));
+                    });
+                };
+                ideIntegration.attachSources(
+                        Map.of(
+                                getArtifact.apply(WorkflowArtifact.COMPILED_COMMON),
+                                getArtifact.apply(WorkflowArtifact.SOURCES_COMMON),
+                                getArtifact.apply(WorkflowArtifact.COMPILED_CLIENT),
+                                getArtifact.apply(WorkflowArtifact.SOURCES_CLIENT)));
+            } else {
+                ideIntegration.attachSources(
+                        Map.of(
+                                createArtifacts.get().getCompiledArtifact(),
+                                createArtifacts.get().getSourcesArtifact()));
+            }
         }
 
         var result = new ModDevArtifactsWorkflow(
@@ -219,7 +276,7 @@ public record ModDevArtifactsWorkflow(
                 moddingDependencies,
                 versionCapabilities,
                 createArtifacts,
-                minecraftClassesDependency,
+                minecraftClassesDependencies,
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,

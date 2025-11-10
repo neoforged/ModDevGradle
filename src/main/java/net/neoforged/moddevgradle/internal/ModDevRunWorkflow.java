@@ -110,7 +110,8 @@ public class ModDevRunWorkflow {
                 if (!versionCapabilities.modLocatorRework()) {
                     // Forge expects to find the Forge and client-extra jar on the legacy classpath
                     // Newer FML versions also search for it on the java.class.path.
-                    spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependency());
+                    // Note: split sources are always off so there's always a single Minecraft dependency
+                    spec.getDependencies().addLater(artifactsWorkflow.minecraftClassesDependencies().get(0));
                 }
             });
             configureLegacyClasspath = legacyClassPath -> legacyClassPath.extendsFrom(additionalClasspath);
