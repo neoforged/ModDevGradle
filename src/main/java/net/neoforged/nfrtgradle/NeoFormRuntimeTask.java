@@ -62,7 +62,6 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
     @Optional
     public abstract Property<String> getLauncherManifestUrl();
 
-
     /**
      * Enable verbose output for the NFRT engine. Defaults to false.
      */
