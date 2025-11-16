@@ -22,6 +22,7 @@ import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Optional;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
 import org.gradle.process.ExecOperations;
@@ -52,6 +53,15 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
     @Classpath
     @InputFiles
     public abstract ConfigurableFileCollection getNeoFormRuntime();
+
+    /**
+     * URL for the Minecraft Launcher manifest used to resolve Minecraft version information.
+     * When none is given, it defaults to {@code https://piston-meta.mojang.com/mc/game/version_manifest_v2.json}.
+     */
+    @Input
+    @Optional
+    public abstract Property<String> getLauncherManifestUrl();
+
 
     /**
      * Enable verbose output for the NFRT engine. Defaults to false.
@@ -124,6 +134,11 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         realArgs.add(1, getHomeDirectory().get().getAsFile().getAbsolutePath());
         realArgs.add(2, "--work-dir");
         realArgs.add(3, getWorkDirectory().get().getAsFile().getAbsolutePath());
+
+        if (getLauncherManifestUrl().isPresent()) {
+            realArgs.add("--launcher-meta-uri");
+            realArgs.add(getLauncherManifestUrl().get());
+        }
 
         if (getVerbose().get()) {
             realArgs.add("--verbose");
