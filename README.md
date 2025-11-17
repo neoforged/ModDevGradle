@@ -662,6 +662,10 @@ neoFormRuntime {
     // Print more information when NFRT cannot use a cached result
     // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
     analyzeCacheMisses = true
+    
+    // Overrides the launcher manifest URL used by NFRT to look up Minecraft versions
+    // Gradle Property: neoForge.neoFormRuntime.launcherManifestUrl
+    launcherManifestUrl = "https://.../version_manifest_v2.json"
 }
 ```
 
