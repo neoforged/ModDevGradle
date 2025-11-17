@@ -121,6 +121,8 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         getInputs().property("artifactManifestEntries", artifactManifestEntries);
         artifacts = project.files();
         getInputs().property("artifacts", artifacts);
+
+        getVerbose().convention(false);
     }
 
     /**
