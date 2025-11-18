@@ -73,18 +73,20 @@ public class ModDevPlugin implements Plugin<Project> {
         var versionCapabilities = neoForgeVersion != null ? VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion)
                 : VersionCapabilitiesInternal.ofNeoFormVersion(neoFormVersion);
 
-        ArtifactNamingStrategy artifactNamingStrategy;
-        // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
-        if (neoForge != null) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "neoforge", neoForgeVersion);
-        } else {
-            artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(neoFormVersion);
-        }
-
         var configurations = project.getConfigurations();
 
         var dependencies = neoForge != null ? ModdingDependencies.create(neoForge, neoForgeNotation, neoForm, neoFormNotation, versionCapabilities)
                 : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
+
+        ArtifactNamingStrategy artifactNamingStrategy;
+        // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
+        if (neoForge == null) {
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(neoFormVersion);
+        } else if (dependencies.gameLibrariesContainUniversalJar()) {
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanillaPatched(neoForgeVersion);
+        } else {
+            artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "neoforge", neoForgeVersion);
+        }
 
         var artifacts = ModDevArtifactsWorkflow.create(
                 project,
