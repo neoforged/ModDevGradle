@@ -295,7 +295,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             if (getCompiledArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("compiled", getCompiledArtifact().get().getAsFile()));
             }
-            if (getResourcesArtifact().isPresent()) {
+            if (getSourcesArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("sources", getSourcesArtifact().get().getAsFile()));
             }
             if (getCompiledWithSourcesArtifact().isPresent()) {
