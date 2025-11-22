@@ -393,7 +393,9 @@ public class ModDevRunWorkflow {
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
             task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-            task.getRuntimeClasspath().setFrom(runtimeClasspathConfig);
+            // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
+            // This records a dependency on compiling and processing the resources of the source set.
+            task.getRuntimeClasspath().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
             task.getLaunchScript().set(RunUtils.getLaunchScript(argFileDir, run));
             task.getClasspathArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.CLASSPATH));
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
