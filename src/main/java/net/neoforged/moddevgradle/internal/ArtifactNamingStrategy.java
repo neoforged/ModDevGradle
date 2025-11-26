@@ -13,7 +13,7 @@ public interface ArtifactNamingStrategy {
     }
 
     static ArtifactNamingStrategy createVanillaPatched(String loaderVersion) {
-        return artifact -> "vanilla-patched-%s%s.jar".formatted(loaderVersion, artifact.defaultSuffix);
+        return artifact -> "minecraft-patched-%s%s.jar".formatted(loaderVersion, artifact.defaultSuffix);
     }
 
     static ArtifactNamingStrategy createNeoForge(VersionCapabilitiesInternal versionCapabilities, String loader, String version) {

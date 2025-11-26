@@ -2,9 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import java.util.Map;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
-import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleDependency;
-import org.gradle.api.attributes.LibraryElements;
 import org.jetbrains.annotations.Nullable;
 
 public record ModdingDependencies(
@@ -13,8 +11,6 @@ public record ModdingDependencies(
         @Nullable ModuleDependency neoFormDependency,
         @Nullable String neoFormDependencyNotation,
         ModuleDependency gameLibrariesDependency,
-        // TODO: terrible name
-        boolean gameLibrariesContainUniversalJar,
         @Nullable ModuleDependency modulePathDependency,
         @Nullable ModuleDependency runTypesConfigDependency,
         @Nullable ModuleDependency testFixturesDependency) {
@@ -29,16 +25,9 @@ public record ModdingDependencies(
                 .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
                 // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
                 .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-        // TODO: configure based on version
-        boolean gameLibrariesContainUniversalJar = true;
         ModuleDependency librariesDependency;
-        if (gameLibrariesContainUniversalJar) {
-            librariesDependency = neoForge.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-universal-and-dependencies"));
-        } else {
-            librariesDependency = neoForge.copy()
-                    .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
-        }
+        librariesDependency = neoForge.copy()
+                .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
 
         ModuleDependency testFixturesDependency = null;
         if (versionCapabilities.testFixtures()) {
@@ -52,7 +41,6 @@ public record ModdingDependencies(
                 neoForm,
                 neoFormNotation,
                 librariesDependency,
-                gameLibrariesContainUniversalJar,
                 modulePathDependency,
                 runTypesDataDependency,
                 testFixturesDependency);
@@ -68,7 +56,6 @@ public record ModdingDependencies(
                 neoForm,
                 neoFormNotation,
                 librariesDependency,
-                true, // TODO: might not work on old NeoForm versions?
                 null,
                 null,
                 null);

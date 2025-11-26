@@ -82,10 +82,10 @@ public class ModDevPlugin implements Plugin<Project> {
         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
         if (neoForge == null) {
             artifactNamingStrategy = ArtifactNamingStrategy.createVanilla(neoFormVersion);
-        } else if (dependencies.gameLibrariesContainUniversalJar()) {
-            artifactNamingStrategy = ArtifactNamingStrategy.createVanillaPatched(neoForgeVersion);
-        } else {
+        } else if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
             artifactNamingStrategy = ArtifactNamingStrategy.createNeoForge(versionCapabilities, "neoforge", neoForgeVersion);
+        } else {
+            artifactNamingStrategy = ArtifactNamingStrategy.createVanillaPatched(neoForgeVersion);
         }
 
         var artifacts = ModDevArtifactsWorkflow.create(

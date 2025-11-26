@@ -141,13 +141,11 @@ public record ModDevArtifactsWorkflow(
 
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
-            if (moddingDependencies.gameLibrariesContainUniversalJar()) {
-                task.getPutNeoForgeInTheMcJar().set(false);
-            }
+            task.getIncludeNeoForgeInMainArtifact().set(versionCapabilities.needsNeoForgeInMinecraftJar());
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
             task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
-            if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+            if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
                 task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
             }
 
@@ -188,8 +186,10 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
 
             config.getDependencies().addLater(minecraftClassesDependency);
-            if (!moddingDependencies.gameLibrariesContainUniversalJar()) {
+            if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
                 config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            } else {
+                config.getDependencies().add(moddingDependencies.neoForgeDependency());
             }
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
@@ -204,6 +204,9 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesDependency);
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
+            if (!versionCapabilities.needsNeoForgeInMinecraftJar()) {
+                config.getDependencies().add(moddingDependencies.neoForgeDependency());
+            }
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones

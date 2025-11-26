@@ -104,7 +104,7 @@ public class ModDevRunWorkflow {
                 spec.setCanBeConsumed(false);
 
                 spec.getDependencies().add(gameLibrariesDependency);
-                if (!artifactsWorkflow.dependencies().gameLibrariesContainUniversalJar()) {
+                if (artifactsWorkflow.versionCapabilities().needsNeoForgeInMinecraftJar()) {
                     addClientResources(project, spec, artifactsWorkflow.createArtifacts());
                 }
                 if (!versionCapabilities.modLocatorRework()) {
@@ -223,7 +223,7 @@ public class ModDevRunWorkflow {
                     },
                     legacyClassPath -> {
                         legacyClassPath.getDependencies().add(gameLibrariesDependency);
-                        if (!artifactsWorkflow.dependencies().gameLibrariesContainUniversalJar()) {
+                        if (artifactsWorkflow.versionCapabilities().needsNeoForgeInMinecraftJar()) {
                             addClientResources(project, legacyClassPath, artifactsWorkflow.createArtifacts());
                         }
                     },

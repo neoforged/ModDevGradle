@@ -1,7 +1,7 @@
 package jijtest;
 
-import cpw.mods.modlauncher.TransformingClassLoader;
 import jijtestplugin.Plugin;
+import net.neoforged.fml.classloading.transformation.TransformingClassLoader;
 import net.neoforged.fml.common.Mod;
 
 @Mod("jijtest")
