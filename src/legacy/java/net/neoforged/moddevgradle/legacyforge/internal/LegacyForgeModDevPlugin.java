@@ -153,7 +153,9 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
-                versionCapabilities);
+                versionCapabilities,
+                // TODO: legacy binpatch support? (maybe not worth it)
+                false);
 
         var runs = ModDevRunWorkflow.create(
                 project,

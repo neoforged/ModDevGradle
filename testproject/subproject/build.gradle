@@ -5,7 +5,10 @@ plugins {
 }
 
 neoForge {
-    version = project.neoforge_version
+    enable {
+        version = project.neoforge_version
+        binaryPipeline = true
+    }
 
     interfaceInjectionData {
         from(project.file('interfaces.json'))

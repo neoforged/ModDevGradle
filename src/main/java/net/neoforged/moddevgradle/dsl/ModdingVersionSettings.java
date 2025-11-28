@@ -17,6 +17,8 @@ public abstract class ModdingVersionSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
+    private boolean binaryPipeline = false;
+
     @Inject
     public ModdingVersionSettings(Project project) {
         // By default, enable modding deps only for the main source set
@@ -59,5 +61,13 @@ public abstract class ModdingVersionSettings {
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    public boolean isBinaryPipeline() {
+        return binaryPipeline;
+    }
+
+    public void setBinaryPipeline(boolean binaryPipeline) {
+        this.binaryPipeline = binaryPipeline;
     }
 }
