@@ -25,9 +25,11 @@ abstract class WriteLegacyClasspath extends DefaultTask {
         getEntries().addAll(getProject().provider(() -> {
             // Use a provider indirection to remove task dependencies.
             // Use file names only.
-            // Remove pom-only artifacts.
             return files.getFiles().stream()
-                    .filter(file -> !file.getName().endsWith("pom"))
+                    // Some dependencies (such as Graal JS) can have non-jar artifacts.
+                    // Leaving them on the legacy CP will crash when SJH fails to open a filesystem for them,
+                    // so we ignore them since they would be ignored on the normal java classpath.
+                    .filter(file -> file.isDirectory() || file.getName().endsWith(".jar") || file.getName().endsWith(".zip"))
                     .map(File::getAbsolutePath)
                     .toList();
         }));
