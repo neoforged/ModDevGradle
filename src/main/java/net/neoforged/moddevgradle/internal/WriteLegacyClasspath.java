@@ -25,7 +25,7 @@ abstract class WriteLegacyClasspath extends DefaultTask {
         getEntries().addAll(getProject().provider(() -> {
             // Use a provider indirection to remove task dependencies.
             // Use file names only.
-            // Remove artifacts that contain only a pom file.
+            // Remove pom-only artifacts.
             return files.getFiles().stream()
                     .filter(file -> !file.getName().endsWith("pom"))
                     .map(File::getAbsolutePath)
