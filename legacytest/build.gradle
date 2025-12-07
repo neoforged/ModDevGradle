@@ -3,6 +3,13 @@ plugins {
     id 'net.neoforged.moddev.legacyforge'
 }
 
+// TODO: remove
+allprojects {
+    repositories {
+        mavenLocal()
+    }
+}
+
 group = 'com.example.legacy'
 version = '1.0.0'
 
@@ -13,7 +20,10 @@ java {
 }
 
 legacyForge {
-    mcpVersion = '1.19.2'
+    enable {
+        mcpVersion = '1.19.2'
+        binaryPipeline = true
+    }
 }
 
 publishing {

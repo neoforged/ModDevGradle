@@ -20,6 +20,8 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
+    private boolean binaryPipeline = false;
+
     private boolean obfuscateJar = true;
 
     @Inject
@@ -76,6 +78,14 @@ public abstract class LegacyForgeModdingSettings {
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    public boolean isBinaryPipeline() {
+        return binaryPipeline;
+    }
+
+    public void setBinaryPipeline(boolean binaryPipeline) {
+        this.binaryPipeline = binaryPipeline;
     }
 
     /**

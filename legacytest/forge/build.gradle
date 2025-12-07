@@ -33,7 +33,10 @@ dependencies {
 }
 
 legacyForge {
-    version = '1.20.1-47.3.12'
+    enable {
+        forgeVersion = '1.20.1-47.3.12'
+        binaryPipeline = true
+    }
     runs {
         client {
             client()

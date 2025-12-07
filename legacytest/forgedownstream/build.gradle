@@ -16,7 +16,10 @@ dependencies {
 }
 
 legacyForge {
-    version = '1.20.1-47.3.0'
+    enable {
+        forgeVersion = '1.20.1-47.3.0'
+        binaryPipeline = true
+    }
 }
 
 var copyJarJar = tasks.register('copyJarJar', Copy) {
