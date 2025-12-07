@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.legacyforge;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Set;
@@ -111,6 +112,16 @@ public class LegacyModDevPluginTest extends AbstractProjectBuilderTest {
 
         assertContainsModdingCompileDependencies(testSourceSet.getCompileClasspathConfigurationName());
         assertContainsModdingRuntimeDependencies(testSourceSet.getRuntimeClasspathConfigurationName());
+    }
+
+    @Test
+    void testEnableWithoutReobfTask() {
+        extension.enable(settings -> {
+            settings.setForgeVersion(VERSION);
+            settings.setObfuscateJar(false);
+        });
+
+        assertNull(project.getTasks().findByName("reobfJar"));
     }
 
     private void assertDoesNotContainModdingDependencies(String configurationName) {

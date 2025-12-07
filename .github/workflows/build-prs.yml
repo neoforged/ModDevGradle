@@ -43,6 +43,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Setup Minecraft Assets Cache
+        uses: neoforged/actions-modding/minecraft-assets-cache/use@v1
+
       - name: Run build
         run: ./gradlew build neoForgeIdeSync publish
         working-directory: ./${{ matrix.project }}

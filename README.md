@@ -323,6 +323,11 @@ To decrease the likelihood of conflicts if no explicit module name is set,
 we prefix the filename of embedded subprojects with the group id.
 
 ### External Dependencies: Runs
+As of Minecraft 1.21.9, external dependencies do not need special handling anymore to be loaded in runs.
+
+<details>
+<summary>Show information for 1.21.8 and older Minecraft versions</summary>
+
 External dependencies will only be loaded in your runs if they are mods (with a `META-INF/neoforge.mods.toml` file),
 or if they have the `FMLModType` entry set in their `META-INF/MANIFEST.MF` file.
 Usually, Java libraries do not fit either of these requirements,
@@ -340,6 +345,7 @@ dependencies {
 
 _Advanced_: The additional runtime classpath can be configured per-run.
 For example, to add a dependency to the `client` run only, it can be added to `clientAdditionalRuntimeClasspath`.
+</details>
 
 ### Isolated Source Sets
 
@@ -524,12 +530,12 @@ neoForge {
 If there is a single access transformer, it will be published under the `accesstransformer` classifier.
 If there are multiple, they will be published under the `accesstransformer1`, `accesstransformer2`, etc... classifiers.
 
-To consume an access transformer, add it as an `accessTransformer` dependency.
+To consume an access transformer, add it as an `accessTransformers` dependency.
 This will find all the published access transformers regardless of their file names.
 For example:
 ```groovy
 dependencies {
-    accessTransformer "<group>:<artifact>:<version>"
+    accessTransformers "<group>:<artifact>:<version>"
 }
 ```
 
@@ -623,7 +629,7 @@ The NeoForm process executed to create the Minecraft jars contains additional in
 
 You can request those results to be written to specific output files by using the `additionalMinecraftArtifacts` property.
 
-Which results are available depends on the NeoForm/NeoForge version used.
+Which results are available depends on the NeoForm/NeoForge and NFRT versions used. (See below to pin the NFRT version.)
 
 ```groovy
 neoForge {
@@ -656,6 +662,10 @@ neoFormRuntime {
     // Print more information when NFRT cannot use a cached result
     // Gradle Property: neoForge.neoFormRuntime.analyzeCacheMisses
     analyzeCacheMisses = true
+    
+    // Overrides the launcher manifest URL used by NFRT to look up Minecraft versions
+    // Gradle Property: neoForge.neoFormRuntime.launcherManifestUrl
+    launcherManifestUrl = "https://.../version_manifest_v2.json"
 }
 ```
 

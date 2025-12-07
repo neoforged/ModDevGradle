@@ -89,6 +89,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
     @InputFile
     @PathSensitive(PathSensitivity.RELATIVE)
+    @Optional
     abstract RegularFileProperty getLegacyClasspathFile();
 
     @Classpath

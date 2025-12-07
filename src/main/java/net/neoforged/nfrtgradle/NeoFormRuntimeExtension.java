@@ -12,7 +12,7 @@ import org.gradle.api.provider.Property;
 public abstract class NeoFormRuntimeExtension {
     public static final String NAME = "neoFormRuntime";
 
-    private static final String DEFAULT_NFRT_VERSION = "1.0.26";
+    private static final String DEFAULT_NFRT_VERSION = "1.0.44";
 
     @Inject
     public NeoFormRuntimeExtension(Project project) {
@@ -21,6 +21,7 @@ public abstract class NeoFormRuntimeExtension {
         getEnableCache().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.enableCache").orElse(true));
         getVerbose().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.verbose").orElse(false));
         getAnalyzeCacheMisses().convention(PropertyUtils.getBooleanProperty(project, "neoForge.neoFormRuntime.analyzeCacheMisses").orElse(false));
+        getLauncherManifestUrl().convention(PropertyUtils.getStringProperty(project, "neoForge.neoFormRuntime.launcherManifestUrl"));
     }
 
     /**
@@ -66,4 +67,12 @@ public abstract class NeoFormRuntimeExtension {
      * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.analyzeCacheMisses}.
      */
     public abstract Property<Boolean> getAnalyzeCacheMisses();
+
+    /**
+     * URL for the Minecraft Launcher manifest used to resolve Minecraft version information.
+     * <p>
+     * <b>Default:</b> {@code https://piston-meta.mojang.com/mc/game/version_manifest_v2.json}<br>
+     * <b>Gradle property:</b> {@code neoForge.neoFormRuntime.launcherManifestUrl}.
+     */
+    public abstract Property<String> getLauncherManifestUrl();
 }
