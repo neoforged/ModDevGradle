@@ -154,7 +154,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
                 versionCapabilities,
-                settings.isBinaryPipeline());
+                settings.isDisableSources());
 
         var runs = ModDevRunWorkflow.create(
                 project,

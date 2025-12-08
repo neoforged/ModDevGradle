@@ -68,7 +68,7 @@ public record ModDevArtifactsWorkflow(
             Configuration accessTransformers,
             Configuration interfaceInjectionData,
             VersionCapabilitiesInternal versionCapabilities,
-            boolean binaryPipeline) {
+            boolean disableSources) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -144,8 +144,8 @@ public record ModDevArtifactsWorkflow(
 
             task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
-            if (binaryPipeline) {
-                task.getBinaryPipeline().set(true);
+            if (disableSources) {
+                task.getDisableSources().set(true);
             } else {
                 task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
                 task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
@@ -174,7 +174,7 @@ public record ModDevArtifactsWorkflow(
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
         Provider<? extends Dependency> minecraftClassesDependency;
-        if (!binaryPipeline && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+        if (!disableSources && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
         } else {
             minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
@@ -205,7 +205,7 @@ public record ModDevArtifactsWorkflow(
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
-        if (!binaryPipeline && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+        if (!disableSources && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             ideIntegration.attachSources(
                     Map.of(
                             createArtifacts.get().getCompiledArtifact(),

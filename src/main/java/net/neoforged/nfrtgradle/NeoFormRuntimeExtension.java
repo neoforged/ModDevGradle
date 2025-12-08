@@ -12,7 +12,7 @@ import org.gradle.api.provider.Property;
 public abstract class NeoFormRuntimeExtension {
     public static final String NAME = "neoFormRuntime";
 
-    private static final String DEFAULT_NFRT_VERSION = "1.0.50-binpatches-v2";
+    private static final String DEFAULT_NFRT_VERSION = "1.0.52-binpatches-v2";
 
     @Inject
     public NeoFormRuntimeExtension(Project project) {

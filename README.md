@@ -108,6 +108,30 @@ neoForge {
 }
 ```
 
+## Disabling Source Generation
+By default, MDG will decompile Minecraft to produce sources, and then recompile them to provide matching class files.
+This leads to a great debugging experience, at the cost of longer setup times.
+
+As of MDG 2.0.122, source generation can be disabled, which will skip decompilation and recompilation entirely!
+We recommend leaving source generation on by default, but disabling it when running on CI such as GitHub Actions.
+
+To do so, replace:
+```groovy
+neoForge {
+    version = "..." // or neoFormVersion = "..."
+}
+```
+By:
+```groovy
+neoForge {
+    enable {
+        version = "..." // or neoFormVersion = "..."
+        // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
+        disableSources = System.getenv("CI") == "true"
+    }
+}
+```
+
 ## Common Issues
 
 ### Clicking "Attach Sources" does nothing when viewing a Minecraft class (IntelliJ IDEA)

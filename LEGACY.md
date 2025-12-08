@@ -103,6 +103,19 @@ legacyForge {
 }
 ```
 
+## Disabling Source Generation
+As of MDG Legacy 2.0.122, source generation can be disabled, similarly to the regular plugin.
+To disable it in CI, use the following:
+```groovy
+legacyForge {
+    enable {
+        forgeVersion = "..." // or mcpVersion = "..." if running in Vanilla mode
+        // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
+        disableSources = System.getenv("CI") == "true"
+    }
+}
+```
+
 ## Mixins
 
 You need to create so-called "refmaps" for Mixin, which convert the names you used to declare injection points and reference other parts of Minecraft code to the names used at runtime (SRG).

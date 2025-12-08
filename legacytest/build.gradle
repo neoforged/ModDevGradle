@@ -22,7 +22,7 @@ java {
 legacyForge {
     enable {
         mcpVersion = '1.19.2'
-        binaryPipeline = true
+        disableSources = System.getenv("CI") == "true"
     }
 }
 

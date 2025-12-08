@@ -17,7 +17,7 @@ public abstract class ModdingVersionSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean binaryPipeline = false;
+    private boolean disableSources = false;
 
     @Inject
     public ModdingVersionSettings(Project project) {
@@ -63,11 +63,18 @@ public abstract class ModdingVersionSettings {
         this.enabledSourceSets = enabledSourceSets;
     }
 
-    public boolean isBinaryPipeline() {
-        return binaryPipeline;
+    /**
+     * {@code true} if MDG should use a pipeline that doesn't require sources,
+     * by applying transforms on the .class files and using binary patches.
+     * This leads to a faster setup since Minecraft doesn't need to be decompiled,
+     * however source files will not be available.
+     * {@code false} by default.
+     */
+    public boolean isDisableSources() {
+        return disableSources;
     }
 
-    public void setBinaryPipeline(boolean binaryPipeline) {
-        this.binaryPipeline = binaryPipeline;
+    public void setDisableSources(boolean disableSources) {
+        this.disableSources = disableSources;
     }
 }

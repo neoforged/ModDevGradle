@@ -40,7 +40,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         getEnableCache().convention(true);
         getUseEclipseCompiler().convention(false);
         getAnalyzeCacheMisses().convention(false);
-        getBinaryPipeline().convention(false);
+        getDisableSources().convention(false);
         getValidateAccessTransformers().convention(false);
         getParchmentEnabled().convention(false);
     }
@@ -55,12 +55,13 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract Property<String> getToolsJavaExecutable();
 
     /**
-     * Set to {@code true} to use a pipeline based on binary (.class) files and patches only.
+     * Set to {@code true} to use a pipeline that doesn't require sources,
+     * by applying transforms on the .class files and using binary patches.
      * {@code false} by default.
-     * Corresponds to the {@code --binary-pipeline} command line option.
+     * Corresponds to the {@code --no-sources} command line option.
      */
     @Input
-    public abstract Property<Boolean> getBinaryPipeline();
+    public abstract Property<Boolean> getDisableSources();
 
     /**
      * Files added to this collection will be passed to NFRT via the {@code --access-transformer}
@@ -278,8 +279,8 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             throw new GradleException("You need to specify at least 'version' or 'neoFormVersion' in the 'neoForge' block of your build script.");
         }
 
-        if (getBinaryPipeline().isPresent()) {
-            args.add("--binary-pipeline");
+        if (getDisableSources().get()) {
+            args.add("--no-sources");
         }
 
         Collections.addAll(args, "--dist", "joined");

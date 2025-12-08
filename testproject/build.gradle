@@ -39,7 +39,7 @@ test {
 neoForge {
     enable {
         version = project.neoforge_version
-        binaryPipeline = true
+        disableSources = System.getenv("CI") == "true"
     }
     addModdingDependenciesTo(sourceSets.api)
 
