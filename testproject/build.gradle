@@ -3,6 +3,12 @@ plugins {
     id 'maven-publish'
 }
 
+allprojects {
+    repositories {
+        mavenLocal()
+    }
+}
+
 evaluationDependsOn(":subproject") // Because of the sourceset reference
 
 tasks.named('wrapper') {
@@ -62,7 +68,7 @@ neoForge {
             disableIdeRun()
         }
         data {
-            data()
+            clientData()
         }
         server {
             server()

@@ -1,5 +1,6 @@
 package testproject;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Items;
@@ -13,8 +14,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class TestTest {
     @Test
     public void testIngredient(MinecraftServer server) { // required to load tags
+        var items = server.registryAccess().lookupOrThrow(Registries.ITEM);
         Assertions.assertTrue(
-                Ingredient.of(ItemTags.AXES).test(Items.DIAMOND_AXE.getDefaultInstance())
+                Ingredient.of(items.getOrThrow(ItemTags.AXES)).test(Items.DIAMOND_AXE.getDefaultInstance())
         );
     }
 }

@@ -42,6 +42,8 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         getAnalyzeCacheMisses().convention(false);
         getValidateAccessTransformers().convention(false);
         getParchmentEnabled().convention(false);
+        getIncludeNeoForgeInMainArtifact().convention(true);
+        getIncludeResourcesInMainArtifact().convention(false);
     }
 
     /**
@@ -192,6 +194,12 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @Optional
     public abstract RegularFileProperty getResourcesArtifact();
 
+    @Input
+    public abstract Property<Boolean> getIncludeNeoForgeInMainArtifact();
+
+    @Input
+    public abstract Property<Boolean> getIncludeResourcesInMainArtifact();
+
     @Inject
     protected abstract Problems getProblems();
 
@@ -281,7 +289,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         }
 
         // NOTE: When we use NeoForm standalone, the result-ids also change, a.k.a. "Vanilla Mode"
-        if (getNeoForgeArtifact().isPresent()) {
+        if (getNeoForgeArtifact().isPresent() && getIncludeNeoForgeInMainArtifact().get()) {
             if (getCompiledArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("compiledWithNeoForge", getCompiledArtifact().get().getAsFile()));
             }
@@ -292,14 +300,15 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
                 requestedResults.add(new RequestedResult("sourcesAndCompiledWithNeoForge", getCompiledWithSourcesArtifact().get().getAsFile()));
             }
         } else {
+            boolean withResources = getIncludeResourcesInMainArtifact().get();
             if (getCompiledArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("compiled", getCompiledArtifact().get().getAsFile()));
+                requestedResults.add(new RequestedResult(withResources ? "compiledWithResources" : "compiled", getCompiledArtifact().get().getAsFile()));
             }
             if (getSourcesArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("sources", getSourcesArtifact().get().getAsFile()));
             }
             if (getCompiledWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sourcesAndCompiled", getCompiledWithSourcesArtifact().get().getAsFile()));
+                requestedResults.add(new RequestedResult(withResources ? "sourcesAndCompiledWithResources" : "sourcesAndCompiled", getCompiledWithSourcesArtifact().get().getAsFile()));
             }
         }
 

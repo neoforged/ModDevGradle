@@ -14,9 +14,11 @@ import org.gradle.api.logging.Logging;
  * @param javaVersion      Which Java version Vanilla uses to compile and run.
  * @param splitDataRuns    Whether Vanilla has separate main classes for generating client and server data.
  * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
+ * @param needsNeoForgeInMinecraftJar The FML version shipped by NeoForge in this Minecraft version requires NeoForge
+ *                                    classes to be merged into the Minecraft jar to work.
  */
 public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersion, boolean splitDataRuns,
-        boolean testFixtures, boolean modLocatorRework, boolean legacyClasspath) implements VersionCapabilities, Serializable {
+        boolean testFixtures, boolean modLocatorRework, boolean legacyClasspath, boolean needsNeoForgeInMinecraftJar) implements VersionCapabilities, Serializable {
 
     private static final Logger LOG = Logging.getLogger(VersionCapabilitiesInternal.class);
 
@@ -58,8 +60,9 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         var testFixtures = hasTestFixtures(versionIndex);
         var modLocatorRework = hasModLocatorRework(versionIndex);
         var legacyClasspath = hasLegacyClasspath(versionIndex);
+        var needsNeoForgeInMinecraftJar = needsNeoForgeInMinecraftJar(versionIndex);
 
-        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures, modLocatorRework, legacyClasspath);
+        return new VersionCapabilitiesInternal(minecraftVersion, javaVersion, splitData, testFixtures, modLocatorRework, legacyClasspath, needsNeoForgeInMinecraftJar);
     }
 
     static int getJavaVersion(int versionIndex) {
@@ -87,6 +90,10 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     }
 
     static boolean hasLegacyClasspath(int versionIndex) {
+        return versionIndex > MC_1_21_9_INDEX;
+    }
+
+    static boolean needsNeoForgeInMinecraftJar(int versionIndex) {
         return versionIndex > MC_1_21_9_INDEX;
     }
 
@@ -175,6 +182,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
                 splitDataRuns,
                 testFixtures,
                 modLocatorRework,
-                legacyClasspath);
+                legacyClasspath,
+                needsNeoForgeInMinecraftJar);
     }
 }
