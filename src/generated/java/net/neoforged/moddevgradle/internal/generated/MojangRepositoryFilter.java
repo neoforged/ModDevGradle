@@ -4,7 +4,9 @@ package net.neoforged.moddevgradle.internal.generated;
 public class MojangRepositoryFilter {
     public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
         filter.includeModule("argo", "argo");
+        filter.includeModule("at.yawk.lz4", "lz4-java");
         filter.includeModule("ca.weblite", "java-objc-bridge");
+        filter.includeModule("com.azure", "azure-json");
         filter.includeModule("com.fasterxml.jackson.core", "jackson-annotations");
         filter.includeModule("com.fasterxml.jackson.core", "jackson-core");
         filter.includeModule("com.fasterxml.jackson.core", "jackson-databind");
@@ -42,13 +44,17 @@ public class MojangRepositoryFilter {
         filter.includeModule("io.netty", "netty-all");
         filter.includeModule("io.netty", "netty-buffer");
         filter.includeModule("io.netty", "netty-codec");
+        filter.includeModule("io.netty", "netty-codec-base");
+        filter.includeModule("io.netty", "netty-codec-compression");
         filter.includeModule("io.netty", "netty-codec-http");
         filter.includeModule("io.netty", "netty-common");
         filter.includeModule("io.netty", "netty-handler");
         filter.includeModule("io.netty", "netty-resolver");
         filter.includeModule("io.netty", "netty-transport");
         filter.includeModule("io.netty", "netty-transport-classes-epoll");
+        filter.includeModule("io.netty", "netty-transport-classes-kqueue");
         filter.includeModule("io.netty", "netty-transport-native-epoll");
+        filter.includeModule("io.netty", "netty-transport-native-kqueue");
         filter.includeModule("io.netty", "netty-transport-native-unix-common");
         filter.includeModule("it.unimi.dsi", "fastutil");
         filter.includeModule("java3d", "vecmath");
@@ -74,6 +80,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("org.bouncycastle", "bcprov-jdk15on");
         filter.includeModule("org.jcraft", "jorbis");
         filter.includeModule("org.joml", "joml");
+        filter.includeModule("org.jspecify", "jspecify");
         filter.includeModule("org.lwjgl", "lwjgl");
         filter.includeModule("org.lwjgl", "lwjgl-freetype");
         filter.includeModule("org.lwjgl", "lwjgl-glfw");
