@@ -3,13 +3,6 @@ plugins {
     id 'maven-publish'
 }
 
-// TODO: remove
-allprojects {
-    repositories {
-        mavenLocal()
-    }
-}
-
 evaluationDependsOn(":subproject") // Because of the sourceset reference
 
 tasks.named('wrapper') {
@@ -39,7 +32,7 @@ test {
 neoForge {
     enable {
         version = project.neoforge_version
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
     addModdingDependenciesTo(sourceSets.api)
 

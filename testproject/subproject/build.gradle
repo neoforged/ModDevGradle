@@ -7,7 +7,7 @@ plugins {
 neoForge {
     enable {
         version = project.neoforge_version
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 
     interfaceInjectionData {

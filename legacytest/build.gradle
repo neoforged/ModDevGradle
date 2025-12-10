@@ -3,13 +3,6 @@ plugins {
     id 'net.neoforged.moddev.legacyforge'
 }
 
-// TODO: remove
-allprojects {
-    repositories {
-        mavenLocal()
-    }
-}
-
 group = 'com.example.legacy'
 version = '1.0.0'
 
@@ -22,7 +15,7 @@ java {
 legacyForge {
     enable {
         mcpVersion = '1.19.2'
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 }
 

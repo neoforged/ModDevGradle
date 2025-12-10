@@ -111,7 +111,7 @@ legacyForge {
     enable {
         forgeVersion = "..." // or mcpVersion = "..." if running in Vanilla mode
         // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 }
 ```

@@ -68,7 +68,7 @@ public record ModDevArtifactsWorkflow(
             Configuration accessTransformers,
             Configuration interfaceInjectionData,
             VersionCapabilitiesInternal versionCapabilities,
-            boolean disableSources) {
+            boolean disableRecompilation) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -142,13 +142,13 @@ public record ModDevArtifactsWorkflow(
 
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
-            task.getCompiledArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
+            task.getGameJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
-            if (disableSources) {
-                task.getDisableSources().set(true);
+            if (disableRecompilation) {
+                task.getDisableRecompilation().set(true);
             } else {
-                task.getCompiledWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
-                task.getSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+                task.getGameJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
+                task.getGameSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
             }
 
             task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
@@ -174,10 +174,10 @@ public record ModDevArtifactsWorkflow(
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
         Provider<? extends Dependency> minecraftClassesDependency;
-        if (!disableSources && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledWithSourcesArtifact())).map(dependencyFactory::create);
+        if (!disableRecompilation && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameJarWithSourcesArtifact())).map(dependencyFactory::create);
         } else {
-            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getCompiledArtifact())).map(dependencyFactory::create);
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameJarArtifact())).map(dependencyFactory::create);
         }
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
@@ -205,11 +205,11 @@ public record ModDevArtifactsWorkflow(
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
-        if (!disableSources && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+        if (!disableRecompilation && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             ideIntegration.attachSources(
                     Map.of(
-                            createArtifacts.get().getCompiledArtifact(),
-                            createArtifacts.get().getSourcesArtifact()));
+                            createArtifacts.get().getGameJarArtifact(),
+                            createArtifacts.get().getGameSourcesArtifact()));
         }
 
         var result = new ModDevArtifactsWorkflow(

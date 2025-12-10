@@ -127,7 +127,7 @@ neoForge {
     enable {
         version = "..." // or neoFormVersion = "..."
         // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 }
 ```

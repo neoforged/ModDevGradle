@@ -20,7 +20,7 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean disableSources = false;
+    private boolean disableRecompilation = false;
 
     private boolean obfuscateJar = true;
 
@@ -87,12 +87,12 @@ public abstract class LegacyForgeModdingSettings {
      * however source files will not be available.
      * {@code false} by default.
      */
-    public boolean isDisableSources() {
-        return disableSources;
+    public boolean isDisableRecompilation() {
+        return disableRecompilation;
     }
 
-    public void setDisableSources(boolean disableSources) {
-        this.disableSources = disableSources;
+    public void setDisableRecompilation(boolean disableRecompilation) {
+        this.disableRecompilation = disableRecompilation;
     }
 
     /**

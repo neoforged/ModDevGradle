@@ -4,7 +4,6 @@ plugins {
 }
 
 repositories {
-    mavenLocal()
     maven {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
@@ -35,7 +34,7 @@ dependencies {
 legacyForge {
     enable {
         forgeVersion = '1.20.1-47.3.12'
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
     runs {
         client {

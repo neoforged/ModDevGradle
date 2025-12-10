@@ -17,7 +17,7 @@ public abstract class ModdingVersionSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean disableSources = false;
+    private boolean disableRecompilation = false;
 
     @Inject
     public ModdingVersionSettings(Project project) {
@@ -70,11 +70,11 @@ public abstract class ModdingVersionSettings {
      * however source files will not be available.
      * {@code false} by default.
      */
-    public boolean isDisableSources() {
-        return disableSources;
+    public boolean isDisableRecompilation() {
+        return disableRecompilation;
     }
 
-    public void setDisableSources(boolean disableSources) {
-        this.disableSources = disableSources;
+    public void setDisableRecompilation(boolean disableRecompilation) {
+        this.disableRecompilation = disableRecompilation;
     }
 }

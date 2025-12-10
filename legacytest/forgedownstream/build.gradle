@@ -18,7 +18,7 @@ dependencies {
 legacyForge {
     enable {
         forgeVersion = '1.20.1-47.3.0'
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 }
 

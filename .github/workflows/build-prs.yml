@@ -29,8 +29,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         project: [testproject, legacytest]
+        sources: ["sources", "no sources"]
     runs-on: ${{ matrix.os }}
-    name: Test ${{ matrix.project }} on ${{ matrix.os }}
+    name: Test ${{ matrix.project }} on ${{ matrix.os }} (${{ matrix.sources }})
+    env:
+      CI: ${{ matrix.sources == "no sources" }}
     steps:
       - name: Checkout project sources
         uses: neoforged/actions/checkout@main

@@ -9,7 +9,7 @@ plugins {
 neoForge {
     enable {
         neoFormVersion = "1.21-20240613.152323"
-        disableSources = System.getenv("CI") == "true"
+        disableRecompilation = System.getenv("CI") == "true"
     }
 
     accessTransformers {
