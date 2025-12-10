@@ -180,7 +180,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract RegularFileProperty getGameJarWithSourcesArtifact();
 
     /**
-     * This retrieves the same as {@link #getCompiledWithSourcesArtifact()}, but doesn't include the sources in the
+     * This retrieves the same as {@link #getGameJarWithSourcesArtifact()}, but doesn't include the sources in the
      * Jar file.
      */
     @OutputFile
@@ -188,7 +188,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract RegularFileProperty getGameJarArtifact();
 
     /**
-     * This retrieves a Zip-File containing the sources used to compile {@link #getCompiledArtifact()}.
+     * This retrieves a Zip-File containing the sources used to compile {@link #getGameJarArtifact()}.
      */
     @OutputFile
     @Optional

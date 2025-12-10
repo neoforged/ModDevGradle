@@ -64,8 +64,8 @@ public abstract class ModdingVersionSettings {
     }
 
     /**
-     * {@code true} if MDG should use a pipeline that doesn't require sources,
-     * by applying transforms on the .class files and using binary patches.
+     * {@code true} if MDG should skip the NeoForm decompilation/recompilation pipeline,
+     * and instead apply transforms on the .class files and use binary patches.
      * This leads to a faster setup since Minecraft doesn't need to be decompiled,
      * however source files will not be available.
      * {@code false} by default.

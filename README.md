@@ -108,12 +108,12 @@ neoForge {
 }
 ```
 
-## Disabling Source Generation
-By default, MDG will decompile Minecraft to produce sources, and then recompile them to provide matching class files.
-This leads to a great debugging experience, at the cost of longer setup times.
+## Disabling Decompilation and Recompilation
+By default, MDG will use the [NeoForm](https://github.com/neoforged/NeoForm) decompilation/recompilation pipeline to produce
+Minecraft sources and a matching compiled game jar. This leads to a great debugging experience, at the cost of longer setup times.
 
-As of MDG 2.0.122, source generation can be disabled, which will skip decompilation and recompilation entirely!
-We recommend leaving source generation on by default, but disabling it when running on CI such as GitHub Actions.
+As of MDG 2.0.124, an alternative pipeline can be used, which will skip decompilation and recompilation entirely!
+We recommend leaving recompilation on by default, but disabling it when running on CI such as GitHub Actions.
 
 To do so, replace:
 ```groovy
@@ -126,7 +126,7 @@ By:
 neoForge {
     enable {
         version = "..." // or neoFormVersion = "..."
-        // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
+        // Disable recompilation if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
         disableRecompilation = System.getenv("CI") == "true"
     }
 }

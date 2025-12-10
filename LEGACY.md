@@ -103,14 +103,14 @@ legacyForge {
 }
 ```
 
-## Disabling Source Generation
-As of MDG Legacy 2.0.122, source generation can be disabled, similarly to the regular plugin.
+## Disabling Decompilation and Recompilation
+As of MDG Legacy 2.0.124, the decompilation/recompilation pipeline can be disabled, similarly to the regular plugin.
 To disable it in CI, use the following:
 ```groovy
 legacyForge {
     enable {
         forgeVersion = "..." // or mcpVersion = "..." if running in Vanilla mode
-        // Disable sources if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
+        // Disable recompilation if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
         disableRecompilation = System.getenv("CI") == "true"
     }
 }
