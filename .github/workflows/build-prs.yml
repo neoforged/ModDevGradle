@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Test ${{ matrix.project }} on ${{ matrix.os }} (${{ matrix.sources }})
     env:
-      CI: ${{ matrix.sources == "no sources" }}
+      CI: ${{ matrix.sources == 'no sources' }}
     steps:
       - name: Checkout project sources
         uses: neoforged/actions/checkout@main
