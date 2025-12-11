@@ -17,6 +17,8 @@ public abstract class ModdingVersionSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
+    private boolean disableRecompilation = false;
+
     @Inject
     public ModdingVersionSettings(Project project) {
         // By default, enable modding deps only for the main source set
@@ -59,5 +61,20 @@ public abstract class ModdingVersionSettings {
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    /**
+     * {@code true} if MDG should skip the NeoForm decompilation/recompilation pipeline,
+     * and instead apply transforms on the .class files and use binary patches.
+     * This leads to a faster setup since Minecraft doesn't need to be decompiled,
+     * however source files will not be available.
+     * {@code false} by default.
+     */
+    public boolean isDisableRecompilation() {
+        return disableRecompilation;
+    }
+
+    public void setDisableRecompilation(boolean disableRecompilation) {
+        this.disableRecompilation = disableRecompilation;
     }
 }

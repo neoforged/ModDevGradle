@@ -40,6 +40,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         getEnableCache().convention(true);
         getUseEclipseCompiler().convention(false);
         getAnalyzeCacheMisses().convention(false);
+        getDisableRecompilation().convention(false);
         getValidateAccessTransformers().convention(false);
         getParchmentEnabled().convention(false);
     }
@@ -161,29 +162,37 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract Property<Boolean> getUseEclipseCompiler();
 
     /**
-     * This retrieves the result of the NeoForm process that produces a compiled Minecraft jar that includes
+     * Set to {@code true} to produce a {@link #getGameJarArtifact()} without the NeoForm decompile+recompile workflow.
+     * Rather it uses the original artifacts with binary patches applied (for NeoForge) or just remapped (for NeoForm only mode).
+     * In this mode {@link #getGameSourcesArtifact()} and {@link #getGameJarWithSourcesArtifact()} may not be requested.
+     */
+    @Input
+    public abstract Property<Boolean> getDisableRecompilation();
+
+    /**
+     * This retrieves the result of the NeoForm process that produces a Minecraft jar that includes
      * the Minecraft sources as well.
      * This is useful for working around IntelliJ limitations related to not being able to attach sources as a
      * separate artifact automatically.
      */
     @OutputFile
     @Optional
-    public abstract RegularFileProperty getCompiledWithSourcesArtifact();
+    public abstract RegularFileProperty getGameJarWithSourcesArtifact();
 
     /**
-     * This retrieves the same as {@link #getCompiledWithSourcesArtifact()}, but doesn't include the sources in the
+     * This retrieves the same as {@link #getGameJarWithSourcesArtifact()}, but doesn't include the sources in the
      * Jar file.
      */
     @OutputFile
     @Optional
-    public abstract RegularFileProperty getCompiledArtifact();
+    public abstract RegularFileProperty getGameJarArtifact();
 
     /**
-     * This retrieves a Zip-File containing the sources used to compile {@link #getCompiledArtifact()}.
+     * This retrieves a Zip-File containing the sources used to compile {@link #getGameJarArtifact()}.
      */
     @OutputFile
     @Optional
-    public abstract RegularFileProperty getSourcesArtifact();
+    public abstract RegularFileProperty getGameSourcesArtifact();
 
     /**
      * Also known as "client-extra". Contains the non-class files from the original Minecraft jar (excluding META-INF).
@@ -191,6 +200,36 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     @OutputFile
     @Optional
     public abstract RegularFileProperty getResourcesArtifact();
+
+    /**
+     * @deprecated Use {@link #getGameJarWithSourcesArtifact()} instead.
+     */
+    @Deprecated
+    @OutputFile
+    @Optional
+    public RegularFileProperty getCompiledWithSourcesArtifact() {
+        return getGameJarWithSourcesArtifact();
+    }
+
+    /**
+     * @deprecated Use {@link #getGameJarArtifact()} instead.
+     */
+    @Deprecated
+    @OutputFile
+    @Optional
+    public RegularFileProperty getCompiledArtifact() {
+        return getGameJarArtifact();
+    }
+
+    /**
+     * @deprecated Use {@link #getGameSourcesArtifact()} instead.
+     */
+    @Deprecated
+    @OutputFile
+    @Optional
+    public RegularFileProperty getSourcesArtifact() {
+        return getGameSourcesArtifact();
+    }
 
     @Inject
     protected abstract Problems getProblems();
@@ -280,26 +319,39 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             requestedResults.add(new RequestedResult("clientResources", getResourcesArtifact().get().getAsFile()));
         }
 
-        // NOTE: When we use NeoForm standalone, the result-ids also change, a.k.a. "Vanilla Mode"
-        if (getNeoForgeArtifact().isPresent()) {
-            if (getCompiledArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("compiledWithNeoForge", getCompiledArtifact().get().getAsFile()));
+        if (getDisableRecompilation().get()) {
+            if (getGameJarArtifact().isPresent()) {
+                if (getNeoForgeArtifact().isPresent()) {
+                    requestedResults.add(new RequestedResult("gameJarNoRecompWithNeoForge", getGameJarArtifact().get().getAsFile()));
+                } else {
+                    requestedResults.add(new RequestedResult("gameJarNoRecomp", getGameJarArtifact().get().getAsFile()));
+                }
             }
-            if (getSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sourcesWithNeoForge", getSourcesArtifact().get().getAsFile()));
+            if (getGameSourcesArtifact().isPresent()) {
+                throw new IllegalArgumentException("Cannot request game sources if recompilation is disabled.");
             }
-            if (getCompiledWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sourcesAndCompiledWithNeoForge", getCompiledWithSourcesArtifact().get().getAsFile()));
+            if (getGameJarWithSourcesArtifact().isPresent()) {
+                throw new IllegalArgumentException("Cannot request game jar with sources if recompilation is disabled.");
+            }
+        } else if (getNeoForgeArtifact().isPresent()) {
+            if (getGameJarArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameJarWithNeoForge", getGameJarArtifact().get().getAsFile()));
+            }
+            if (getGameSourcesArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameSourcesWithNeoForge", getGameSourcesArtifact().get().getAsFile()));
+            }
+            if (getGameJarWithSourcesArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameJarWithSourcesAndNeoForge", getGameJarWithSourcesArtifact().get().getAsFile()));
             }
         } else {
-            if (getCompiledArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("compiled", getCompiledArtifact().get().getAsFile()));
+            if (getGameJarArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameJar", getGameJarArtifact().get().getAsFile()));
             }
-            if (getSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sources", getSourcesArtifact().get().getAsFile()));
+            if (getGameSourcesArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameSources", getGameSourcesArtifact().get().getAsFile()));
             }
-            if (getCompiledWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("sourcesAndCompiled", getCompiledWithSourcesArtifact().get().getAsFile()));
+            if (getGameJarWithSourcesArtifact().isPresent()) {
+                requestedResults.add(new RequestedResult("gameJarWithSources", getGameJarWithSourcesArtifact().get().getAsFile()));
             }
         }
 

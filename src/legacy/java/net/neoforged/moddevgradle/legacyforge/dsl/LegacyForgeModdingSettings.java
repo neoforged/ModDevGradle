@@ -20,6 +20,8 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
+    private boolean disableRecompilation = false;
+
     private boolean obfuscateJar = true;
 
     @Inject
@@ -76,6 +78,21 @@ public abstract class LegacyForgeModdingSettings {
 
     public void setEnabledSourceSets(Set<SourceSet> enabledSourceSets) {
         this.enabledSourceSets = enabledSourceSets;
+    }
+
+    /**
+     * {@code true} if MDG should skip the NeoForm decompilation/recompilation pipeline,
+     * and instead apply transforms on the .class files and use binary patches.
+     * This leads to a faster setup since Minecraft doesn't need to be decompiled,
+     * however source files will not be available.
+     * {@code false} by default.
+     */
+    public boolean isDisableRecompilation() {
+        return disableRecompilation;
+    }
+
+    public void setDisableRecompilation(boolean disableRecompilation) {
+        this.disableRecompilation = disableRecompilation;
     }
 
     /**
