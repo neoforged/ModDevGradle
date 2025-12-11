@@ -32,7 +32,7 @@ jobs:
         project: [testproject, legacytest]
         recomp: ["recomp", "no recomp"]
     runs-on: ${{ matrix.os }}
-    name: Test ${{ matrix.project }} on ${{ matrix.os }} (${{ matrix.sources }})
+    name: Test ${{ matrix.project }} on ${{ matrix.os }} (${{ matrix.recomp }})
     env:
       CI: ${{ matrix.recomp == 'no recomp' }}
     steps:
