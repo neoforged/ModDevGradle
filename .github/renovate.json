@@ -11,7 +11,7 @@
     "minecraft-versions": {
       "defaultRegistryUrlTemplate": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
       "transformTemplates": [
-        "{\"releases\": versions[id ~> /^\\d\\d\\.\\d+(\\.\\d+)?(-(snapshot|pre|rc)-\\d+)?$/].{ \"version\": $replace($replace(id, \"-snapshot-\", \"-alpha-\"), \"-pre-\", \"-beta-\"), \"releaseTimestamp\": releaseTime }}"
+        "{\"releases\": [versions[id ~> /^\\d\\d\\.\\d+(\\.\\d+)?(-(snapshot|pre|rc)-\\d+)?$/].{ \"version\": $replace($replace(id, \"-snapshot-\", \"-alpha-\"), \"-pre-\", \"-beta-\"), \"releaseTimestamp\": releaseTime }]}"
       ]
     }
   },
