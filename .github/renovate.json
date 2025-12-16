@@ -11,7 +11,7 @@
     "minecraft-versions": {
       "defaultRegistryUrlTemplate": "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json",
       "transformTemplates": [
-        "{\"releases\": versions.{ \"version\": id, \"releaseTimestamp\": releaseTime }}"
+        "{\"releases\": versions.{ \"version\": $replace($replace(id, \"-snapshot-\", \"-alpha-\"), \"-pre-\", \"-beta-\"), \"releaseTimestamp\": releaseTime }}"
       ]
     }
   },
@@ -23,7 +23,7 @@
         "/MinecraftVersionList\\.java$/"
       ],
       "matchStrings": [
-        "public static final List<String> VERSIONS = List\\.of\\(\"(?<currentValue>[\\w\\.]+)\""
+        "// renovate-mc-version: (?<currentValue>[\\w\\.-]+)"
       ],
       "depNameTemplate": "minecraft-version-list",
       "datasourceTemplate": "custom.minecraft-versions"
@@ -55,6 +55,7 @@
       "matchDatasources": [
         "custom.minecraft-versions"
       ],
+      "versioning": "maven",
       "dependencyDashboardApproval": false,
       "addLabels": [
         "generated-files"
