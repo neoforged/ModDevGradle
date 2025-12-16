@@ -260,7 +260,6 @@ abstract class GenerateVersionOrder extends DefaultTask {
         final json = new JsonSlurper()
         final manifest = json.parse('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'.toURL())
         List<String> versions = manifest.versions.collect { it.id }
-        versions = versions - ['26.1-snapshot-1']
 
         Comparator<String> BY_LENGTH_REVERSED = Comparator.comparingInt { it.length() }.reversed()
         var indicesByLength = versions.stream().sorted(BY_LENGTH_REVERSED).map(versions::indexOf).map(String::valueOf).toList()
