@@ -55,6 +55,7 @@
       "matchDatasources": [
         "custom.minecraft-versions"
       ],
+      "versioning": "maven",
       "dependencyDashboardApproval": false,
       "addLabels": [
         "generated-files"
