@@ -264,6 +264,7 @@ abstract class GenerateVersionOrder extends DefaultTask {
         Comparator<String> BY_LENGTH_REVERSED = Comparator.comparingInt { it.length() }.reversed()
         var indicesByLength = versions.stream().sorted(BY_LENGTH_REVERSED).map(versions::indexOf).map(String::valueOf).toList()
 
+        // The special renovate-mc-version line contains the latest minecraft version with -snapshot turning into -alpha and -pre into -beta to satisfy snapshot<pre<rc (even though s>p>r). Renovate is configured to do the same replacement.
         final clazz = """
 package net.neoforged.moddevgradle.internal.generated;
 
@@ -273,6 +274,7 @@ public final class MinecraftVersionList {
     private MinecraftVersionList() {
     }
 
+    // renovate-mc-version: ${versions[0].replace('-snapshot-', '-alpha-').replace('-pre-', '-beta-')}
     /**
      * Released Minecraft Versions as of ${java.time.Instant.now()} from latest to oldest.
      */
@@ -286,13 +288,13 @@ public final class MinecraftVersionList {
      * Prefix matches must terminate with one of the given separator characters to be found valid. 
      */
     public static int indexOfByPrefix(String version, String separators) {
-      for (var versionIdx : BY_LENGTH) {
-        var versionText = VERSIONS.get(versionIdx);
-        if (version.startsWith(versionText) && (versionText.length() == version.length() || separators.indexOf(version.charAt(versionText.length())) != -1)) {
-          return versionIdx;
+        for (var versionIdx : BY_LENGTH) {
+            var versionText = VERSIONS.get(versionIdx);
+            if (version.startsWith(versionText) && (versionText.length() == version.length() || separators.indexOf(version.charAt(versionText.length())) != -1)) {
+                return versionIdx;
+            }
         }
-      }
-      return -1;
+        return -1;
     }
 }
 """
