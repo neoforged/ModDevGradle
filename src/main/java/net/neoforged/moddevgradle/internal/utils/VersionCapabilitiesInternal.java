@@ -36,7 +36,6 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     private static final int MC_21W19A_INDEX = getReferenceVersionIndex("21w19a");
 
     private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
-
     public static VersionCapabilitiesInternal latest() {
         return LATEST;
     }
