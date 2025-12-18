@@ -26,11 +26,15 @@ jobs:
 
   test-project:
     strategy:
+      max-parallel: 6
       matrix:
         os: [ubuntu-latest, windows-latest]
         project: [testproject, legacytest]
+        recomp: ["recomp", "no recomp"]
     runs-on: ${{ matrix.os }}
-    name: Test ${{ matrix.project }} on ${{ matrix.os }}
+    name: Test ${{ matrix.project }} on ${{ matrix.os }} (${{ matrix.recomp }})
+    env:
+      CI: ${{ matrix.recomp == 'no recomp' }}
     steps:
       - name: Checkout project sources
         uses: neoforged/actions/checkout@main

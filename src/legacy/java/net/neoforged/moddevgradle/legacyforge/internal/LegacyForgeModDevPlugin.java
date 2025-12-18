@@ -153,7 +153,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
-                versionCapabilities);
+                versionCapabilities,
+                settings.isDisableRecompilation());
 
         var runs = ModDevRunWorkflow.create(
                 project,

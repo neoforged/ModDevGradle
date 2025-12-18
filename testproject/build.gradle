@@ -36,7 +36,10 @@ test {
 }
 
 neoForge {
-    version = project.neoforge_version
+    enable {
+        version = project.neoforge_version
+        disableRecompilation = System.getenv("CI") == "true"
+    }
     addModdingDependenciesTo(sourceSets.api)
 
     validateAccessTransformers = true

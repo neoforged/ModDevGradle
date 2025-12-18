@@ -13,7 +13,10 @@ java {
 }
 
 legacyForge {
-    mcpVersion = '1.19.2'
+    enable {
+        mcpVersion = '1.19.2'
+        disableRecompilation = System.getenv("CI") == "true"
+    }
 }
 
 publishing {
