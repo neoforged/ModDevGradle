@@ -111,9 +111,9 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
         // Store temporary working directories in this projects build directory such that gradle clean removes them
         getWorkDirectory().convention(project.getLayout().getBuildDirectory().dir("tmp/neoformruntime"));
 
-        // Run NFRT itself with Java 21
+        // Run NFRT itself with Java 25
         getJavaExecutable().convention(getJavaToolchainService()
-                .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)))
+                .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(25)))
                 .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
 
         // We construct this here to keep them private from subclasses

@@ -327,9 +327,10 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             requestedResults.add(new RequestedResult("clientResources", getResourcesArtifact().get().getAsFile()));
         }
 
+        boolean includeNeoForgeInGameJar = getIncludeNeoForgeInMainArtifact().get();
         if (getDisableRecompilation().get()) {
             if (getGameJarArtifact().isPresent()) {
-                if (getNeoForgeArtifact().isPresent()) {
+                if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
                     requestedResults.add(new RequestedResult("gameJarNoRecompWithNeoForge", getGameJarArtifact().get().getAsFile()));
                 } else {
                     requestedResults.add(new RequestedResult("gameJarNoRecomp", getGameJarArtifact().get().getAsFile()));
@@ -341,7 +342,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             if (getGameJarWithSourcesArtifact().isPresent()) {
                 throw new IllegalArgumentException("Cannot request game jar with sources if recompilation is disabled.");
             }
-        } else if (getNeoForgeArtifact().isPresent()) {
+        } else if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
             if (getGameJarArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("gameJarWithNeoForge", getGameJarArtifact().get().getAsFile()));
             }
