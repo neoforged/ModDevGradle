@@ -28,6 +28,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     // Strips NeoForm timestamp suffixes OR dynamic version markers
     private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
 
+    private static final int MC_1_21_11_INDEX = getReferenceVersionIndex("1.21.11");
     private static final int MC_1_21_9_INDEX = getReferenceVersionIndex("1.21.9");
     private static final int MC_24W45A_INDEX = getReferenceVersionIndex("24w45a");
     private static final int MC_1_20_5_INDEX = getReferenceVersionIndex("1.20.5");
@@ -66,7 +67,9 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     }
 
     static int getJavaVersion(int versionIndex) {
-        if (versionIndex <= MC_24W14A_INDEX) {
+        if (versionIndex < MC_1_21_11_INDEX) {
+            return 25;
+        } else if (versionIndex <= MC_24W14A_INDEX) {
             return 21;
         } else if (versionIndex <= MC_1_18_PRE2_INDEX) {
             return 17;
@@ -94,7 +97,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     }
 
     static boolean needsNeoForgeInMinecraftJar(int versionIndex) {
-        return versionIndex > MC_1_21_9_INDEX;
+        return versionIndex >= MC_1_21_11_INDEX;
     }
 
     static int indexOfNeoForgeVersion(String version) {
