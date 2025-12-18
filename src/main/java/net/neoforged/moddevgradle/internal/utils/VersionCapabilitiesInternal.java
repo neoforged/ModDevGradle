@@ -10,10 +10,10 @@ import org.gradle.api.logging.Logging;
 /**
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
  *
- * @param minecraftVersion The Minecraft version.
- * @param javaVersion      Which Java version Vanilla uses to compile and run.
- * @param splitDataRuns    Whether Vanilla has separate main classes for generating client and server data.
- * @param testFixtures     If the NeoForge version for this Minecraft version supports test fixtures.
+ * @param minecraftVersion            The Minecraft version.
+ * @param javaVersion                 Which Java version Vanilla uses to compile and run.
+ * @param splitDataRuns               Whether Vanilla has separate main classes for generating client and server data.
+ * @param testFixtures                If the NeoForge version for this Minecraft version supports test fixtures.
  * @param needsNeoForgeInMinecraftJar The FML version shipped by NeoForge in this Minecraft version requires NeoForge
  *                                    classes to be merged into the Minecraft jar to work.
  */
