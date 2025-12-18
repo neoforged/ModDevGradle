@@ -22,8 +22,6 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
 
     private static final Logger LOG = Logging.getLogger(VersionCapabilitiesInternal.class);
 
-    private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
-
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
     // Strips NeoForm timestamp suffixes OR dynamic version markers
     private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
@@ -36,6 +34,9 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     private static final int MC_1_20_4_INDEX = getReferenceVersionIndex("1.20.4");
     private static final int MC_1_18_PRE2_INDEX = getReferenceVersionIndex("1.18-pre2");
     private static final int MC_21W19A_INDEX = getReferenceVersionIndex("21w19a");
+
+    private static final VersionCapabilitiesInternal LATEST = ofVersionIndex(0);
+
     public static VersionCapabilitiesInternal latest() {
         return LATEST;
     }
