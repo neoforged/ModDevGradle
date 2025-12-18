@@ -112,7 +112,7 @@ public record ModDevArtifactsWorkflow(
         });
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
+        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
             for (var configuration : createManifestConfigurations) {
