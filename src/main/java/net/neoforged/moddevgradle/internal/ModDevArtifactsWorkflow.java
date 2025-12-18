@@ -193,7 +193,7 @@ public record ModDevArtifactsWorkflow(
             config.getDependencies().addLater(minecraftClassesDependency);
             if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
                 config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
-            } else {
+            } else if (moddingDependencies.neoForgeDependency() != null) {
                 config.getDependencies().add(moddingDependencies.neoForgeDependency());
             }
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
@@ -209,7 +209,7 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesDependency);
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
-            if (!versionCapabilities.needsNeoForgeInMinecraftJar()) {
+            if (!versionCapabilities.needsNeoForgeInMinecraftJar() && moddingDependencies.neoForgeDependency() != null) {
                 config.getDependencies().add(moddingDependencies.neoForgeDependency());
             }
         });
