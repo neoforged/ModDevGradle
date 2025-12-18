@@ -112,7 +112,7 @@ public record ModDevArtifactsWorkflow(
         });
 
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
-        var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
+         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates the NeoForge and Minecraft artifacts by invoking NFRT.");
             for (var configuration : createManifestConfigurations) {
@@ -123,6 +123,13 @@ public record ModDevArtifactsWorkflow(
             task.getToolsJavaExecutable().set(javaToolchainService
                     .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
                     .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
+            // NFRT itself needs to run with a newer version of the JDK to be able to compile with -release 25, for example
+            // It can however not run with Java 25 and compile Java 8 code while maintaining the same lambda naming.
+            if (versionCapabilities.javaVersion() > 21) {
+                task.getJavaExecutable().set(javaToolchainService
+                        .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
+                        .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
+            }
 
             task.getAccessTransformers().from(accessTransformers);
             // If AT validation is enabled, add the user-supplied AT paths as files to be validated,

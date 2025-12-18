@@ -73,7 +73,7 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
      */
     @Input
     @ApiStatus.Internal
-    protected abstract Property<String> getJavaExecutable();
+    public abstract Property<String> getJavaExecutable();
 
     @Inject
     @ApiStatus.Internal
@@ -113,7 +113,7 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
 
         // Run NFRT itself with Java 25
         getJavaExecutable().convention(getJavaToolchainService()
-                .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(25)))
+                .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(21)))
                 .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
 
         // We construct this here to keep them private from subclasses
