@@ -25,8 +25,7 @@ public record ModdingDependencies(
                 .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-moddev-module-path"))
                 // TODO: this is ugly; maybe make the configuration transitive in neoforge, or fix the SJH dep.
                 .exclude(Map.of("group", "org.jetbrains", "module", "annotations"));
-        ModuleDependency librariesDependency;
-        librariesDependency = neoForge.copy()
+        var librariesDependency = neoForge.copy()
                 .capabilities(c -> c.requireCapability("net.neoforged:neoforge-dependencies"));
 
         ModuleDependency testFixturesDependency = null;

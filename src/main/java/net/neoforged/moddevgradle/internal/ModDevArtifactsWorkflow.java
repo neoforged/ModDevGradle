@@ -149,7 +149,7 @@ public record ModDevArtifactsWorkflow(
 
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
-            task.getIncludeNeoForgeInMainArtifact().set(versionCapabilities.needsNeoForgeInMinecraftJar());
+            task.getIncludeNeoForgeInGameJar().set(versionCapabilities.needsNeoForgeInMinecraftJar());
             task.getGameJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
             if (disableRecompilation) {
                 task.getDisableRecompilation().set(true);
