@@ -30,5 +30,5 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'net.neoforged.fancymodloader:loader:4.0.4'
+    compileOnly 'net.neoforged.fancymodloader:loader:10.0.37'
 }

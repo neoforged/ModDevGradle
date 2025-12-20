@@ -11,6 +11,7 @@ import net.neoforged.moddevgradle.internal.utils.ProblemReportingUtil;
 import net.neoforged.problems.FileProblemReporter;
 import net.neoforged.problems.Problem;
 import org.gradle.api.GradleException;
+import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.problems.Problems;
@@ -43,6 +44,8 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         getDisableRecompilation().convention(false);
         getValidateAccessTransformers().convention(false);
         getParchmentEnabled().convention(false);
+        getIncludeNeoForgeInGameJar().convention(true);
+        getIncludeResourcesInGameJar().convention(false);
     }
 
     /**
@@ -231,11 +234,35 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         return getGameSourcesArtifact();
     }
 
+    /**
+     * Controls whether NeoForge classes and resources are included in {@link #getGameJarArtifact()}, if
+     * {@link #getNeoForgeArtifact()} is configured. Note that this option is mutually exclusive with {@link #getIncludeResourcesInGameJar()}.
+     * <p>
+     * Defaults to true.
+     */
+    @Input
+    @ApiStatus.Experimental
+    public abstract Property<Boolean> getIncludeNeoForgeInGameJar();
+
+    /**
+     * Controls whether the Minecraft resources (data, assets, etc.) are included in {@link #getGameJarArtifact()}
+     * and similar artifacts.
+     * <p>
+     * Defaults to false.
+     */
+    @Input
+    @ApiStatus.Experimental
+    public abstract Property<Boolean> getIncludeResourcesInGameJar();
+
     @Inject
     protected abstract Problems getProblems();
 
     @TaskAction
     public void createArtifacts() {
+        if (getIncludeNeoForgeInGameJar().get() && getIncludeResourcesInGameJar().get()) {
+            throw new InvalidUserCodeException("Cannot enable both includeNeoForgeInGameJar and includeResourcesInGameJar, since Minecraft and NeoForge resources clash.");
+        }
+
         var args = new ArrayList<String>();
         args.add("run");
 
@@ -319,9 +346,10 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             requestedResults.add(new RequestedResult("clientResources", getResourcesArtifact().get().getAsFile()));
         }
 
+        boolean includeNeoForgeInGameJar = getIncludeNeoForgeInGameJar().get();
         if (getDisableRecompilation().get()) {
             if (getGameJarArtifact().isPresent()) {
-                if (getNeoForgeArtifact().isPresent()) {
+                if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
                     requestedResults.add(new RequestedResult("gameJarNoRecompWithNeoForge", getGameJarArtifact().get().getAsFile()));
                 } else {
                     requestedResults.add(new RequestedResult("gameJarNoRecomp", getGameJarArtifact().get().getAsFile()));
@@ -333,7 +361,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             if (getGameJarWithSourcesArtifact().isPresent()) {
                 throw new IllegalArgumentException("Cannot request game jar with sources if recompilation is disabled.");
             }
-        } else if (getNeoForgeArtifact().isPresent()) {
+        } else if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
             if (getGameJarArtifact().isPresent()) {
                 requestedResults.add(new RequestedResult("gameJarWithNeoForge", getGameJarArtifact().get().getAsFile()));
             }

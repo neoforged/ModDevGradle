@@ -123,6 +123,13 @@ public record ModDevArtifactsWorkflow(
             task.getToolsJavaExecutable().set(javaToolchainService
                     .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
                     .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
+            // NFRT itself needs to run with a newer version of the JDK to be able to compile with -release 25, for example
+            // It can however not run with Java 25 and compile Java 8 code while maintaining the same lambda naming.
+            if (versionCapabilities.javaVersion() > 21) {
+                task.getJavaExecutable().set(javaToolchainService
+                        .launcherFor(spec -> spec.getLanguageVersion().set(JavaLanguageVersion.of(versionCapabilities.javaVersion())))
+                        .map(javaLauncher -> javaLauncher.getExecutablePath().getAsFile().getAbsolutePath()));
+            }
 
             task.getAccessTransformers().from(accessTransformers);
             // If AT validation is enabled, add the user-supplied AT paths as files to be validated,
@@ -142,13 +149,16 @@ public record ModDevArtifactsWorkflow(
 
             Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
 
+            task.getIncludeNeoForgeInGameJar().set(versionCapabilities.needsNeoForgeInMinecraftJar());
             task.getGameJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
-            task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
             if (disableRecompilation) {
                 task.getDisableRecompilation().set(true);
             } else {
                 task.getGameJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
                 task.getGameSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+            }
+            if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
+                task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
             }
 
             task.getNeoForgeArtifact().set(moddingDependencies.neoForgeDependencyNotation());
@@ -188,7 +198,11 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
 
             config.getDependencies().addLater(minecraftClassesDependency);
-            config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
+                config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+            } else if (moddingDependencies.neoForgeDependency() != null) {
+                config.getDependencies().add(moddingDependencies.neoForgeDependency());
+            }
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
@@ -202,6 +216,9 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
             config.getDependencies().addLater(minecraftClassesDependency);
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
+            if (!versionCapabilities.needsNeoForgeInMinecraftJar() && moddingDependencies.neoForgeDependency() != null) {
+                config.getDependencies().add(moddingDependencies.neoForgeDependency());
+            }
         });
 
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
