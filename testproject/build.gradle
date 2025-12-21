@@ -56,6 +56,10 @@ neoForge {
             client()
             programArguments.addAll('--username', 'Dev2')
         }
+        folderedClient {
+            client()
+            ideFolderName = "Neo Test Folder"
+        }
         clientAuth {
             client()
             devLogin = true
