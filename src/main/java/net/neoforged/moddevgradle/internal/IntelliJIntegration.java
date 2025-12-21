@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -175,7 +176,7 @@ final class IntelliJIntegration extends IdeIntegration {
             @Nullable Function<Project, File> outputDirectory,
             RunModel run,
             PrepareRun prepareTask) {
-        var appRun = new Application(run.getIdeName().get(), project);
+        var appRun = new ExtendedApplication(run.getIdeName().get(), project, getExtraIntelijRunProperties(run));
         var sourceSets = ExtensionUtils.getSourceSets(project);
         var sourceSet = run.getSourceSet().get();
         // Validate that the source set is part of this project
@@ -268,5 +269,30 @@ final class IntelliJIntegration extends IdeIntegration {
         moduleName.append(".");
         moduleName.append(sourceSet.getName());
         return moduleName.toString();
+    }
+
+    private static Map<String, Object> getExtraIntelijRunProperties(RunModel run) {
+        var extraProperties = new HashMap<String, Object>();
+        if (!run.getIdeFolderName().get().isEmpty()) {
+            extraProperties.put("folderName", run.getIdeFolderName().get());
+        }
+        return extraProperties;
+    }
+
+    private static class ExtendedApplication extends Application {
+        private final Map<String, Object> extraProperties;
+
+        public ExtendedApplication(String name, Project project, Map<String, Object> extraProperties) {
+            super(name, project);
+            this.extraProperties = extraProperties;
+        }
+
+        @Override
+        public Map<String, ?> toMap() {
+            @SuppressWarnings("unchecked")
+            var m = (Map<String, Object>) super.toMap();
+            m.putAll(extraProperties);
+            return m;
+        }
     }
 }
