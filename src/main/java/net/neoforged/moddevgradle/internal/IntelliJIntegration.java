@@ -273,7 +273,7 @@ final class IntelliJIntegration extends IdeIntegration {
 
     private static Map<String, Object> getExtraIntelijRunProperties(RunModel run) {
         var extraProperties = new HashMap<String, Object>();
-        if (run.getIdeFolderName().isPresent() && !run.getIdeFolderName().get().isEmpty()) {
+        if (!run.getIdeFolderName().get().isEmpty()) {
             extraProperties.put("folderName", run.getIdeFolderName().get());
         }
         return extraProperties;
@@ -282,7 +282,6 @@ final class IntelliJIntegration extends IdeIntegration {
     private static class ExtendedApplication extends Application {
         private final Map<String, Object> extraProperties;
 
-        @Inject
         public ExtendedApplication(String name, Project project, Map<String, Object> extraProperties) {
             super(name, project);
             this.extraProperties = extraProperties;
