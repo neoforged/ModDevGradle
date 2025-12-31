@@ -17,7 +17,7 @@ public abstract class ModdingVersionSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean disableRecompilation = false;
+    private boolean disableRecompilation = "true".equals(System.getenv("CI"));
 
     @Inject
     public ModdingVersionSettings(Project project) {
