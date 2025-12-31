@@ -16,7 +16,7 @@ dependencies {
 }
 
 legacyForge {
-    forgeVersion = '1.20.1-47.3.0'
+    version = '1.20.1-47.3.0'
 }
 
 var copyJarJar = tasks.register('copyJarJar', Copy) {
