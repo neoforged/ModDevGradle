@@ -5,10 +5,7 @@ plugins {
 }
 
 neoForge {
-    enable {
-        version = project.neoforge_version
-        disableRecompilation = System.getenv("CI") == "true"
-    }
+    version = project.neoforge_version
 
     interfaceInjectionData {
         from(project.file('interfaces.json'))

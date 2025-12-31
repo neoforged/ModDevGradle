@@ -15,7 +15,6 @@ java {
 legacyForge {
     enable {
         mcpVersion = '1.19.2'
-        disableRecompilation = System.getenv("CI") == "true"
     }
 }
 

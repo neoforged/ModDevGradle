@@ -112,22 +112,23 @@ neoForge {
 By default, MDG will use the [NeoForm](https://github.com/neoforged/NeoForm) decompilation/recompilation pipeline to produce
 Minecraft sources and a matching compiled game jar. This leads to a great debugging experience, at the cost of longer setup times.
 
-As of MDG 2.0.124, an alternative pipeline can be used, which will skip decompilation and recompilation entirely!
-We recommend leaving recompilation on by default, but disabling it when running on CI such as GitHub Actions.
+As of MDG 2.0.124, an alternative pipeline can be used, which will skip decompilation and recompilation entirely.
+As of MDG 2.0.136, this pipeline will be used by default in CI/CD pipelines, if the `CI` environment variable is `true`.
+This is true by default in many CI/CD systems such as GitHub Actions.
 
-To do so, replace:
+To control this setting manually, replace:
 ```groovy
 neoForge {
     version = "..." // or neoFormVersion = "..."
 }
 ```
+
 By:
 ```groovy
 neoForge {
     enable {
         version = "..." // or neoFormVersion = "..."
-        // Disable recompilation if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
-        disableRecompilation = System.getenv("CI") == "true"
+        disableRecompilation = true
     }
 }
 ```
