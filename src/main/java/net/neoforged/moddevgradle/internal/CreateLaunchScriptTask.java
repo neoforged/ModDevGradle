@@ -1,5 +1,18 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
@@ -18,20 +31,6 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.jvm.toolchain.JavaToolchainService;
-
-import javax.inject.Inject;
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Writes standalone start scripts to launch the game.
@@ -202,6 +201,10 @@ abstract class CreateLaunchScriptTask extends DefaultTask {
                 String.join("\n", lines),
                 StandardCharsets.UTF_8);
 
+        makeExecutable(destination);
+    }
+
+    private static void makeExecutable(Path destination) throws IOException {
         var permissionView = Files.getFileAttributeView(destination, PosixFileAttributeView.class);
         if (permissionView != null) {
             var perm = new HashSet<>(permissionView.readAttributes().permissions());
