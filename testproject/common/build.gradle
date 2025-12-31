@@ -7,10 +7,7 @@ plugins {
 }
 
 neoForge {
-    enable {
-        neoFormVersion = "1.21-20240613.152323"
-        disableRecompilation = System.getenv("CI") == "true"
-    }
+    neoFormVersion = "1.21-20240613.152323"
 
     accessTransformers {
         validateAccessTransformers = true

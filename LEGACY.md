@@ -104,14 +104,15 @@ legacyForge {
 ```
 
 ## Disabling Decompilation and Recompilation
-As of MDG Legacy 2.0.124, the decompilation/recompilation pipeline can be disabled, similarly to the regular plugin.
-To disable it in CI, use the following:
+As of MDG Legacy 2.0.124, the decompilation/recompilation pipeline can be disabled, similarly to the regular plugin,
+and starting in MDG 2.0.136, it is disabled by default in CI environments (if the `CI` environment variable is set to `true`).
+
+To disable it manually, use the following:
 ```groovy
 legacyForge {
     enable {
         forgeVersion = "..." // or mcpVersion = "..." if running in Vanilla mode
-        // Disable recompilation if the "CI" environment variable is set to true. It is automatically set by GitHub Actions.
-        disableRecompilation = System.getenv("CI") == "true"
+        disableRecompilation = true
     }
 }
 ```

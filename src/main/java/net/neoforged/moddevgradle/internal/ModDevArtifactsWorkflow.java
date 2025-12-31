@@ -73,6 +73,10 @@ public record ModDevArtifactsWorkflow(
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
 
+        if (disableRecompilation) {
+            project.getLogger().lifecycle("Creating Minecraft artifacts without recompilation.");
+        }
+
         var ideIntegration = IdeIntegration.of(project, branding);
 
         // We use this directory to store intermediate files used during moddev

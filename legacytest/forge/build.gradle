@@ -32,10 +32,7 @@ dependencies {
 }
 
 legacyForge {
-    enable {
-        forgeVersion = '1.20.1-47.3.12'
-        disableRecompilation = System.getenv("CI") == "true"
-    }
+    version = '1.20.1-47.3.12'
     runs {
         client {
             client()

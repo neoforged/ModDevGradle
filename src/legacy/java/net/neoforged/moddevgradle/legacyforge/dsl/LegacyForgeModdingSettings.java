@@ -20,7 +20,7 @@ public abstract class LegacyForgeModdingSettings {
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
-    private boolean disableRecompilation = false;
+    private boolean disableRecompilation = "true".equals(System.getenv("CI"));
 
     private boolean obfuscateJar = true;
 

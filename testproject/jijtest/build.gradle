@@ -40,10 +40,7 @@ test {
 }
 
 neoForge {
-    enable {
-        version = project.neoforge_version
-        disableRecompilation = System.getenv("CI") == "true"
-    }
+    version = project.neoforge_version
 
     runs {
         data {
