@@ -21,7 +21,7 @@ public interface VersionCapabilities {
 
     /**
      * Whether the NeoForge version requires the use of the {@code additionalRuntimeClasspath} configuration to
-     * add non-Minecraft libraries to the runtime classpath.
+     * add libraries that don't declare a {@code FMLModType} in their manifest to the runtime classpath.
      */
     boolean legacyClasspath();
 }
