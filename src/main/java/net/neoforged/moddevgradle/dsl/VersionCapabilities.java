@@ -18,4 +18,10 @@ public interface VersionCapabilities {
      * Whether the NeoForge version for this version of Minecraft supports mod-loading in unit tests.
      */
     boolean testFixtures();
+
+    /**
+     * Whether the NeoForge version requires the use of the {@code additionalRuntimeClasspath} configuration to
+     * add non-Minecraft libraries to the runtime classpath.
+     */
+    boolean legacyClasspath();
 }
