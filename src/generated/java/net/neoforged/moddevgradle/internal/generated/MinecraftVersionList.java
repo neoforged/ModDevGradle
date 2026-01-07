@@ -6,7 +6,7 @@ import java.util.List;
 public final class MinecraftVersionList {
     private MinecraftVersionList() {}
 
-    // renovate-mc-version: 26.1-alpha-1
+    // renovate-mc-version: 26.1-alpha-2
     /**
      * Released Minecraft Versions as of 2025-12-18T14:24:49.134717600Z from latest to oldest.
      */
