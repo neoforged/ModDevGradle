@@ -42,6 +42,12 @@ public class VersionCapabilitiesInternalTest {
             "21.4.10,1.21.4",
             "26.1.10,1.26.1",
             "26.0.10,1.26",
+            "26.1.0.0-alpha.3+snapshot-1,26.1-snapshot-1",
+            "26.1.0.20-beta,26.1",
+            "26.1.0.40,26.1",
+            "26.1.1.0-alpha.3+snapshot-1,26.1.1-snapshot-1",
+            "26.1.1.20-beta,26.1.1",
+            "26.1.1.40,26.1.1",
     })
     public void testNeoForgeVersionParsing(String neoForgeVersion, String minecraftVersion) {
         var caps = VersionCapabilitiesInternal.ofNeoForgeVersion(neoForgeVersion);
@@ -79,6 +85,7 @@ public class VersionCapabilitiesInternalTest {
             "1.20.1-rc1,1.20.1-rc1",
             "1.99.1-20241017.134216,1.99.1",
             "1.99.0-20241017.134216,1.99.0",
+            "26.1-snapshot-1000-1,26.1-snapshot-1000",
             // Dynamic version
             "1.99.0-+,1.99.0",
     })
