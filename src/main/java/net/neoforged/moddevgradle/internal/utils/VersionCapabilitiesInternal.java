@@ -6,6 +6,7 @@ import net.neoforged.moddevgradle.dsl.VersionCapabilities;
 import net.neoforged.moddevgradle.internal.generated.MinecraftVersionList;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Models the changing capabilities of the modding platform and Vanilla, which we tie to the Minecraft version.
@@ -23,8 +24,10 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     private static final Logger LOG = Logging.getLogger(VersionCapabilitiesInternal.class);
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
-    // Strips NeoForm timestamp suffixes OR dynamic version markers
-    private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6})$");
+    private static final Pattern UNOBF_NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+\\.\\d+)\\.\\d+(|-.*)$");
+    private static final Pattern UNOBF_NEOFORGE_ALPHA_PATTERN = Pattern.compile("^(\\d+\\.\\d+\\.\\d+)\\.0-alpha\\.\\d+\\+([\\w-]+)$");
+    // Strips NeoForm timestamp suffixes OR dynamic version markers OR 26.1+ version suffix
+    private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6}|\\d+)$");
 
     private static final int MC_1_21_11_INDEX = getReferenceVersionIndex("1.21.11");
     private static final int MC_1_21_9_INDEX = getReferenceVersionIndex("1.21.9");
@@ -100,38 +103,51 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         return versionIndex >= MC_1_21_11_INDEX;
     }
 
-    static int indexOfNeoForgeVersion(String version) {
+    @Nullable
+    static String neoForgeVersionToMinecraftVersion(String version) {
         // NeoForge omits the "1." at the start of the Minecraft version and just adds an incrementing last digit
         var matcher = NEOFORGE_PATTERN.matcher(version);
-        if (!matcher.matches()) {
-            return -1;
+        if (matcher.matches()) {
+            var mcVersion = "1." + matcher.group(1);
+            // Versions such as 21.0.0 are for Minecraft 1.21 and NOT 1.21.0, therefore we strip the trailing .0
+            if (mcVersion.endsWith(".0")) {
+                mcVersion = mcVersion.substring(0, mcVersion.length() - 2);
+            }
+            return mcVersion;
+        }
+        // Alpha versions also match the regular unobf pattern, check them first
+        matcher = UNOBF_NEOFORGE_ALPHA_PATTERN.matcher(version);
+        if (matcher.matches()) {
+            var mcVersion = matcher.group(1);
+            if (mcVersion.endsWith(".0")) {
+                mcVersion = mcVersion.substring(0, mcVersion.length() - 2);
+            }
+            mcVersion += "-" + matcher.group(2);
+            return mcVersion;
+        }
+        matcher = UNOBF_NEOFORGE_PATTERN.matcher(version);
+        if (matcher.matches()) {
+            var mcVersion = matcher.group(1);
+            if (mcVersion.endsWith(".0")) {
+                mcVersion = mcVersion.substring(0, mcVersion.length() - 2);
+            }
+            return mcVersion;
         }
 
-        var mcVersion = "1." + matcher.group(1);
-        // Versions such as 21.0.0 are for Minecraft 1.21 and NOT 1.21.0, therefore we strip the trailing .0
-        if (mcVersion.endsWith(".0")) {
-            mcVersion = mcVersion.substring(0, mcVersion.length() - 2);
-        }
-        return MinecraftVersionList.VERSIONS.indexOf(mcVersion);
+        return null;
     }
 
     public static VersionCapabilitiesInternal ofNeoForgeVersion(String version) {
-        var index = indexOfNeoForgeVersion(version);
-        if (index == -1) {
-            var capabilities = LATEST;
-            var m = NEOFORGE_PATTERN.matcher(version);
-            if (m.matches()) {
-                var minecraftVersion = "1." + m.group(1);
-                if (minecraftVersion.endsWith(".0")) {
-                    minecraftVersion = minecraftVersion.substring(0, minecraftVersion.length() - 2);
-                }
-                capabilities = capabilities.withMinecraftVersion(minecraftVersion);
-            }
-
-            LOG.lifecycle("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
-            return capabilities;
+        var mcVersion = neoForgeVersionToMinecraftVersion(version);
+        if (mcVersion == null) {
+            LOG.lifecycle("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
+            return LATEST;
         }
-
+        var index = MinecraftVersionList.VERSIONS.indexOf(mcVersion);
+        if (index == -1) {
+            LOG.lifecycle("Parsed unknown MC version {} from NeoForge version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
+            return LATEST.withMinecraftVersion(mcVersion);
+        }
         return ofVersionIndex(index);
     }
 
