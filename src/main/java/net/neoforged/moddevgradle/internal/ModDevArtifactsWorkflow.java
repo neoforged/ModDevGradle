@@ -322,6 +322,21 @@ public record ModDevArtifactsWorkflow(
         });
         result.add(compileClasspath);
 
+        if (moddingPlatformDependency != null) {
+            var compileClasspath2 = configurations.create(configurationPrefix + "CompileClasspath2", spec -> {
+                spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath) (number 2)");
+                spec.setCanBeConsumed(false);
+                spec.setCanBeResolved(true);
+                spec.getDependencies().add(moddingPlatformDependency.copy()
+                        .capabilities(caps -> caps.requireCapability("net.neoforged:neoforge-dependencies_neoFormOnly")));
+                spec.attributes(attributes -> {
+                    setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_API);
+                    setNamedAttribute(project, attributes, MinecraftDistribution.ATTRIBUTE, MinecraftDistribution.CLIENT);
+                });
+            });
+            result.add(compileClasspath2);
+        }
+
         // Runtime-time dependencies used by NeoForm, NeoForge and Minecraft.
         var runtimeClasspath = configurations.create(configurationPrefix + "RuntimeClasspath", spec -> {
             spec.setDescription("Dependencies needed for running NeoFormRuntime for the selected NeoForge/NeoForm version (Classpath)");
