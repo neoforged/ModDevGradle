@@ -43,9 +43,11 @@ public class VersionCapabilitiesInternalTest {
             "26.1.10,1.26.1",
             "26.0.10,1.26",
             "26.1.0.0-alpha.3+snapshot-1,26.1-snapshot-1",
+            "26.1.0.0-alpha.0+snapshot-4.20260121.223952,26.1-snapshot-4",
             "26.1.0.20-beta,26.1",
             "26.1.0.40,26.1",
             "26.1.1.0-alpha.3+snapshot-1,26.1.1-snapshot-1",
+            "26.1.1.0-alpha.0+snapshot-4.20260121.223952,26.1.1-snapshot-4",
             "26.1.1.20-beta,26.1.1",
             "26.1.1.40,26.1.1",
     })
@@ -77,10 +79,10 @@ public class VersionCapabilitiesInternalTest {
             // This checks that a separator must follow the prefix match since this matches the 1.20.1 prefix, but
             // should not be recognized as such.
             "1.20.12-20241017.134216,1.20.12",
-            "29w31a,29w31a",
-            "29w31a-20230819.124900,29w31a",
+            "20w30a,20w30a",
+            "20w30a-20230819.124900,20w30a",
             "1.20.1-20241017.134216,1.20.1",
-            "1.20.12,1.20.12",
+            "1.20.6,1.20.6",
             "1.20.1,1.20.1",
             "1.20.1-rc1,1.20.1-rc1",
             "1.99.1-20241017.134216,1.99.1",
