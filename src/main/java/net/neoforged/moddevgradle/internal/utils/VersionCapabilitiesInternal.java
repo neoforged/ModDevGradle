@@ -25,7 +25,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
 
     private static final Pattern NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+)\\.\\d+(|-.*)$");
     private static final Pattern UNOBF_NEOFORGE_PATTERN = Pattern.compile("^(\\d+\\.\\d+\\.\\d+)\\.\\d+(|-.*)$");
-    private static final Pattern UNOBF_NEOFORGE_ALPHA_PATTERN = Pattern.compile("^(\\d+\\.\\d+\\.\\d+)\\.0-alpha\\.\\d+\\+([\\w-]+)$");
+    private static final Pattern UNOBF_NEOFORGE_ALPHA_PATTERN = Pattern.compile("^(\\d+\\.\\d+\\.\\d+)\\.0-alpha\\.\\d+\\+([\\w-]+)(?:\\.[\\d.]+)?$");
     // Strips NeoForm timestamp suffixes OR dynamic version markers OR 26.1+ version suffix
     private static final Pattern NEOFORM_PATTERN = Pattern.compile("^(.*)-(?:\\+|\\d{8}\\.\\d{6}|\\d+)$");
 
@@ -104,7 +104,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     }
 
     @Nullable
-    static String neoForgeVersionToMinecraftVersion(String version) {
+    private static String neoForgeVersionToMinecraftVersion(String version) {
         // NeoForge omits the "1." at the start of the Minecraft version and just adds an incrementing last digit
         var matcher = NEOFORGE_PATTERN.matcher(version);
         if (matcher.matches()) {
@@ -151,21 +151,30 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         return ofVersionIndex(index);
     }
 
+    @Nullable
+    private static String neoFormVersionToMinecraftVersion(String version) {
+        var m = NEOFORM_PATTERN.matcher(version);
+        if (m.matches()) {
+            return m.group(1);
+        }
+        return null;
+    }
+
     public static VersionCapabilitiesInternal ofNeoFormVersion(String version) {
         // Examples: 1.21-<timestamp>
         var index = MinecraftVersionList.indexOfByPrefix(version, "-");
 
         if (index == -1) {
-            var capabilities = LATEST;
-            var m = NEOFORM_PATTERN.matcher(version);
-            if (m.matches()) {
-                capabilities = capabilities.withMinecraftVersion(m.group(1));
-            } else {
-                capabilities = capabilities.withMinecraftVersion(version);
+            var mcVersion = neoFormVersionToMinecraftVersion(version);
+            if (mcVersion == null) {
+                LOG.lifecycle("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
+                return LATEST;
             }
-
-            LOG.lifecycle("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version with Minecraft version {}.", version, capabilities.minecraftVersion());
-            return capabilities;
+            index = MinecraftVersionList.VERSIONS.indexOf(mcVersion);
+            if (index == -1) {
+                LOG.lifecycle("Parsed unknown MC version {} from NeoForm version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
+                return LATEST.withMinecraftVersion(mcVersion);
+            }
         }
 
         return ofVersionIndex(index);
