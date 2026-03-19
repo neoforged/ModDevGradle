@@ -68,6 +68,7 @@ public class NeoForgedRepositoryFilter {
         filter.includeModule("net.neoforged.accesstransformers", "at-modlauncher");
         filter.includeModule("net.neoforged.accesstransformers", "at-parser");
         filter.includeModule("net.neoforged.fancymodloader", "earlydisplay");
+        filter.includeModule("net.neoforged.fancymodloader", "junit-fml");
         filter.includeModule("net.neoforged.fancymodloader", "loader");
         filter.includeModule("net.neoforged.installertools", "binarypatcher");
         filter.includeModule("net.neoforged.installertools", "cli-utils");
@@ -89,6 +90,7 @@ public class NeoForgedRepositoryFilter {
         filter.includeModule("net.neoforged", "neoform");
         filter.includeModule("net.neoforged", "neoform-runtime");
         filter.includeModule("net.neoforged", "srgutils");
+        filter.includeModule("net.neoforged", "testframework");
         filter.includeModule("net.sf.jopt-simple", "jopt-simple");
         filter.includeModule("org.antlr", "antlr4-master");
         filter.includeModule("org.antlr", "antlr4-runtime");
@@ -111,10 +113,12 @@ public class NeoForgedRepositoryFilter {
         filter.includeModule("org.apache.maven", "maven-artifact");
         filter.includeModule("org.apache.maven", "maven-parent");
         filter.includeModule("org.apache", "apache");
+        filter.includeModule("org.apiguardian", "apiguardian-api");
         filter.includeModule("org.checkerframework", "checker-qual");
         filter.includeModule("org.codehaus.groovy", "groovy-bom");
         filter.includeModule("org.codehaus.plexus", "plexus");
         filter.includeModule("org.codehaus.plexus", "plexus-utils");
+        filter.includeModule("org.commonmark", "commonmark");
         filter.includeModule("org.eclipse.ee4j", "project");
         filter.includeModule("org.eclipse.jetty", "jetty-bom");
         filter.includeModule("org.jcraft", "jorbis");
@@ -123,6 +127,14 @@ public class NeoForgedRepositoryFilter {
         filter.includeModule("org.jline", "jline-reader");
         filter.includeModule("org.jline", "jline-terminal");
         filter.includeModule("org.joml", "joml");
+        filter.includeModule("org.jspecify", "jspecify");
+        filter.includeModule("org.junit.jupiter", "junit-jupiter");
+        filter.includeModule("org.junit.jupiter", "junit-jupiter-api");
+        filter.includeModule("org.junit.jupiter", "junit-jupiter-engine");
+        filter.includeModule("org.junit.jupiter", "junit-jupiter-params");
+        filter.includeModule("org.junit.platform", "junit-platform-commons");
+        filter.includeModule("org.junit.platform", "junit-platform-engine");
+        filter.includeModule("org.junit.platform", "junit-platform-launcher");
         filter.includeModule("org.junit", "junit-bom");
         filter.includeModule("org.lwjgl", "lwjgl");
         filter.includeModule("org.lwjgl", "lwjgl-bom");
@@ -136,6 +148,7 @@ public class NeoForgedRepositoryFilter {
         filter.includeModule("org.lz4", "lz4-java");
         filter.includeModule("org.mockito", "mockito-bom");
         filter.includeModule("org.openjdk.nashorn", "nashorn-core");
+        filter.includeModule("org.opentest4j", "opentest4j");
         filter.includeModule("org.ow2.asm", "asm");
         filter.includeModule("org.ow2.asm", "asm-analysis");
         filter.includeModule("org.ow2.asm", "asm-commons");
