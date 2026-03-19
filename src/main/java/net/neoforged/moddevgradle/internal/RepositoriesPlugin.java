@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
 import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
+import net.neoforged.moddevgradle.internal.generated.NeoForgedRepositoryFilter;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -56,6 +57,7 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
         repositories.maven(repo -> {
             repo.setName("NeoForged Releases");
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
+            repo.content(NeoForgedRepositoryFilter::filter);
         });
     }
 
