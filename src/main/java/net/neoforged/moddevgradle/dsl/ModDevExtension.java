@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
 import java.io.File;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.Branding;
 import net.neoforged.moddevgradle.internal.IdeIntegration;
@@ -159,12 +160,14 @@ public abstract class ModDevExtension {
 
     /**
      * After enabling modding, you can retrieve the version of the modding platform you picked using this getter.
-     * I.e. the NeoForge or Forge version. If you chose to enable vanilla-only mode, this getter will throw.
+     * I.e. the NeoForge or Forge version. 
+     * <p>
+     * If you chose to enable vanilla-only mode, this getter will return null.
      */
-    public String getVersion() {
+    @Nullable public String getVersion() {
         var dependencies = ModDevArtifactsWorkflow.get(project).dependencies();
         if (dependencies.neoForgeDependency() == null) {
-            throw new InvalidUserCodeException("You cannot retrieve the enabled version if you are in vanilla-only mode.");
+            return null;
         }
         return dependencies.neoForgeDependency().getVersion();
     }
