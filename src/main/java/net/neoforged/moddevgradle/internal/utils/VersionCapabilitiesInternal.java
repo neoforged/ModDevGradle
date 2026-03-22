@@ -46,7 +46,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     public static VersionCapabilitiesInternal ofMinecraftVersion(String minecraftVersion) {
         var versionIndex = MinecraftVersionList.VERSIONS.indexOf(minecraftVersion);
         if (versionIndex == -1) {
-            LOG.lifecycle("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
+            LOG.info("Minecraft Version {} is unknown. Assuming latest capabilities.", versionIndex);
             return LATEST.withMinecraftVersion(minecraftVersion);
         }
 
@@ -140,12 +140,12 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     public static VersionCapabilitiesInternal ofNeoForgeVersion(String version) {
         var mcVersion = neoForgeVersionToMinecraftVersion(version);
         if (mcVersion == null) {
-            LOG.lifecycle("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
+            LOG.info("Failed to parse MC version from NeoForge version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
             return LATEST;
         }
         var index = MinecraftVersionList.VERSIONS.indexOf(mcVersion);
         if (index == -1) {
-            LOG.lifecycle("Parsed unknown MC version {} from NeoForge version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
+            LOG.info("Parsed unknown MC version {} from NeoForge version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
             return LATEST.withMinecraftVersion(mcVersion);
         }
         return ofVersionIndex(index);
@@ -167,12 +167,12 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
         if (index == -1) {
             var mcVersion = neoFormVersionToMinecraftVersion(version);
             if (mcVersion == null) {
-                LOG.lifecycle("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
+                LOG.info("Failed to parse MC version from NeoForm version {}. Using capabilities of latest known Minecraft version {}.", version, LATEST.minecraftVersion());
                 return LATEST;
             }
             index = MinecraftVersionList.VERSIONS.indexOf(mcVersion);
             if (index == -1) {
-                LOG.lifecycle("Parsed unknown MC version {} from NeoForm version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
+                LOG.info("Parsed unknown MC version {} from NeoForm version {}. Using capabilities of latest known Minecraft version {} with an updated Minecraft version.", mcVersion, version, LATEST.minecraftVersion());
                 return LATEST.withMinecraftVersion(mcVersion);
             }
         }
@@ -188,7 +188,7 @@ public record VersionCapabilitiesInternal(String minecraftVersion, int javaVersi
     public static VersionCapabilitiesInternal ofForgeVersion(String version) {
         var index = indexOfForgeVersion(version);
         if (index == -1) {
-            LOG.lifecycle("Failed to parse MC version from Forge version {}. Using capabilities of latest known Minecraft version.", version);
+            LOG.info("Failed to parse MC version from Forge version {}. Using capabilities of latest known Minecraft version.", version);
             return LATEST;
         }
 
