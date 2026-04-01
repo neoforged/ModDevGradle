@@ -2,6 +2,7 @@ package net.neoforged.nfrtgradle;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -393,7 +394,11 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         args.add("--problems-report");
         args.add(problemsReport.getAbsolutePath());
 
+        args.add("--add-repository");
+        args.add("https://maven.minecraftforge.net/");
+
         try {
+            getLogger().error("{}", args);
             run(args);
         } finally {
             reportProblems(problemsReport);

@@ -167,19 +167,19 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         var obf = ExtensionUtils.getExtension(project, OBFUSCATION_EXTENSION, ObfuscationExtension.class);
 
         // We use this directory to store intermediate files used during moddev
-        var namedToIntermediate = artifacts.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", "namedToIntermediate.tsrg");
-        obf.getNamedToSrgMappings().set(namedToIntermediate);
-        var intermediateToNamed = artifacts.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", "intermediateToNamed.srg");
-        var mappingsCsv = artifacts.requestAdditionalMinecraftArtifact("csvMapping", "intermediateToNamed.zip");
-        obf.getSrgToNamedMappings().set(mappingsCsv);
+      //  var namedToIntermediate = artifacts.requestAdditionalMinecraftArtifact("namedToIntermediaryMapping", "namedToIntermediate.tsrg");
+      //  obf.getNamedToSrgMappings().set(namedToIntermediate);
+        //var intermediateToNamed = artifacts.requestAdditionalMinecraftArtifact("intermediaryToNamedMapping", "intermediateToNamed.srg");
+        //var mappingsCsv = artifacts.requestAdditionalMinecraftArtifact("csvMapping", "intermediateToNamed.zip");
+        //obf.getSrgToNamedMappings().set(mappingsCsv);
 
         extension.getRuns().configureEach(run -> {
             // Old BSL versions before 2022 (i.e. on 1.18.2) did not export any packages, causing DevLaunch to be unable to access the main method
             run.getJvmArguments().addAll("--add-exports", "cpw.mods.bootstraplauncher/cpw.mods.bootstraplauncher=ALL-UNNAMED");
 
             // Mixin needs the intermediate (SRG) -> named (Mojang, MCP) mapping file in SRG (TSRG is not supported) to be able to ignore the refmaps of dependencies
-            run.getSystemProperties().put("mixin.env.remapRefMap", "true");
-            run.getSystemProperties().put("mixin.env.refMapRemappingFile", intermediateToNamed.map(f -> f.getAsFile().getAbsolutePath()));
+            //run.getSystemProperties().put("mixin.env.remapRefMap", "true");
+            //run.getSystemProperties().put("mixin.env.refMapRemappingFile", intermediateToNamed.map(f -> f.getAsFile().getAbsolutePath()));
 
             run.getProgramArguments().addAll(mixin.getConfigs().map(cfgs -> cfgs.stream().flatMap(config -> Stream.of("--mixin.config", config)).toList()));
         });
@@ -193,8 +193,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
         }
 
         // Forge expects the mapping csv files on the root classpath
-        artifacts.runtimeDependencies()
-                .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
+       // artifacts.runtimeDependencies()
+       //         .getDependencies().add(project.getDependencyFactory().create(project.files(mappingsCsv)));
 
         var remapDeps = project.getConfigurations().create("remappingDependencies", spec -> {
             spec.setDescription("An internal configuration that contains the Minecraft dependencies, used for remapping mods");

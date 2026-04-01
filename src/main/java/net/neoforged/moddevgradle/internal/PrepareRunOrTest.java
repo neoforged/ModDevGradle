@@ -260,14 +260,14 @@ abstract class PrepareRunOrTest extends DefaultTask {
             lines.add(RunUtils.escapeJvmArg("-Dlog4j2.configurationFile=" + log4jConfigFile.getAbsolutePath()));
         }
 
-        for (var prop : runConfig.props().entrySet()) {
-            var propValue = prop.getValue();
-            if (propValue.equals("{minecraft_classpath_file}")) {
-                propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
-            }
-
-            addSystemProp(prop.getKey(), propValue, lines);
-        }
+//        for (var prop : runConfig.props().entrySet()) {
+//            var propValue = prop.getValue();
+//            if (propValue.equals("{minecraft_classpath_file}")) {
+//                propValue = getLegacyClasspathFile().getAsFile().get().getAbsolutePath();
+//            }
+//
+//            addSystemProp(prop.getKey(), propValue, lines);
+//        }
 
         additionalProperties.putAll(getSystemProperties().get());
 

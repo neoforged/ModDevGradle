@@ -3,6 +3,10 @@ plugins {
     id 'net.neoforged.moddev.legacyforge'
 }
 
+repositories {
+    maven {url = "https://maven.minecraftforge.net"}
+}
+
 group = 'com.example.legacy'
 version = '1.0.0'
 
@@ -13,7 +17,11 @@ java {
 }
 
 legacyForge {
-    mcpVersion = '1.19.2'
+    //mcpVersion = '1.20.6'
+    enable {
+        mcpVersion = "1.20.6"
+        disableRecompilation = true
+    }
 }
 
 publishing {

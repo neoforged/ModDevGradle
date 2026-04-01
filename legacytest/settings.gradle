@@ -5,6 +5,6 @@ plugins {
 
 includeBuild '..'
 
-include 'forge'
-include 'forgedownstream'
+include 'froge12005'
+//include 'forgedownstream'
 include 'nonmc'
