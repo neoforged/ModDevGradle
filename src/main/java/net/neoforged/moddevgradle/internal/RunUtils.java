@@ -171,9 +171,9 @@ final class RunUtils {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
 
-    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod, boolean isClient) {
+    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod, Provider<String> runType) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod, isClient));
+        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod, runType));
         return modFoldersProvider;
     }
 
@@ -216,17 +216,17 @@ final class RunUtils {
     public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
             Provider<Set<ModModel>> modsProvider,
             @Nullable Provider<ModModel> testedMod,
-            boolean isClient) {
+            Provider<String> runType) {
         return buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(sourceSet.getOutput());
-        }, isClient);
+        }, runType);
     }
 
     public static Provider<Map<String, ModFolder>> buildModFolders(Project project,
             Provider<Set<ModModel>> modsProvider,
             @Nullable Provider<ModModel> testedModProvider,
             BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver,
-            boolean isClient) {
+            Provider<String> runType) {
         // Convert it to optional to ensure zip will be called even if no mod under test is present.
         if (testedModProvider == null) {
             testedModProvider = project.provider(() -> null);
@@ -255,6 +255,7 @@ final class RunUtils {
                             outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                         }
 
+                        boolean isClient = runType.get().startsWith("client");
                         if (isClient) {
                             var clientSourceSets = mod.getModClientSourceSets().get();
                             for (int i = 0; i < clientSourceSets.size(); ++i) {

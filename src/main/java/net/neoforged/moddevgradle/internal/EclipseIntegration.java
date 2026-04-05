@@ -154,8 +154,7 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
         }
 
         // This is the actual main launch configuration that launches the game
-        boolean isClient = run.getType().get().startsWith("client");
-        var modFoldersProvider = getModFoldersProvider(project, run.getLoadedMods(), null, isClient);
+        var modFoldersProvider = getModFoldersProvider(project, run.getLoadedMods(), null, run.getType());
         var config = JavaApplicationLaunchConfig.builder(eclipseProjectName)
                 .vmArgs(
                         RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get())),
@@ -170,12 +169,12 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
     protected static ModFoldersProvider getModFoldersProvider(Project project,
             Provider<Set<ModModel>> modsProvider,
             @Nullable Provider<ModModel> testedMod,
-            boolean isClient) {
+            Provider<String> runType) {
         var folders = RunUtils.buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(RunUtils.findSourceSetProject(project, sourceSet).getProjectDir().toPath()
                     .resolve("bin")
                     .resolve(sourceSet.getName()));
-        }, isClient);
+        }, runType);
 
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(folders);
