@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import javax.inject.Inject;
@@ -68,7 +69,7 @@ public abstract class SplitMergedJar extends DefaultTask {
     }
 
     private static void spiltHelper(
-            java.util.jar.Manifest manifest,
+            Manifest manifest,
             ZipInputStream merged, ZipOutputStream common, ZipOutputStream client,
             @Nullable ZipOutputStream commonSources, @Nullable ZipOutputStream clientSources) throws IOException {
         var sourceDistName = new Attributes.Name("Minecraft-Dist");
