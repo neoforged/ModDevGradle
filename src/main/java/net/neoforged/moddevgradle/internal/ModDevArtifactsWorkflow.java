@@ -190,9 +190,6 @@ public record ModDevArtifactsWorkflow(
         });
 
         var splitMergedJar = tasks.register("splitMergedJar", SplitMergedJar.class, task -> {
-            if (!splitDist) {
-                throw new IllegalStateException("Can't request split dist result when splitDist is disabled!");
-            }
             task.getClientResourcesJar().set(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact));
             task.getClientJar().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT));
             task.getCommonJar().set(artifactPathStrategy.apply(WorkflowArtifact.COMMON));

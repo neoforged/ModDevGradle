@@ -43,6 +43,9 @@ public abstract class SplitMergedJar extends DefaultTask {
 
     @TaskAction
     public void splitMergedJar() throws IOException {
+        if (!getClientSourcesJar().isPresent()) {
+            throw new IllegalStateException("Can't request split dist result when splitDist is disabled!");
+        }
         try (
                 var clientResources = new JarFile(getClientResourcesJar().get().getAsFile());
                 var merged = new ZipInputStream(new BufferedInputStream(Files.newInputStream(getMergedJar().get().getAsFile().toPath())));

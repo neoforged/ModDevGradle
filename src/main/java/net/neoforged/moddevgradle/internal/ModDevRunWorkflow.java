@@ -272,8 +272,7 @@ public class ModDevRunWorkflow {
             if (!versionCapabilities.modLocatorRework()) {
                 // TODO: do this properly now that we have a flag in the version capabilities
                 // This will explicitly be replaced in RunUtils to make this work for IDEs
-                boolean isClient = run.getType().get().startsWith("client");
-                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, isClient).getClassesArgument());
+                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, true).getClassesArgument());
             }
             var prepareRunTask = setupRunInGradle(
                     project,
