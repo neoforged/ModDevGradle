@@ -98,7 +98,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
                 versionCapabilities,
-                settings.isDisableRecompilation());
+                settings.isDisableRecompilation(),
+                settings.isSplitDist());
 
         ModDevRunWorkflow.create(
                 project,

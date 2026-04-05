@@ -272,7 +272,8 @@ public class ModDevRunWorkflow {
             if (!versionCapabilities.modLocatorRework()) {
                 // TODO: do this properly now that we have a flag in the version capabilities
                 // This will explicitly be replaced in RunUtils to make this work for IDEs
-                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null).getClassesArgument());
+                boolean isClient = run.getType().get().startsWith("client");
+                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, isClient).getClassesArgument());
             }
             var prepareRunTask = setupRunInGradle(
                     project,
@@ -405,7 +406,8 @@ public class ModDevRunWorkflow {
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getEnvironment().set(run.getEnvironment());
-            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+            boolean isClient = run.getType().get().startsWith("client");
+            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, isClient));
         });
         createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
 
@@ -428,8 +430,8 @@ public class ModDevRunWorkflow {
             // Of course we need the arg files to be up-to-date ;)
             task.dependsOn(prepareRunTask);
             task.dependsOn(run.getTasksBefore());
-
-            task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+            boolean isClient = run.getType().get().startsWith("client");
+            task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, isClient));
         });
 
         return prepareRunTask;
@@ -524,7 +526,7 @@ public class ModDevRunWorkflow {
             task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
             task.jvmArgs(RunUtils.getArgFileParameter(vmArgsFile.get()));
 
-            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, loadedMods, testedMod);
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, loadedMods, testedMod, true);
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 

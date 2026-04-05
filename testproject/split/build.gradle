@@ -1,0 +1,26 @@
+plugins {
+    id 'net.neoforged.moddev'
+    id 'maven-publish'
+}
+
+neoForge {
+    enable {
+        version = project.neoforge_version
+        splitDist = true
+    }
+    runs {
+        "client" {
+            client()
+        }
+
+        "server" {
+            server()
+        }
+    }
+    mods {
+        splittest {
+            sourceSet sourceSets.main
+            clientSourceSet sourceSets.client
+        }
+    }
+}

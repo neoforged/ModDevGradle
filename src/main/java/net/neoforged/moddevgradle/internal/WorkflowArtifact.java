@@ -6,6 +6,10 @@ import org.jetbrains.annotations.ApiStatus;
 public enum WorkflowArtifact {
     COMPILED(""),
     COMPILED_WITH_SOURCES("-merged"),
+    COMMON("-common"),
+    COMMON_SOURCES("-common-sources"),
+    CLIENT("-client"),
+    CLIENT_SOURCES("-client-sources"),
     SOURCES("-sources"),
     CLIENT_RESOURCES("-client-extra-aka-minecraft-resources");
 

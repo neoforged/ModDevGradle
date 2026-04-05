@@ -67,7 +67,8 @@ final class VsCodeIntegration extends EclipseIntegration {
             eclipseModel.autoBuildTasks(run.getTasksBefore().toArray());
         }
 
-        var modFoldersProvider = getModFoldersProvider(project, run.getLoadedMods(), null);
+        boolean isClient = run.getType().get().startsWith("client");
+        var modFoldersProvider = getModFoldersProvider(project, run.getLoadedMods(), null, isClient);
         launchWriter.createGroup("Mod Development - " + project.getName(), WritingMode.REMOVE_EXISTING)
                 .createLaunchConfiguration()
                 .withName(runIdeName)

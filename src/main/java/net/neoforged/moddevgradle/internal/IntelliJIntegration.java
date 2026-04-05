@@ -122,7 +122,7 @@ final class IntelliJIntegration extends IdeIntegration {
             var intellijVmArgsFile = runArgsDir.map(dir -> dir.file("intellijVmArgs.txt"));
 
             var outputDirectory = IntelliJOutputDirectoryValueSource.getIntellijOutputDirectory(project);
-            var ideSpecificVmArgs = RunUtils.escapeJvmArg(getModFoldersProvider(project, outputDirectory, loadedMods, testedMod).getArgument());
+            var ideSpecificVmArgs = RunUtils.escapeJvmArg(getModFoldersProvider(project, outputDirectory, loadedMods, testedMod, true).getArgument());
             try {
                 var vmArgsFilePath = intellijVmArgsFile.get().getAsFile().toPath();
                 Files.createDirectories(vmArgsFilePath.getParent());
@@ -185,7 +185,8 @@ final class IntelliJIntegration extends IdeIntegration {
         }
         appRun.setModuleName(getIntellijModuleName(project, sourceSet));
         appRun.setWorkingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath());
-        var modFoldersProvider = getModFoldersProvider(project, outputDirectory, run.getLoadedMods(), null);
+        boolean isClient = run.getType().get().startsWith("client");
+        var modFoldersProvider = getModFoldersProvider(project, outputDirectory, run.getLoadedMods(), null, isClient);
         appRun.setEnvs(RunUtils.replaceModClassesEnv(run, modFoldersProvider));
         appRun.setJvmArgs(
                 RunUtils.escapeJvmArg(RunUtils.getArgFileParameter(prepareTask.getVmArgsFile().get()))
@@ -232,15 +233,16 @@ final class IntelliJIntegration extends IdeIntegration {
     private static ModFoldersProvider getModFoldersProvider(Project project,
             @Nullable Function<Project, File> outputDirectory,
             Provider<Set<ModModel>> modsProvider,
-            @Nullable Provider<ModModel> testedMod) {
+            @Nullable Provider<ModModel> testedMod,
+            boolean isClient) {
         Provider<Map<String, ModFolder>> folders;
         if (outputDirectory != null) {
             folders = RunUtils.buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
                 var sourceSetDir = outputDirectory.apply(RunUtils.findSourceSetProject(project, sourceSet)).toPath().resolve(getIdeaOutName(sourceSet));
                 output.from(sourceSetDir.resolve("classes"), sourceSetDir.resolve("resources"));
-            });
+            }, isClient);
         } else {
-            folders = RunUtils.getModFoldersForGradle(project, modsProvider, testedMod);
+            folders = RunUtils.getModFoldersForGradle(project, modsProvider, testedMod, isClient);
         }
 
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);

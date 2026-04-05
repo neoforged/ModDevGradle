@@ -1,12 +1,13 @@
 package net.neoforged.moddevgradle.dsl;
 
-import java.util.HashSet;
-import java.util.Set;
-import javax.inject.Inject;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.Nullable;
+
+import javax.inject.Inject;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class ModdingVersionSettings {
     @Nullable
@@ -14,6 +15,8 @@ public abstract class ModdingVersionSettings {
 
     @Nullable
     private String neoFormVersion;
+
+    private boolean splitDist = false;
 
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
@@ -77,4 +80,13 @@ public abstract class ModdingVersionSettings {
     public void setDisableRecompilation(boolean disableRecompilation) {
         this.disableRecompilation = disableRecompilation;
     }
+
+    public boolean isSplitDist() {
+        return splitDist;
+    }
+
+    public void setSplitDist(boolean enable) {
+        this.splitDist = enable;
+    }
+
 }
