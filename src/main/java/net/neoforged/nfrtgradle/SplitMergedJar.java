@@ -43,7 +43,7 @@ public abstract class SplitMergedJar extends DefaultTask {
 
     @TaskAction
     public void splitMergedJar() throws IOException {
-        if (!getClientSourcesJar().isPresent()) {
+        if (!getClientResourcesJar().isPresent()) {
             throw new IllegalStateException("Can't request split dist result when splitDist is disabled!");
         }
         try (
