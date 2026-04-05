@@ -255,7 +255,7 @@ final class RunUtils {
                             outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                         }
 
-                        if (isClient){
+                        if (isClient) {
                             var clientSourceSets = mod.getModClientSourceSets().get();
                             for (int i = 0; i < clientSourceSets.size(); ++i) {
                                 var sourceSet = clientSourceSets.get(i);

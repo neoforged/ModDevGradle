@@ -190,7 +190,7 @@ public record ModDevArtifactsWorkflow(
         });
 
         var splitMergedJar = tasks.register("splitMergedJar", SplitMergedJar.class, task -> {
-            if (!splitDist){
+            if (!splitDist) {
                 throw new IllegalStateException("Can't request split dist result when splitDist is disabled!");
             }
             task.getClientResourcesJar().set(createArtifacts.flatMap(CreateMinecraftArtifacts::getResourcesArtifact));
@@ -206,7 +206,7 @@ public record ModDevArtifactsWorkflow(
 
         });
 
-        if(splitDist){
+        if (splitDist) {
             ideIntegration.runTaskOnProjectSync(splitMergedJar);
         }
 
@@ -243,7 +243,7 @@ public record ModDevArtifactsWorkflow(
             config.setDescription("The compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            if (!splitDist){
+            if (!splitDist) {
                 config.getDependencies().addLater(minecraftClassesDependency);
             } else {
                 config.getDependencies().addLater(splitMergedJar.map(task -> project.files(task.getCommonJar())).map(dependencyFactory::create));
@@ -258,7 +258,7 @@ public record ModDevArtifactsWorkflow(
             config.setDescription("The extra client compile-time dependencies to develop a mod, including Minecraft and modding platform classes.");
             config.setCanBeResolved(false);
             config.setCanBeConsumed(false);
-            if (splitDist){
+            if (splitDist) {
                 config.getDependencies().addLater(splitMergedJar.map(task -> project.files(task.getClientJar())).map(dependencyFactory::create));
             }
         });
@@ -290,12 +290,12 @@ public record ModDevArtifactsWorkflow(
             result.addToSourceSet(sourceSets, !splitDist);
         }
 
-        if (splitDist){
+        if (splitDist) {
             SourceSetContainer sourceSets = ExtensionUtils.getSourceSets(project);
             var main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
             SourceSet client = sourceSets.create("client");
             client.setCompileClasspath(client.getCompileClasspath().plus(main.getOutput()));
-            result.addToSourceSet(client,true);
+            result.addToSourceSet(client, true);
         }
 
         return result;
