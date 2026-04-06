@@ -81,6 +81,12 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract ConfigurableFileCollection getInterfaceInjectionData();
 
     /**
+     * Files added to this collection will be passed to NFRT via the {@code --enum-extensions.data} command line option.
+     */
+    @InputFiles
+    public abstract ConfigurableFileCollection getEnumExtensionsData();
+
+    /**
      * If set to true, all files from {@link #getAccessTransformers()} are added as validated ATs and will fail the build
      * if they contain errors, or they target non-existent code elements.
      * <p>
@@ -294,6 +300,11 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
         for (var interfaceInjectionFile : getInterfaceInjectionData().getFiles()) {
             args.add("--interface-injection-data");
             args.add(interfaceInjectionFile.getAbsolutePath());
+        }
+        
+        for (var enumExtensionsFile : getEnumExtensionsData().getFiles()) {
+            args.add("--enum-extensions-data");
+            args.add(enumExtensionsFile.getAbsolutePath());
         }
 
         if (getParchmentEnabled().get()) {

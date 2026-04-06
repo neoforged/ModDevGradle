@@ -23,11 +23,14 @@ import org.jetbrains.annotations.ApiStatus;
  */
 @ApiStatus.Internal
 public record DataFileCollections(CollectionWrapper accessTransformers,
-        CollectionWrapper interfaceInjectionData) {
+        CollectionWrapper interfaceInjectionData,
+        CollectionWrapper enumExtensionsData) {
 
     public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
 
     public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
+    
+    public static final String CONFIGURATION_ENUM_EXTENSIONS_DATA = "enumExtensionsData";
 
     /**
      * Constructs the default data file collections for access transformers and intrface injection data
@@ -61,8 +64,14 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
                 CONFIGURATION_INTERFACE_INJECTION_DATA,
                 "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
                 "interfaceinjection");
+        
+        var enumExtensionsData = createCollection(
+                project,
+                CONFIGURATION_ENUM_EXTENSIONS_DATA,
+                "Enum extensions data adds new enum constants to Minecraft enums at development time",
+                "enumextensions");
 
-        return new DataFileCollections(accessTransformers, interfaceInjectionData);
+        return new DataFileCollections(accessTransformers, interfaceInjectionData, enumExtensionsData);
     }
     public record CollectionWrapper(DataFileCollection extension, Configuration configuration) {}
 
