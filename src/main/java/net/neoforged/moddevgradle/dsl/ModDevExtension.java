@@ -91,7 +91,7 @@ public abstract class ModDevExtension {
     public void setInterfaceInjectionData(Object... paths) {
         getInterfaceInjectionData().getFiles().setFrom(paths);
     }
-    
+
     /**
      * The data-files describing additional enum extension declarations to be added to Minecraft enums.
      * <p>
@@ -102,11 +102,11 @@ public abstract class ModDevExtension {
     public void enumExtensionsData(Action<DataFileCollection> action) {
         action.execute(enumExtensionsData);
     }
-    
+
     public DataFileCollection getEnumExtensionsData() {
         return enumExtensionsData;
     }
-    
+
     /**
      * Replaces current enum extensions data files.
      */

@@ -301,7 +301,7 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
             args.add("--interface-injection-data");
             args.add(interfaceInjectionFile.getAbsolutePath());
         }
-        
+
         for (var enumExtensionsFile : getEnumExtensionsData().getFiles()) {
             args.add("--enum-extensions-data");
             args.add(enumExtensionsFile.getAbsolutePath());

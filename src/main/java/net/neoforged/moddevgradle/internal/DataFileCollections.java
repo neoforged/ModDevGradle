@@ -29,7 +29,7 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
     public static final String CONFIGURATION_ACCESS_TRANSFORMERS = "accessTransformers";
 
     public static final String CONFIGURATION_INTERFACE_INJECTION_DATA = "interfaceInjectionData";
-    
+
     public static final String CONFIGURATION_ENUM_EXTENSIONS_DATA = "enumExtensionsData";
 
     /**
@@ -64,7 +64,7 @@ public record DataFileCollections(CollectionWrapper accessTransformers,
                 CONFIGURATION_INTERFACE_INJECTION_DATA,
                 "Interface injection data adds extend/implements clauses for interfaces to Minecraft code at development time",
                 "interfaceinjection");
-        
+
         var enumExtensionsData = createCollection(
                 project,
                 CONFIGURATION_ENUM_EXTENSIONS_DATA,
