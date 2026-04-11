@@ -114,7 +114,7 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
     @Test
     public void testPublishEnumExtensionsFile() throws IOException {
         writeProjectFile("enumextensions.json", "{}");
-        writeProjectFile("enumextensions/enumextensions.json", "{}");
+        writeProjectFile("subfolder/enumextensions.json", "{}");
         Files.writeString(testProjectDir.toPath().resolve("enumextensions.json"), "{}");
 
         publishDataFiles("test", "publish-if", "1.0", """
