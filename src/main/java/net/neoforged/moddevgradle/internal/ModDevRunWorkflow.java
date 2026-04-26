@@ -125,6 +125,8 @@ public class ModDevRunWorkflow {
             };
         }
 
+        configureSplitRunSourceSets(project, artifactsWorkflow, runs);
+
         setupRuns(
                 project,
                 branding,
@@ -139,6 +141,18 @@ public class ModDevRunWorkflow {
                 configureLegacyClasspath,
                 artifactsWorkflow.downloadAssets().flatMap(DownloadAssets::getAssetPropertiesFile),
                 versionCapabilities);
+    }
+
+    private static void configureSplitRunSourceSets(Project project, ModDevArtifactsWorkflow artifactsWorkflow, DomainObjectCollection<RunModel> runs) {
+        var clientSourceSet = artifactsWorkflow.splitClientSourceSet();
+        if (clientSourceSet == null) {
+            return;
+        }
+
+        var mainSourceSet = ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+        runs.all(run -> run.getSourceSet().convention(
+                run.getType().map(type -> RunUtils.isClientRunType(type) ? clientSourceSet : mainSourceSet)
+                        .orElse(mainSourceSet)));
     }
 
     private static void forbidAdditionalRuntimeDependencies(Configuration configuration, VersionCapabilitiesInternal versionCapabilities) {
@@ -272,7 +286,9 @@ public class ModDevRunWorkflow {
             if (!versionCapabilities.modLocatorRework()) {
                 // TODO: do this properly now that we have a flag in the version capabilities
                 // This will explicitly be replaced in RunUtils to make this work for IDEs
-                run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null).getClassesArgument());
+                run.getEnvironment().put(
+                        "MOD_CLASSES",
+                        RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, RunUtils.getRequiredType(project, run)).getClassesArgument());
             }
             var prepareRunTask = setupRunInGradle(
                     project,
@@ -405,7 +421,7 @@ public class ModDevRunWorkflow {
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getEnvironment().set(run.getEnvironment());
-            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, type));
         });
         createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
 
@@ -429,7 +445,7 @@ public class ModDevRunWorkflow {
             task.dependsOn(prepareRunTask);
             task.dependsOn(run.getTasksBefore());
 
-            task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+            task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null, type));
         });
 
         return prepareRunTask;
@@ -524,7 +540,7 @@ public class ModDevRunWorkflow {
             task.systemProperty("fml.junit.argsfile", programArgsFile.get().getAsFile().getAbsolutePath());
             task.jvmArgs(RunUtils.getArgFileParameter(vmArgsFile.get()));
 
-            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, loadedMods, testedMod);
+            var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, loadedMods, testedMod, project.provider(() -> "client"));
             task.getJvmArgumentProviders().add(modFoldersProvider);
         });
 
