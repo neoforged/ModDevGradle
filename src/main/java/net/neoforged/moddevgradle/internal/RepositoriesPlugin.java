@@ -10,6 +10,7 @@ import org.gradle.api.artifacts.repositories.MavenArtifactRepository;
 import org.gradle.api.initialization.Settings;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.PluginAware;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * This plugin acts in different roles depending on where it is applied:
@@ -45,10 +46,13 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
     }
 
     /**
-     * Returns the NeoForge repository. Exposed for dynamic filter population.
+     * Returns the NeoForge repository, or {@code null} when the repository was
+     * configured at the settings level and this project has no local reference.
      */
+    @Nullable
     static MavenArtifactRepository getNeoForgeRepository(Project project) {
-        return (MavenArtifactRepository) project.getExtensions().getByName(NEOFORGE_REPO_EXTENSION);
+        var ext = project.getExtensions().findByName(NEOFORGE_REPO_EXTENSION);
+        return (MavenArtifactRepository) ext;
     }
 
     /**
@@ -58,10 +62,15 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
      * <p>
      * Must be called before any dependency resolution uses this repository —
      * Gradle locks the content descriptor on first use.
+     * <p>
+     * When the repository was configured at the settings level this is a safe
+     * no-op — the content filter is already installed from {@code apply()}.
      */
     static void applyContentFilter(Project project) {
         var neoRepo = getNeoForgeRepository(project);
-        neoRepo.content(NeoForgedRepositoryFilter::filter);
+        if (neoRepo != null) {
+            neoRepo.content(NeoForgedRepositoryFilter::filter);
+        }
     }
 
     private static MavenArtifactRepository applyRepositories(RepositoryHandler repositories, boolean applyContentFilter) {

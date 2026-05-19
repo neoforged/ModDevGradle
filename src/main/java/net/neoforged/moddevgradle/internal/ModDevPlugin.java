@@ -16,6 +16,7 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.plugins.JavaLibraryPlugin;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,9 +88,10 @@ public class ModDevPlugin implements Plugin<Project> {
                 versionCapabilities)
                 : ModdingDependencies.createVanillaOnly(neoForm, neoFormNotation);
 
-        if (neoForgeVersion != null) {
-            populateNeoForgeRepositoryFilter(project, neoForgeVersion);
-        }
+        // Always apply at least the stable baseline filter to the NeoForged
+        // repository. When a NeoForge version is selected we also discover
+        // additional game-library modules from its metadata.
+        populateNeoForgeRepositoryFilter(project, neoForgeVersion);
 
         ArtifactNamingStrategy artifactNamingStrategy;
         // It's helpful to be able to differentiate the Vanilla jar and the NeoForge jar in classic multiloader setups.
@@ -129,28 +131,29 @@ public class ModDevPlugin implements Plugin<Project> {
      * The HTTP download bypasses Gradle's dependency resolution so the repository content
      * descriptor stays unlocked and can receive its first {@code content()} call.
      */
-    private static void populateNeoForgeRepositoryFilter(Project project, String neoForgeVersion) {
-        // Regex to extract group:module pairs from Gradle Module Metadata JSON.
-        var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
+    private static void populateNeoForgeRepositoryFilter(Project project,
+            @Nullable String neoForgeVersion) {
+        // Clear any stale dynamic modules from a previous build in this daemon.
+        NeoForgedRepositoryFilter.clearGameLibraries();
 
-        // 1. Discover game library modules from the NeoForge artifact metadata.
-        fetchModuleDependencies("net/neoforged/neoforge/" + neoForgeVersion
-                + "/neoforge-" + neoForgeVersion + ".module", depPattern);
+        if (neoForgeVersion != null) {
+            var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
 
-        // 2. Discover build tool modules from the NeoForm Runtime metadata.
-        //    NFRT ships external tools (DiffPatch, AutoRenamingTool, etc.) whose
-        //    transitive dependencies are also rehosted on the NeoForged Maven.
-        var nfrtVersion = NeoFormRuntimeExtension.getVersion(project);
-        fetchModuleDependencies("net/neoforged/neoform-runtime/" + nfrtVersion
-                + "/neoform-runtime-" + nfrtVersion + ".module", depPattern);
+            // Discover game library modules from the NeoForge artifact metadata.
+            fetchModuleDependencies("net/neoforged/neoforge/" + neoForgeVersion
+                    + "/neoforge-" + neoForgeVersion + ".module", depPattern);
 
-        // Apply the content filter now — before any dependency resolution uses the
-        // NeoForge repository.
-        try {
-            RepositoriesPlugin.applyContentFilter(project);
-        } catch (Exception e) {
-            LOG.warn("Failed to apply NeoForge repository content filter: {}", e.getMessage());
+            // Discover build tool modules from the NeoForm Runtime metadata.
+            var nfrtVersion = NeoFormRuntimeExtension.getVersion(project);
+            fetchModuleDependencies("net/neoforged/neoform-runtime/" + nfrtVersion
+                    + "/neoform-runtime-" + nfrtVersion + ".module", depPattern);
         }
+
+        // Apply the content filter now — before any dependency resolution uses
+        // the NeoForge repository. In the vanilla-only case this installs the
+        // stable baseline; when a NeoForge version is selected it also includes
+        // any dynamically discovered modules.
+        RepositoriesPlugin.applyContentFilter(project);
     }
 
     private static void fetchModuleDependencies(String path, Pattern depPattern) {

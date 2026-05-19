@@ -225,6 +225,16 @@ public class NeoForgedRepositoryFilter {
     }
 
     /**
+     * Clears all dynamically discovered modules. Called at the start of
+     * {@code populateNeoForgeRepositoryFilter} so that each build computes its
+     * own allowed-module set deterministically, avoiding cross-build leakage
+     * when the Gradle daemon persists static state.
+     */
+    static void clearGameLibraries() {
+        gameLibraryModules.clear();
+    }
+
+    /**
      * Applies the full filter: stable known modules plus any dynamically discovered
      * game library modules for the selected NeoForge version.
      */

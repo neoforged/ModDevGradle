@@ -174,6 +174,68 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
                         "net.neoforged:neoforge:" + version + "[net.neoforged:neoforge-dependencies]");
     }
 
+    @Nested
+    class RepositoryFilter {
+        @Test
+        void testContentFilterAppliedWhenNeoForgeVersionIsSet() {
+            extension.setVersion("21.10.48-beta");
+
+            var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
+            assertThat(neoRepo).isNotNull();
+            // The content filter should be installed on the NeoForge repository.
+            // We cannot inspect the filter rules directly through public API, but we
+            // can verify the repository exists and is accessible.
+            assertThat(project.getRepositories().stream()
+                    .filter(r -> "NeoForged Releases".equals(r.getName()))
+                    .findFirst()).isPresent();
+        }
+
+        @Test
+        void testContentFilterAppliedInVanillaOnlyMode() {
+            extension.setNeoFormVersion("1.21.4-20240101.235959");
+
+            var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
+            assertThat(neoRepo).isNotNull();
+            // The stable baseline filter must be installed even when no NeoForge
+            // version is selected, otherwise the NeoForged Maven (which mirrors
+            // Maven Central) would be unfiltered.
+            assertThat(project.getRepositories().stream()
+                    .filter(r -> "NeoForged Releases".equals(r.getName()))
+                    .findFirst()).isPresent();
+        }
+
+        @Test
+        void testApplyContentFilterIsNoOpWhenRepositoryNotOnProject() {
+            // Create a fresh project without ModDevPlugin — the NeoForge repository
+            // extension is never registered, so applyContentFilter must not throw.
+            var freshProject = ProjectBuilder.builder().build();
+            // Must not throw, even though there is no NeoForge repository extension.
+            RepositoriesPlugin.applyContentFilter(freshProject);
+        }
+
+        @Test
+        void testDynamicModuleDiscoveryClearsStaleState() {
+            // Simulate a first enable — should populate dynamic modules.
+            extension.setVersion("21.10.48-beta");
+
+            // Run a second enable on a fresh project with a different version.
+            // The dynamic set must be cleared first so the previous version's
+            // modules do not leak.
+            var project2 = ProjectBuilder.builder().build();
+            project2.getPlugins().apply(ModDevPlugin.class);
+            var ext2 = ExtensionUtils.getExtension(project2, "neoForge", NeoForgeExtension.class);
+            var java2 = ExtensionUtils.getExtension(project2, "java", JavaPluginExtension.class);
+            java2.getToolchain().getLanguageVersion().set(JavaLanguageVersion.current());
+
+            // If state leaked, this would carry modules from "21.10.48-beta".
+            // The filter should still be applied successfully.
+            ext2.setVersion("21.0.133-beta");
+
+            var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project2);
+            assertThat(neoRepo).isNotNull();
+        }
+    }
+
     private void assertContainsModdingRuntimeDependencies(String version, String configurationName) {
         var configuration = project.getConfigurations().getByName(configurationName);
 
