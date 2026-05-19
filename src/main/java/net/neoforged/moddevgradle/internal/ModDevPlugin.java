@@ -2,6 +2,8 @@ package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 import net.neoforged.minecraftdependencies.MinecraftDependenciesPlugin;
 import net.neoforged.moddevgradle.dsl.ModDevExtension;
@@ -123,40 +125,49 @@ public class ModDevPlugin implements Plugin<Project> {
     }
 
     /**
-     * Downloads the Gradle Module Metadata (.module file) for the given NeoForge version
-     * directly via HTTP to discover which game library modules it transitively depends on.
-     * Registers them in {@link NeoForgedRepositoryFilter} and then applies the content
+     * Discovers additional modules from the Gradle Module Metadata of the selected
+     * NeoForge version (if any) and the NeoForm Runtime, then applies the content
      * filter to the NeoForge repository.
      * <p>
-     * The HTTP download bypasses Gradle's dependency resolution so the repository content
-     * descriptor stays unlocked and can receive its first {@code content()} call.
+     * Dynamic modules are collected in a local set and passed directly to
+     * {@link NeoForgedRepositoryFilter#filter} — no static mutable state is shared
+     * across projects, which is safe with parallel project configuration.
+     * <p>
+     * NFRT metadata is always fetched regardless of whether a NeoForge version was
+     * selected, since NFRT can introduce new direct dependencies over time even in
+     * vanilla-only mode.
      */
     private static void populateNeoForgeRepositoryFilter(Project project,
             @Nullable String neoForgeVersion) {
-        // Clear any stale dynamic modules from a previous build in this daemon.
-        NeoForgedRepositoryFilter.clearGameLibraries();
+        var dynamicModules = new HashSet<String>();
+        var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
 
         if (neoForgeVersion != null) {
-            var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
-
             // Discover game library modules from the NeoForge artifact metadata.
             fetchModuleDependencies("net/neoforged/neoforge/" + neoForgeVersion
-                    + "/neoforge-" + neoForgeVersion + ".module", depPattern);
+                    + "/neoforge-" + neoForgeVersion + ".module", depPattern, dynamicModules);
+        }
 
-            // Discover build tool modules from the NeoForm Runtime metadata.
+        // Always discover build tool modules from the NeoForm Runtime metadata.
+        // NFRT ships external tools (DiffPatch, AutoRenamingTool, etc.) whose
+        // transitive dependencies are rehosted on the NeoForged Maven and may
+        // change across NFRT releases.
+        try {
             var nfrtVersion = NeoFormRuntimeExtension.getVersion(project);
             fetchModuleDependencies("net/neoforged/neoform-runtime/" + nfrtVersion
-                    + "/neoform-runtime-" + nfrtVersion + ".module", depPattern);
+                    + "/neoform-runtime-" + nfrtVersion + ".module", depPattern, dynamicModules);
+        } catch (Exception e) {
+            LOG.warn("Failed to resolve NFRT version for dynamic filter discovery: {}", e.getMessage());
         }
 
         // Apply the content filter now — before any dependency resolution uses
-        // the NeoForge repository. In the vanilla-only case this installs the
-        // stable baseline; when a NeoForge version is selected it also includes
-        // any dynamically discovered modules.
-        RepositoriesPlugin.applyContentFilter(project);
+        // the NeoForge repository. Each enable() call passes its own local set,
+        // so parallel project configuration is safe.
+        RepositoriesPlugin.applyContentFilter(project, dynamicModules);
     }
 
-    private static void fetchModuleDependencies(String path, Pattern depPattern) {
+    private static void fetchModuleDependencies(String path, Pattern depPattern,
+            Set<String> dynamicModules) {
         try {
             var moduleUrl = URI.create(
                     "https://maven.neoforged.net/releases/" + path).toURL();
@@ -170,7 +181,7 @@ public class ModDevPlugin implements Plugin<Project> {
                     if ("*".equals(group) || "*".equals(module)) {
                         continue;
                     }
-                    NeoForgedRepositoryFilter.addGameLibrary(group, module);
+                    dynamicModules.add(group + ":" + module);
                 }
             }
         } catch (Exception e) {

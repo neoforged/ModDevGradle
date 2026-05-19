@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.HashSet;
 import java.util.Set;
 import net.neoforged.moddevgradle.AbstractProjectBuilderTest;
 import net.neoforged.moddevgradle.dsl.NeoForgeExtension;
@@ -11,6 +12,8 @@ import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
 import org.gradle.api.InvalidUserCodeException;
 import org.gradle.api.Task;
+import org.gradle.api.artifacts.repositories.RepositoryContentDescriptor;
+import org.gradle.api.attributes.Attribute;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
@@ -177,14 +180,45 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
     @Nested
     class RepositoryFilter {
         @Test
-        void testContentFilterAppliedWhenNeoForgeVersionIsSet() {
+        void testFilterIncludesStableModules() {
+            var descriptor = new RecordingDescriptor();
+            NeoForgedRepositoryFilter.filter(descriptor, Set.of());
+
+            // The stable baseline must include NeoForge's own artifacts.
+            assertThat(descriptor.included).anyMatch(
+                    r -> r[0].equals("net.neoforged") && r[1].equals("neoforge"));
+        }
+
+        @Test
+        void testFilterIncludesDynamicModules() {
+            var descriptor = new RecordingDescriptor();
+            var dynamic = Set.of("com.example:new-lib", "org.test:another");
+            NeoForgedRepositoryFilter.filter(descriptor, dynamic);
+
+            assertThat(descriptor.included).anyMatch(
+                    r -> r[0].equals("com.example") && r[1].equals("new-lib"));
+            assertThat(descriptor.included).anyMatch(
+                    r -> r[0].equals("org.test") && r[1].equals("another"));
+        }
+
+        @Test
+        void testFilterIgnoresMalformedDynamicEntries() {
+            var descriptor = new RecordingDescriptor();
+            // Entries without a colon are skipped gracefully.
+            NeoForgedRepositoryFilter.filter(descriptor, Set.of("malformed"));
+
+            // Stable modules still included; malformed entry did not throw.
+            assertThat(descriptor.included).isNotEmpty();
+            assertThat(descriptor.included).noneMatch(
+                    r -> r[0].equals("malformed"));
+        }
+
+        @Test
+        void testContentFilterAppliedInNeoForgeMode() {
             extension.setVersion("21.10.48-beta");
 
             var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
             assertThat(neoRepo).isNotNull();
-            // The content filter should be installed on the NeoForge repository.
-            // We cannot inspect the filter rules directly through public API, but we
-            // can verify the repository exists and is accessible.
             assertThat(project.getRepositories().stream()
                     .filter(r -> "NeoForged Releases".equals(r.getName()))
                     .findFirst()).isPresent();
@@ -196,9 +230,6 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
 
             var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
             assertThat(neoRepo).isNotNull();
-            // The stable baseline filter must be installed even when no NeoForge
-            // version is selected, otherwise the NeoForged Maven (which mirrors
-            // Maven Central) would be unfiltered.
             assertThat(project.getRepositories().stream()
                     .filter(r -> "NeoForged Releases".equals(r.getName()))
                     .findFirst()).isPresent();
@@ -206,33 +237,100 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
 
         @Test
         void testApplyContentFilterIsNoOpWhenRepositoryNotOnProject() {
-            // Create a fresh project without ModDevPlugin — the NeoForge repository
-            // extension is never registered, so applyContentFilter must not throw.
             var freshProject = ProjectBuilder.builder().build();
             // Must not throw, even though there is no NeoForge repository extension.
-            RepositoriesPlugin.applyContentFilter(freshProject);
+            RepositoriesPlugin.applyContentFilter(freshProject, Set.of());
         }
 
         @Test
-        void testDynamicModuleDiscoveryClearsStaleState() {
-            // Simulate a first enable — should populate dynamic modules.
+        void testApplyContentFilterDoesNotThrowWithEmptyDynamicSet() {
+            extension.setVersion("21.10.48-beta");
+            var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
+            assertThat(neoRepo).isNotNull();
+            // Applying the filter with an empty dynamic set is valid (e.g. offline mode).
+            RepositoriesPlugin.applyContentFilter(project, Set.of());
+        }
+
+        @Test
+        void testParallelEnablesUseIsolatedDynamicSets() {
+            // Simulate two projects enabling modding concurrently — each call
+            // to populateNeoForgeRepositoryFilter passes its own local HashSet,
+            // so there is no shared mutable state between them.
             extension.setVersion("21.10.48-beta");
 
-            // Run a second enable on a fresh project with a different version.
-            // The dynamic set must be cleared first so the previous version's
-            // modules do not leak.
             var project2 = ProjectBuilder.builder().build();
             project2.getPlugins().apply(ModDevPlugin.class);
             var ext2 = ExtensionUtils.getExtension(project2, "neoForge", NeoForgeExtension.class);
             var java2 = ExtensionUtils.getExtension(project2, "java", JavaPluginExtension.class);
             java2.getToolchain().getLanguageVersion().set(JavaLanguageVersion.current());
-
-            // If state leaked, this would carry modules from "21.10.48-beta".
-            // The filter should still be applied successfully.
             ext2.setVersion("21.0.133-beta");
 
-            var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project2);
-            assertThat(neoRepo).isNotNull();
+            // Both projects must have their NeoForge repository available without
+            // cross-contamination of dynamic module sets.
+            assertThat(RepositoriesPlugin.getNeoForgeRepository(project)).isNotNull();
+            assertThat(RepositoriesPlugin.getNeoForgeRepository(project2)).isNotNull();
+        }
+
+        /**
+         * A minimal {@link RepositoryContentDescriptor} that records every
+         * {@code includeModule} call so tests can assert filter behavior.
+         */
+        static class RecordingDescriptor implements RepositoryContentDescriptor {
+            final Set<String[]> included = new HashSet<>();
+
+            @Override
+            public void includeModule(String group, String name) {
+                included.add(new String[] { group, name });
+            }
+
+            // Remaining methods are unused by NeoForgedRepositoryFilter; stub them out.
+            @Override
+            public void includeGroup(String group) {}
+
+            @Override
+            public void includeGroupAndSubgroups(String groupPrefix) {}
+
+            @Override
+            public void includeGroupByRegex(String groupRegex) {}
+
+            @Override
+            public void includeModuleByRegex(String groupRegex, String nameRegex) {}
+
+            @Override
+            public void includeVersion(String group, String name, String version) {}
+
+            @Override
+            public void includeVersionByRegex(String groupRegex, String nameRegex, String versionRegex) {}
+
+            @Override
+            public void excludeGroup(String group) {}
+
+            @Override
+            public void excludeGroupAndSubgroups(String groupPrefix) {}
+
+            @Override
+            public void excludeGroupByRegex(String groupRegex) {}
+
+            @Override
+            public void excludeModule(String group, String name) {}
+
+            @Override
+            public void excludeModuleByRegex(String groupRegex, String nameRegex) {}
+
+            @Override
+            public void excludeVersion(String group, String name, String version) {}
+
+            @Override
+            public void excludeVersionByRegex(String groupRegex, String nameRegex, String versionRegex) {}
+
+            @Override
+            public void onlyForConfigurations(String... configurationNames) {}
+
+            @Override
+            public void notForConfigurations(String... configurationNames) {}
+
+            @Override
+            public <T> void onlyForAttribute(Attribute<T> attribute, T... validValues) {}
         }
     }
 

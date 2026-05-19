@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
+import java.util.Set;
 import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -56,20 +57,22 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
     }
 
     /**
-     * Applies the content filter to the NeoForge repository, including any
-     * dynamically discovered game library modules from
-     * {@link NeoForgedRepositoryFilter#addGameLibrary(String, String)}.
+     * Applies the content filter to the NeoForge repository, including the
+     * caller-supplied dynamically discovered modules.
      * <p>
      * Must be called before any dependency resolution uses this repository —
      * Gradle locks the content descriptor on first use.
      * <p>
      * When the repository was configured at the settings level this is a safe
      * no-op — the content filter is already installed from {@code apply()}.
+     *
+     * @param dynamicModules set of {@code "group:module"} strings discovered at
+     *                       configuration time; empty set when none were discovered
      */
-    static void applyContentFilter(Project project) {
+    static void applyContentFilter(Project project, Set<String> dynamicModules) {
         var neoRepo = getNeoForgeRepository(project);
         if (neoRepo != null) {
-            neoRepo.content(NeoForgedRepositoryFilter::filter);
+            neoRepo.content(descriptor -> NeoForgedRepositoryFilter.filter(descriptor, dynamicModules));
         }
     }
 
@@ -96,7 +99,7 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
             repo.setName("NeoForged Releases");
             repo.setUrl(URI.create("https://maven.neoforged.net/releases/"));
             if (applyContentFilter) {
-                repo.content(NeoForgedRepositoryFilter::filter);
+                repo.content(descriptor -> NeoForgedRepositoryFilter.filter(descriptor, Set.of()));
             }
         });
         return neoForgeRepo;

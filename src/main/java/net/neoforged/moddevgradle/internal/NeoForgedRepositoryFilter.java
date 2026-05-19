@@ -1,10 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import org.gradle.api.artifacts.repositories.RepositoryContentDescriptor;
-import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Controls which modules Gradle may resolve from the NeoForged Maven.
@@ -17,11 +14,11 @@ import org.jetbrains.annotations.ApiStatus;
  * <li><b>Stable baseline</b> — the full set of modules known to be hosted on the
  * NeoForged Maven. This covers NeoForge artifacts, modding toolchain projects, and
  * their transitive dependencies at the time the plugin was built.</li>
- * <li><b>Dynamic discovery</b> — at configuration time, the plugin downloads the Gradle
- * Module Metadata for the selected NeoForge and NeoForm Runtime versions and adds
- * any newly-declared direct dependencies to the filter. This allows new Minecraft
- * releases to work without a plugin update, provided their libraries are also
- * mirrored.</li>
+ * <li><b>Dynamic modules</b> — discovered at configuration time by downloading the
+ * Gradle Module Metadata for the selected NeoForge and NeoForm Runtime versions.
+ * The caller passes these in as a {@code Set<String>} keyed by {@code "group:module"}.
+ * This allows new Minecraft releases to work without a plugin update, provided
+ * their libraries are also mirrored.</li>
  * </ul>
  */
 public class NeoForgedRepositoryFilter {
@@ -210,45 +207,22 @@ public class NeoForgedRepositoryFilter {
     // @formatter:on
 
     /**
-     * Dynamically discovered game library modules, keyed by "group:module".
-     * Populated by {@link #addGameLibrary} before dependency resolution.
+     * Applies the full filter to the given repository content descriptor: stable
+     * known modules plus caller-supplied dynamically discovered modules.
+     *
+     * @param descriptor     the repository content descriptor to configure
+     * @param dynamicModules set of {@code "group:module"} strings discovered at
+     *                       configuration time; may be empty but never null
      */
-    private static final Set<String> gameLibraryModules = Collections.synchronizedSet(new HashSet<>());
-
-    /**
-     * Adds a game library module (group:name) to the allowed set.
-     * Safe to call from any thread before dependency resolution begins.
-     */
-    @ApiStatus.Internal
-    public static void addGameLibrary(String group, String module) {
-        gameLibraryModules.add(group + ":" + module);
-    }
-
-    /**
-     * Clears all dynamically discovered modules. Called at the start of
-     * {@code populateNeoForgeRepositoryFilter} so that each build computes its
-     * own allowed-module set deterministically, avoiding cross-build leakage
-     * when the Gradle daemon persists static state.
-     */
-    static void clearGameLibraries() {
-        gameLibraryModules.clear();
-    }
-
-    /**
-     * Applies the full filter: stable known modules plus any dynamically discovered
-     * game library modules for the selected NeoForge version.
-     */
-    public static void filter(RepositoryContentDescriptor filter) {
+    public static void filter(RepositoryContentDescriptor descriptor, Set<String> dynamicModules) {
         for (var entry : STABLE_MODULES) {
-            filter.includeModule(entry[0], entry[1]);
+            descriptor.includeModule(entry[0], entry[1]);
         }
 
-        synchronized (gameLibraryModules) {
-            for (var coordinate : gameLibraryModules) {
-                var parts = coordinate.split(":", 2);
-                if (parts.length == 2) {
-                    filter.includeModule(parts[0], parts[1]);
-                }
+        for (var coordinate : dynamicModules) {
+            var parts = coordinate.split(":", 2);
+            if (parts.length == 2) {
+                descriptor.includeModule(parts[0], parts[1]);
             }
         }
     }
