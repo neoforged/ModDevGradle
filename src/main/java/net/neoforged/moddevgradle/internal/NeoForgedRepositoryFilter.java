@@ -1,8 +1,9 @@
+package net.neoforged.moddevgradle.internal;
 
-package net.neoforged.moddevgradle.internal.generated;
+import org.gradle.api.artifacts.repositories.RepositoryContentDescriptor;
 
 public class NeoForgedRepositoryFilter {
-    public static void filter(org.gradle.api.artifacts.repositories.RepositoryContentDescriptor filter) {
+    public static void filter(RepositoryContentDescriptor filter) {
         filter.includeModule("ca.weblite", "java-objc-bridge");
         filter.includeModule("com.electronwill.night-config", "core");
         filter.includeModule("com.electronwill.night-config", "toml");

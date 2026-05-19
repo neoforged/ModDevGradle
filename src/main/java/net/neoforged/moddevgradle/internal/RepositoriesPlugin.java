@@ -2,7 +2,6 @@ package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
 import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
-import net.neoforged.moddevgradle.internal.generated.NeoForgedRepositoryFilter;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
