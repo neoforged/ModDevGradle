@@ -25,6 +25,14 @@ public abstract class NeoFormRuntimeExtension {
     }
 
     /**
+     * Returns the effective NFRT version from the project's extension.
+     */
+    public static String getVersion(Project project) {
+        var ext = project.getExtensions().getByType(NeoFormRuntimeExtension.class);
+        return ext.getVersion().get();
+    }
+
+    /**
      * Overrides the version of NFRT to use. This is an advanced feature. This plugin will default to a
      * compatible version.
      * <p>

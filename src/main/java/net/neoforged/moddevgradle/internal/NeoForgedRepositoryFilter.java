@@ -1,171 +1,245 @@
 package net.neoforged.moddevgradle.internal;
 
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.gradle.api.artifacts.repositories.RepositoryContentDescriptor;
+import org.jetbrains.annotations.ApiStatus;
 
+/**
+ * Controls which modules Gradle may resolve from the NeoForged Maven.
+ * <p>
+ * The NeoForged Maven mirrors many Maven Central artifacts. Without a content filter,
+ * Gradle could resolve arbitrary third-party artifacts from it.
+ * <p>
+ * This filter is built from two layers:
+ * <ul>
+ * <li><b>Stable baseline</b> — the full set of modules known to be hosted on the
+ * NeoForged Maven. This covers NeoForge artifacts, modding toolchain projects, and
+ * their transitive dependencies at the time the plugin was built.</li>
+ * <li><b>Dynamic discovery</b> — at configuration time, the plugin downloads the Gradle
+ * Module Metadata for the selected NeoForge and NeoForm Runtime versions and adds
+ * any newly-declared direct dependencies to the filter. This allows new Minecraft
+ * releases to work without a plugin update, provided their libraries are also
+ * mirrored.</li>
+ * </ul>
+ */
 public class NeoForgedRepositoryFilter {
+    /**
+     * All modules currently known to be hosted on the NeoForged Maven.
+     * When the selected NeoForge version pulls in a library that is not yet listed here,
+     * the dynamic discovery path in {@link net.neoforged.moddevgradle.internal.ModDevPlugin}
+     * adds it at configuration time.
+     */
+    // @formatter:off
+    private static final String[][] STABLE_MODULES = {
+            // --- net.neoforged sub-groups ---
+            {"net.neoforged.accesstransformers", "at-modlauncher"},
+            {"net.neoforged.accesstransformers", "at-parser"},
+            {"net.neoforged.fancymodloader", "earlydisplay"},
+            {"net.neoforged.fancymodloader", "junit-fml"},
+            {"net.neoforged.fancymodloader", "loader"},
+            {"net.neoforged.installertools", "binarypatcher"},
+            {"net.neoforged.installertools", "cli-utils"},
+            {"net.neoforged.installertools", "installertools"},
+            {"net.neoforged.javadoctor", "gson-io"},
+            {"net.neoforged.javadoctor", "spec"},
+            {"net.neoforged.jst", "jst-cli-bundle"},
+            // --- main net.neoforged group ---
+            {"net.neoforged", "AutoRenamingTool"},
+            {"net.neoforged", "DevLaunch"},
+            {"net.neoforged", "JarJarFileSystems"},
+            {"net.neoforged", "JarJarMetadata"},
+            {"net.neoforged", "JarJarSelector"},
+            {"net.neoforged", "accesstransformers"},
+            {"net.neoforged", "bus"},
+            {"net.neoforged", "coremods"},
+            {"net.neoforged", "mergetool"},
+            {"net.neoforged", "minecraft-dependencies"},
+            {"net.neoforged", "neoforge"},
+            {"net.neoforged", "neoform"},
+            {"net.neoforged", "neoform-runtime"},
+            {"net.neoforged", "srgutils"},
+            {"net.neoforged", "testframework"},
+            // --- modding toolchain ---
+            {"cpw.mods", "bootstraplauncher"},
+            {"cpw.mods", "modlauncher"},
+            {"cpw.mods", "securejarhandler"},
+            {"net.minecraftforge", "mergetool"},
+            {"net.minecraftforge", "srgutils"},
+            {"net.minecrell", "terminalconsoleappender"},
+            {"net.covers1624", "DevLogin"},
+            {"net.covers1624", "Quack"},
+            {"io.codechicken", "DiffPatch"},
+            {"io.github.llamalad7", "mixinextras-neoforge"},
+            {"net.fabricmc", "sponge-mixin"},
+            {"de.siegmar", "fastcsv"},
+            {"com.machinezoo.noexception", "noexception"},
+            {"net.jodah", "typetools"},
+            {"com.nothome", "javaxdelta"},
+            {"trove", "trove"},
+            // --- NeoForge-maintained library forks ---
+            {"com.electronwill.night-config", "core"},
+            {"com.electronwill.night-config", "toml"},
+            // --- Transitive dependencies of NFRT external tools ---
+            {"it.unimi.dsi", "fastutil"},
+            {"org.apache.commons", "commons-compress"},
+            {"org.apache.commons", "commons-lang3"},
+            {"org.apache.commons", "commons-parent"},
+            {"org.tukaani", "xz"},
+            {"org.ow2.asm", "asm"},
+            {"org.ow2.asm", "asm-analysis"},
+            {"org.ow2.asm", "asm-commons"},
+            {"org.ow2.asm", "asm-tree"},
+            {"org.ow2.asm", "asm-util"},
+            {"org.ow2", "ow2"},
+            {"org.lz4", "lz4-java"},
+            {"org.jcraft", "jorbis"},
+            // --- Game libraries & their transitive dependencies ---
+            // Transitive dependencies of common game libraries are listed explicitly
+            // because the dynamic discovery only sees direct dependencies (a single
+            // module-metadata download), not the full transitive tree.
+            {"ca.weblite", "java-objc-bridge"},
+            {"com.fasterxml.jackson.core", "jackson-annotations"},
+            {"com.fasterxml.jackson.core", "jackson-core"},
+            {"com.fasterxml.jackson", "jackson-base"},
+            {"com.fasterxml.jackson", "jackson-bom"},
+            {"com.fasterxml.jackson", "jackson-parent"},
+            {"com.fasterxml", "oss-parent"},
+            {"com.github.oshi", "oshi-core"},
+            {"com.github.oshi", "oshi-parent"},
+            {"com.google.code.findbugs", "jsr305"},
+            {"com.google.code.gson", "gson"},
+            {"com.google.code.gson", "gson-parent"},
+            {"com.google.errorprone", "error_prone_annotations"},
+            {"com.google.errorprone", "error_prone_parent"},
+            {"com.google.guava", "failureaccess"},
+            {"com.google.guava", "guava"},
+            {"com.google.guava", "guava-parent"},
+            {"com.google.guava", "listenablefuture"},
+            {"com.google.j2objc", "j2objc-annotations"},
+            {"com.ibm.icu", "icu4j"},
+            {"com.mojang", "authlib"},
+            {"com.mojang", "blocklist"},
+            {"com.mojang", "brigadier"},
+            {"com.mojang", "datafixerupper"},
+            {"com.mojang", "logging"},
+            {"com.mojang", "patchy"},
+            {"com.mojang", "text2speech"},
+            {"commons-codec", "commons-codec"},
+            {"commons-io", "commons-io"},
+            {"commons-logging", "commons-logging"},
+            {"io.fabric8", "kubernetes-client-bom"},
+            {"io.netty", "netty-bom"},
+            {"io.netty", "netty-buffer"},
+            {"io.netty", "netty-codec"},
+            {"io.netty", "netty-common"},
+            {"io.netty", "netty-handler"},
+            {"io.netty", "netty-parent"},
+            {"io.netty", "netty-resolver"},
+            {"io.netty", "netty-transport"},
+            {"io.netty", "netty-transport-classes-epoll"},
+            {"io.netty", "netty-transport-native-unix-common"},
+            {"jakarta.platform", "jakarta.jakartaee-bom"},
+            {"jakarta.platform", "jakartaee-api-parent"},
+            {"net.java.dev.jna", "jna"},
+            {"net.java.dev.jna", "jna-platform"},
+            {"org.antlr", "antlr4-master"},
+            {"org.antlr", "antlr4-runtime"},
+            {"org.apache.groovy", "groovy-bom"},
+            {"org.apache.httpcomponents", "httpclient"},
+            {"org.apache.httpcomponents", "httpcomponents-client"},
+            {"org.apache.httpcomponents", "httpcomponents-core"},
+            {"org.apache.httpcomponents", "httpcomponents-parent"},
+            {"org.apache.httpcomponents", "httpcore"},
+            {"org.apache.logging.log4j", "log4j"},
+            {"org.apache.logging.log4j", "log4j-api"},
+            {"org.apache.logging.log4j", "log4j-bom"},
+            {"org.apache.logging.log4j", "log4j-core"},
+            {"org.apache.logging.log4j", "log4j-slf4j2-impl"},
+            {"org.apache.logging", "logging-parent"},
+            {"org.apache.maven", "maven"},
+            {"org.apache.maven", "maven-artifact"},
+            {"org.apache.maven", "maven-parent"},
+            {"org.apache", "apache"},
+            {"org.apiguardian", "apiguardian-api"},
+            {"org.checkerframework", "checker-qual"},
+            {"org.codehaus.groovy", "groovy-bom"},
+            {"org.codehaus.plexus", "plexus"},
+            {"org.codehaus.plexus", "plexus-utils"},
+            {"org.commonmark", "commonmark"},
+            {"org.commonmark", "commonmark-parent"},
+            {"org.eclipse.ee4j", "project"},
+            {"org.eclipse.jetty", "jetty-bom"},
+            {"org.jetbrains", "annotations"},
+            {"org.jline", "jline-parent"},
+            {"org.jline", "jline-reader"},
+            {"org.jline", "jline-terminal"},
+            {"org.joml", "joml"},
+            {"org.jspecify", "jspecify"},
+            {"org.junit.jupiter", "junit-jupiter"},
+            {"org.junit.jupiter", "junit-jupiter-api"},
+            {"org.junit.jupiter", "junit-jupiter-engine"},
+            {"org.junit.jupiter", "junit-jupiter-params"},
+            {"org.junit.platform", "junit-platform-commons"},
+            {"org.junit.platform", "junit-platform-engine"},
+            {"org.junit.platform", "junit-platform-launcher"},
+            {"org.junit", "junit-bom"},
+            {"org.lwjgl", "lwjgl"},
+            {"org.lwjgl", "lwjgl-bom"},
+            {"org.lwjgl", "lwjgl-freetype"},
+            {"org.lwjgl", "lwjgl-glfw"},
+            {"org.lwjgl", "lwjgl-jemalloc"},
+            {"org.lwjgl", "lwjgl-openal"},
+            {"org.lwjgl", "lwjgl-opengl"},
+            {"org.lwjgl", "lwjgl-stb"},
+            {"org.lwjgl", "lwjgl-tinyfd"},
+            {"org.mockito", "mockito-bom"},
+            {"org.opentest4j", "opentest4j"},
+            {"org.slf4j", "slf4j-api"},
+            {"org.slf4j", "slf4j-bom"},
+            {"org.slf4j", "slf4j-parent"},
+            {"org.sonatype.oss", "oss-parent"},
+            {"org.springframework", "spring-framework-bom"},
+            // --- Other NeoForge-hosted tooling ---
+            {"org.parchmentmc.data", "parchment-1.21"},
+            {"org.vineflower", "vineflower"},
+            {"org.openjdk.nashorn", "nashorn-core"},
+            {"net.sf.jopt-simple", "jopt-simple"},
+    };
+    // @formatter:on
+
+    /**
+     * Dynamically discovered game library modules, keyed by "group:module".
+     * Populated by {@link #addGameLibrary} before dependency resolution.
+     */
+    private static final Set<String> gameLibraryModules = Collections.synchronizedSet(new HashSet<>());
+
+    /**
+     * Adds a game library module (group:name) to the allowed set.
+     * Safe to call from any thread before dependency resolution begins.
+     */
+    @ApiStatus.Internal
+    public static void addGameLibrary(String group, String module) {
+        gameLibraryModules.add(group + ":" + module);
+    }
+
+    /**
+     * Applies the full filter: stable known modules plus any dynamically discovered
+     * game library modules for the selected NeoForge version.
+     */
     public static void filter(RepositoryContentDescriptor filter) {
-        filter.includeModule("ca.weblite", "java-objc-bridge");
-        filter.includeModule("com.electronwill.night-config", "core");
-        filter.includeModule("com.electronwill.night-config", "toml");
-        filter.includeModule("com.fasterxml.jackson.core", "jackson-annotations");
-        filter.includeModule("com.fasterxml.jackson.core", "jackson-core");
-        filter.includeModule("com.fasterxml.jackson", "jackson-base");
-        filter.includeModule("com.fasterxml.jackson", "jackson-bom");
-        filter.includeModule("com.fasterxml.jackson", "jackson-parent");
-        filter.includeModule("com.fasterxml", "oss-parent");
-        filter.includeModule("com.github.oshi", "oshi-core");
-        filter.includeModule("com.github.oshi", "oshi-parent");
-        filter.includeModule("com.google.code.findbugs", "jsr305");
-        filter.includeModule("com.google.code.gson", "gson");
-        filter.includeModule("com.google.code.gson", "gson-parent");
-        filter.includeModule("com.google.errorprone", "error_prone_annotations");
-        filter.includeModule("com.google.errorprone", "error_prone_parent");
-        filter.includeModule("com.google.guava", "failureaccess");
-        filter.includeModule("com.google.guava", "guava");
-        filter.includeModule("com.google.guava", "guava-parent");
-        filter.includeModule("com.google.guava", "listenablefuture");
-        filter.includeModule("com.google.j2objc", "j2objc-annotations");
-        filter.includeModule("com.ibm.icu", "icu4j");
-        filter.includeModule("com.machinezoo.noexception", "noexception");
-        filter.includeModule("com.mojang", "authlib");
-        filter.includeModule("com.mojang", "blocklist");
-        filter.includeModule("com.mojang", "brigadier");
-        filter.includeModule("com.mojang", "datafixerupper");
-        filter.includeModule("com.mojang", "logging");
-        filter.includeModule("com.mojang", "patchy");
-        filter.includeModule("com.mojang", "text2speech");
-        filter.includeModule("com.nothome", "javaxdelta");
-        filter.includeModule("commons-codec", "commons-codec");
-        filter.includeModule("commons-io", "commons-io");
-        filter.includeModule("commons-logging", "commons-logging");
-        filter.includeModule("cpw.mods", "bootstraplauncher");
-        filter.includeModule("cpw.mods", "modlauncher");
-        filter.includeModule("cpw.mods", "securejarhandler");
-        filter.includeModule("de.siegmar", "fastcsv");
-        filter.includeModule("io.codechicken", "DiffPatch");
-        filter.includeModule("io.fabric8", "kubernetes-client-bom");
-        filter.includeModule("io.github.llamalad7", "mixinextras-neoforge");
-        filter.includeModule("io.netty", "netty-bom");
-        filter.includeModule("io.netty", "netty-buffer");
-        filter.includeModule("io.netty", "netty-codec");
-        filter.includeModule("io.netty", "netty-common");
-        filter.includeModule("io.netty", "netty-handler");
-        filter.includeModule("io.netty", "netty-parent");
-        filter.includeModule("io.netty", "netty-resolver");
-        filter.includeModule("io.netty", "netty-transport");
-        filter.includeModule("io.netty", "netty-transport-classes-epoll");
-        filter.includeModule("io.netty", "netty-transport-native-unix-common");
-        filter.includeModule("it.unimi.dsi", "fastutil");
-        filter.includeModule("jakarta.platform", "jakarta.jakartaee-bom");
-        filter.includeModule("jakarta.platform", "jakartaee-api-parent");
-        filter.includeModule("net.covers1624", "DevLogin");
-        filter.includeModule("net.covers1624", "Quack");
-        filter.includeModule("net.fabricmc", "sponge-mixin");
-        filter.includeModule("net.java.dev.jna", "jna");
-        filter.includeModule("net.java.dev.jna", "jna-platform");
-        filter.includeModule("net.jodah", "typetools");
-        filter.includeModule("net.minecraftforge", "mergetool");
-        filter.includeModule("net.minecraftforge", "srgutils");
-        filter.includeModule("net.minecrell", "terminalconsoleappender");
-        filter.includeModule("net.neoforged.accesstransformers", "at-modlauncher");
-        filter.includeModule("net.neoforged.accesstransformers", "at-parser");
-        filter.includeModule("net.neoforged.fancymodloader", "earlydisplay");
-        filter.includeModule("net.neoforged.fancymodloader", "junit-fml");
-        filter.includeModule("net.neoforged.fancymodloader", "loader");
-        filter.includeModule("net.neoforged.installertools", "binarypatcher");
-        filter.includeModule("net.neoforged.installertools", "cli-utils");
-        filter.includeModule("net.neoforged.installertools", "installertools");
-        filter.includeModule("net.neoforged.javadoctor", "gson-io");
-        filter.includeModule("net.neoforged.javadoctor", "spec");
-        filter.includeModule("net.neoforged.jst", "jst-cli-bundle");
-        filter.includeModule("net.neoforged", "AutoRenamingTool");
-        filter.includeModule("net.neoforged", "DevLaunch");
-        filter.includeModule("net.neoforged", "JarJarFileSystems");
-        filter.includeModule("net.neoforged", "JarJarMetadata");
-        filter.includeModule("net.neoforged", "JarJarSelector");
-        filter.includeModule("net.neoforged", "accesstransformers");
-        filter.includeModule("net.neoforged", "bus");
-        filter.includeModule("net.neoforged", "coremods");
-        filter.includeModule("net.neoforged", "mergetool");
-        filter.includeModule("net.neoforged", "minecraft-dependencies");
-        filter.includeModule("net.neoforged", "neoforge");
-        filter.includeModule("net.neoforged", "neoform");
-        filter.includeModule("net.neoforged", "neoform-runtime");
-        filter.includeModule("net.neoforged", "srgutils");
-        filter.includeModule("net.neoforged", "testframework");
-        filter.includeModule("net.sf.jopt-simple", "jopt-simple");
-        filter.includeModule("org.antlr", "antlr4-master");
-        filter.includeModule("org.antlr", "antlr4-runtime");
-        filter.includeModule("org.apache.commons", "commons-compress");
-        filter.includeModule("org.apache.commons", "commons-lang3");
-        filter.includeModule("org.apache.commons", "commons-parent");
-        filter.includeModule("org.apache.groovy", "groovy-bom");
-        filter.includeModule("org.apache.httpcomponents", "httpclient");
-        filter.includeModule("org.apache.httpcomponents", "httpcomponents-client");
-        filter.includeModule("org.apache.httpcomponents", "httpcomponents-core");
-        filter.includeModule("org.apache.httpcomponents", "httpcomponents-parent");
-        filter.includeModule("org.apache.httpcomponents", "httpcore");
-        filter.includeModule("org.apache.logging.log4j", "log4j");
-        filter.includeModule("org.apache.logging.log4j", "log4j-api");
-        filter.includeModule("org.apache.logging.log4j", "log4j-bom");
-        filter.includeModule("org.apache.logging.log4j", "log4j-core");
-        filter.includeModule("org.apache.logging.log4j", "log4j-slf4j2-impl");
-        filter.includeModule("org.apache.logging", "logging-parent");
-        filter.includeModule("org.apache.maven", "maven");
-        filter.includeModule("org.apache.maven", "maven-artifact");
-        filter.includeModule("org.apache.maven", "maven-parent");
-        filter.includeModule("org.apache", "apache");
-        filter.includeModule("org.apiguardian", "apiguardian-api");
-        filter.includeModule("org.checkerframework", "checker-qual");
-        filter.includeModule("org.codehaus.groovy", "groovy-bom");
-        filter.includeModule("org.codehaus.plexus", "plexus");
-        filter.includeModule("org.codehaus.plexus", "plexus-utils");
-        filter.includeModule("org.commonmark", "commonmark");
-        filter.includeModule("org.commonmark", "commonmark-parent");
-        filter.includeModule("org.eclipse.ee4j", "project");
-        filter.includeModule("org.eclipse.jetty", "jetty-bom");
-        filter.includeModule("org.jcraft", "jorbis");
-        filter.includeModule("org.jetbrains", "annotations");
-        filter.includeModule("org.jline", "jline-parent");
-        filter.includeModule("org.jline", "jline-reader");
-        filter.includeModule("org.jline", "jline-terminal");
-        filter.includeModule("org.joml", "joml");
-        filter.includeModule("org.jspecify", "jspecify");
-        filter.includeModule("org.junit.jupiter", "junit-jupiter");
-        filter.includeModule("org.junit.jupiter", "junit-jupiter-api");
-        filter.includeModule("org.junit.jupiter", "junit-jupiter-engine");
-        filter.includeModule("org.junit.jupiter", "junit-jupiter-params");
-        filter.includeModule("org.junit.platform", "junit-platform-commons");
-        filter.includeModule("org.junit.platform", "junit-platform-engine");
-        filter.includeModule("org.junit.platform", "junit-platform-launcher");
-        filter.includeModule("org.junit", "junit-bom");
-        filter.includeModule("org.lwjgl", "lwjgl");
-        filter.includeModule("org.lwjgl", "lwjgl-bom");
-        filter.includeModule("org.lwjgl", "lwjgl-freetype");
-        filter.includeModule("org.lwjgl", "lwjgl-glfw");
-        filter.includeModule("org.lwjgl", "lwjgl-jemalloc");
-        filter.includeModule("org.lwjgl", "lwjgl-openal");
-        filter.includeModule("org.lwjgl", "lwjgl-opengl");
-        filter.includeModule("org.lwjgl", "lwjgl-stb");
-        filter.includeModule("org.lwjgl", "lwjgl-tinyfd");
-        filter.includeModule("org.lz4", "lz4-java");
-        filter.includeModule("org.mockito", "mockito-bom");
-        filter.includeModule("org.openjdk.nashorn", "nashorn-core");
-        filter.includeModule("org.opentest4j", "opentest4j");
-        filter.includeModule("org.ow2.asm", "asm");
-        filter.includeModule("org.ow2.asm", "asm-analysis");
-        filter.includeModule("org.ow2.asm", "asm-commons");
-        filter.includeModule("org.ow2.asm", "asm-tree");
-        filter.includeModule("org.ow2.asm", "asm-util");
-        filter.includeModule("org.ow2", "ow2");
-        filter.includeModule("org.parchmentmc.data", "parchment-1.21");
-        filter.includeModule("org.slf4j", "slf4j-api");
-        filter.includeModule("org.slf4j", "slf4j-bom");
-        filter.includeModule("org.slf4j", "slf4j-parent");
-        filter.includeModule("org.sonatype.oss", "oss-parent");
-        filter.includeModule("org.springframework", "spring-framework-bom");
-        filter.includeModule("org.tukaani", "xz");
-        filter.includeModule("org.vineflower", "vineflower");
-        filter.includeModule("trove", "trove");
+        for (var entry : STABLE_MODULES) {
+            filter.includeModule(entry[0], entry[1]);
+        }
+
+        synchronized (gameLibraryModules) {
+            for (var coordinate : gameLibraryModules) {
+                var parts = coordinate.split(":", 2);
+                if (parts.length == 2) {
+                    filter.includeModule(parts[0], parts[1]);
+                }
+            }
+        }
     }
 }
