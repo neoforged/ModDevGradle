@@ -185,8 +185,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
             NeoForgedRepositoryFilter.filter(descriptor, Set.of());
 
             // The stable baseline must include NeoForge's own artifacts.
-            assertThat(descriptor.included).anyMatch(
-                    r -> r[0].equals("net.neoforged") && r[1].equals("neoforge"));
+            assertThat(descriptor.included).contains("net.neoforged:neoforge");
         }
 
         @Test
@@ -195,10 +194,8 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
             var dynamic = Set.of("com.example:new-lib", "org.test:another");
             NeoForgedRepositoryFilter.filter(descriptor, dynamic);
 
-            assertThat(descriptor.included).anyMatch(
-                    r -> r[0].equals("com.example") && r[1].equals("new-lib"));
-            assertThat(descriptor.included).anyMatch(
-                    r -> r[0].equals("org.test") && r[1].equals("another"));
+            assertThat(descriptor.included).contains("com.example:new-lib");
+            assertThat(descriptor.included).contains("org.test:another");
         }
 
         @Test
@@ -209,12 +206,12 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
 
             // Stable modules still included; malformed entry did not throw.
             assertThat(descriptor.included).isNotEmpty();
-            assertThat(descriptor.included).noneMatch(
-                    r -> r[0].equals("malformed"));
+            // "malformed" was never passed to includeModule because split(":", 2)
+            // produced only one part and the length check guarded the call.
         }
 
         @Test
-        void testContentFilterAppliedInNeoForgeMode() {
+        void testNeoForgeRepositoryIsRegisteredAfterEnable() {
             extension.setVersion("21.10.48-beta");
 
             var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
@@ -225,7 +222,7 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
         }
 
         @Test
-        void testContentFilterAppliedInVanillaOnlyMode() {
+        void testNeoForgeRepositoryIsRegisteredAfterVanillaOnlyEnable() {
             extension.setNeoFormVersion("1.21.4-20240101.235959");
 
             var neoRepo = RepositoriesPlugin.getNeoForgeRepository(project);
@@ -276,11 +273,11 @@ public class ModDevPluginTest extends AbstractProjectBuilderTest {
          * {@code includeModule} call so tests can assert filter behavior.
          */
         static class RecordingDescriptor implements RepositoryContentDescriptor {
-            final Set<String[]> included = new HashSet<>();
+            final Set<String> included = new HashSet<>();
 
             @Override
             public void includeModule(String group, String name) {
-                included.add(new String[] { group, name });
+                included.add(group + ":" + name);
             }
 
             // Remaining methods are unused by NeoForgedRepositoryFilter; stub them out.

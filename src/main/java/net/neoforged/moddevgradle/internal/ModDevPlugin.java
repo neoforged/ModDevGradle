@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
+import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
@@ -124,40 +125,45 @@ public class ModDevPlugin implements Plugin<Project> {
                 extension.getRuns());
     }
 
+    // 10-second timeout for the .module HTTP requests (both connect and read).
+    private static final int MODULE_FETCH_TIMEOUT_MS = 10_000;
+
     /**
      * Discovers additional modules from the Gradle Module Metadata of the selected
      * NeoForge version (if any) and the NeoForm Runtime, then applies the content
      * filter to the NeoForge repository.
      * <p>
+     * When the NeoForged repository was configured at the settings level there is
+     * no project-scoped repository to apply the filter to — this method returns
+     * early without touching the network.
+     * <p>
      * Dynamic modules are collected in a local set and passed directly to
      * {@link NeoForgedRepositoryFilter#filter} — no static mutable state is shared
      * across projects, which is safe with parallel project configuration.
-     * <p>
-     * NFRT metadata is always fetched regardless of whether a NeoForge version was
-     * selected, since NFRT can introduce new direct dependencies over time even in
-     * vanilla-only mode.
      */
     private static void populateNeoForgeRepositoryFilter(Project project,
             @Nullable String neoForgeVersion) {
-        var dynamicModules = new HashSet<String>();
-        var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
-
-        if (neoForgeVersion != null) {
-            // Discover game library modules from the NeoForge artifact metadata.
-            fetchModuleDependencies("net/neoforged/neoforge/" + neoForgeVersion
-                    + "/neoforge-" + neoForgeVersion + ".module", depPattern, dynamicModules);
+        // When the repository is configured at the settings level there is no
+        // project-scoped repository to install the filter on; the settings-level
+        // filter is already in place and cannot be augmented per-project.
+        if (RepositoriesPlugin.getNeoForgeRepository(project) == null) {
+            return;
         }
 
-        // Always discover build tool modules from the NeoForm Runtime metadata.
-        // NFRT ships external tools (DiffPatch, AutoRenamingTool, etc.) whose
-        // transitive dependencies are rehosted on the NeoForged Maven and may
-        // change across NFRT releases.
-        try {
-            var nfrtVersion = NeoFormRuntimeExtension.getVersion(project);
-            fetchModuleDependencies("net/neoforged/neoform-runtime/" + nfrtVersion
-                    + "/neoform-runtime-" + nfrtVersion + ".module", depPattern, dynamicModules);
-        } catch (Exception e) {
-            LOG.warn("Failed to resolve NFRT version for dynamic filter discovery: {}", e.getMessage());
+        var dynamicModules = new HashSet<String>();
+
+        if (neoForgeVersion != null) {
+            var depPattern = Pattern.compile("\"group\":\\s*\"([^\"]+)\",\\s*\"module\":\\s*\"([^\"]+)\"");
+            fetchModuleDependencies(project, "net/neoforged/neoforge/" + neoForgeVersion
+                    + "/neoforge-" + neoForgeVersion + ".module", depPattern, dynamicModules);
+            // NFRT metadata fetch uses the same pattern.
+            try {
+                var nfrtVersion = NeoFormRuntimeExtension.getVersion(project);
+                fetchModuleDependencies(project, "net/neoforged/neoform-runtime/" + nfrtVersion
+                        + "/neoform-runtime-" + nfrtVersion + ".module", depPattern, dynamicModules);
+            } catch (Exception e) {
+                LOG.warn("Failed to resolve NFRT version for dynamic filter discovery: {}", e.getMessage());
+            }
         }
 
         // Apply the content filter now — before any dependency resolution uses
@@ -166,13 +172,30 @@ public class ModDevPlugin implements Plugin<Project> {
         RepositoriesPlugin.applyContentFilter(project, dynamicModules);
     }
 
-    private static void fetchModuleDependencies(String path, Pattern depPattern,
-            Set<String> dynamicModules) {
+    /**
+     * Downloads a single {@code .module} file from the NeoForged Maven and extracts
+     * {@code group:module} pairs from it.
+     * <p>
+     * Uses {@link URLConnection} directly rather than Gradle dependency resolution
+     * because Gradle locks the repository content descriptor on first use, which
+     * would prevent us from installing the content filter afterward. Respects
+     * {@code --offline} and applies explicit connect/read timeouts.
+     */
+    private static void fetchModuleDependencies(Project project, String path,
+            Pattern depPattern, Set<String> dynamicModules) {
+        if (project.getGradle().getStartParameter().isOffline()) {
+            return;
+        }
+
         try {
             var moduleUrl = URI.create(
                     "https://maven.neoforged.net/releases/" + path).toURL();
 
-            try (var stream = moduleUrl.openStream()) {
+            var connection = moduleUrl.openConnection();
+            connection.setConnectTimeout(MODULE_FETCH_TIMEOUT_MS);
+            connection.setReadTimeout(MODULE_FETCH_TIMEOUT_MS);
+
+            try (var stream = connection.getInputStream()) {
                 var content = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
                 var matcher = depPattern.matcher(content);
                 while (matcher.find()) {
