@@ -154,6 +154,10 @@ final class RunUtils {
         return modDevFolder.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "run", scriptExtension)));
     }
 
+    public static Provider<RegularFile> getLaunchMetadata(Provider<Directory> modDevFolder, RunModel run) {
+        return modDevFolder.map(dir -> dir.file(InternalModelHelper.nameOfRun(run, "", "launchMetadata.properties")));
+    }
+
     public enum RunArgFile {
         VMARGS("runVmArgs.txt"),
         PROGRAMARGS("runProgramArgs.txt"),
@@ -175,6 +179,10 @@ final class RunUtils {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
         modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod));
         return modFoldersProvider;
+    }
+
+    static String getModFoldersArgument(String classesArgument) {
+        return "-Dfml.modFolders=%s".formatted(classesArgument);
     }
 
     public static Project findSourceSetProject(Project someProject, SourceSet sourceSet) {
@@ -289,7 +297,7 @@ abstract class ModFoldersProvider implements CommandLineArgumentProvider {
 
     @Internal
     public String getArgument() {
-        return "-Dfml.modFolders=%s".formatted(getClassesArgument().get());
+        return RunUtils.getModFoldersArgument(getClassesArgument().get());
     }
 
     @Override
