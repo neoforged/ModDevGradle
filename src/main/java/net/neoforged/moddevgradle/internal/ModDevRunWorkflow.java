@@ -128,6 +128,7 @@ public class ModDevRunWorkflow {
         setupRuns(
                 project,
                 branding,
+                artifactsWorkflow,
                 artifactsWorkflow.modDevBuildDir(),
                 runs,
                 userDevConfigOnly,
@@ -249,6 +250,30 @@ public class ModDevRunWorkflow {
             Consumer<Configuration> configureLegacyClasspath,
             Provider<RegularFile> assetPropertiesFile,
             VersionCapabilitiesInternal versionCapabilities) {
+        setupRuns(
+                project,
+                branding,
+                null,
+                argFileDir,
+                runs,
+                runTemplatesSourceFile,
+                configureModulePath,
+                configureLegacyClasspath,
+                assetPropertiesFile,
+                versionCapabilities);
+    }
+
+    public static void setupRuns(
+            Project project,
+            Branding branding,
+            @Nullable ModDevArtifactsWorkflow artifactsWorkflow,
+            Provider<Directory> argFileDir,
+            DomainObjectCollection<RunModel> runs,
+            Object runTemplatesSourceFile,
+            Consumer<Configuration> configureModulePath,
+            Consumer<Configuration> configureLegacyClasspath,
+            Provider<RegularFile> assetPropertiesFile,
+            VersionCapabilitiesInternal versionCapabilities) {
         var dependencyFactory = project.getDependencyFactory();
         var ideIntegration = IdeIntegration.of(project, branding);
 
@@ -267,16 +292,17 @@ public class ModDevRunWorkflow {
             task.setDescription("Creates batch files/shell scripts to launch the game from outside of Gradle (i.e. Renderdoc, NVidia Nsight, etc.)");
         });
 
-        Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
+        Map<RunModel, IdeRunConfiguration> ideRunConfigurations = new IdentityHashMap<>();
         runs.all(run -> {
             if (!versionCapabilities.modLocatorRework()) {
                 // TODO: do this properly now that we have a flag in the version capabilities
                 // This will explicitly be replaced in RunUtils to make this work for IDEs
                 run.getEnvironment().put("MOD_CLASSES", RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null).getClassesArgument());
             }
-            var prepareRunTask = setupRunInGradle(
+            var ideRunConfiguration = setupRunInGradle(
                     project,
                     branding,
+                    artifactsWorkflow,
                     argFileDir,
                     run,
                     runTemplatesSourceFile,
@@ -286,9 +312,9 @@ public class ModDevRunWorkflow {
                     devLaunchConfig,
                     versionCapabilities,
                     createLaunchScriptsTask);
-            prepareRunTasks.put(run, prepareRunTask);
+            ideRunConfigurations.put(run, ideRunConfiguration);
         });
-        ideIntegration.configureRuns(prepareRunTasks, runs);
+        ideIntegration.configureRuns(ideRunConfigurations, runs);
     }
 
     /**
@@ -297,9 +323,10 @@ public class ModDevRunWorkflow {
      * @param configureLegacyClasspath Callback to add entries to the legacy classpath.
      * @param assetPropertiesFile      File that contains the asset properties file produced by NFRT.
      */
-    private static TaskProvider<PrepareRun> setupRunInGradle(
+    private static IdeRunConfiguration setupRunInGradle(
             Project project,
             Branding branding,
+            @Nullable ModDevArtifactsWorkflow artifactsWorkflow,
             Provider<Directory> argFileDir,
             RunModel run,
             Object runTemplatesFile,
@@ -317,19 +344,13 @@ public class ModDevRunWorkflow {
         var runtimeClasspathConfig = run.getSourceSet().map(SourceSet::getRuntimeClasspathConfigurationName)
                 .map(configurations::getByName);
 
-        // Sucks, but what can you do... Only at the end do we actually know which source set this run will use
-        project.afterEvaluate(ignored -> {
-            runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
-        });
-
         var type = RunUtils.getRequiredType(project, run);
+        var runtimeClasspath = project.files();
 
         var modulePathConfiguration = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "modulesOnly"), spec -> {
             spec.setDescription("Libraries that should be placed on the JVMs boot module path for run " + run.getName() + ".");
             spec.setCanBeResolved(true);
             spec.setCanBeConsumed(false);
-            spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
-            configureModulePath.accept(spec);
         });
 
         Provider<RegularFile> legacyClasspathFile;
@@ -338,7 +359,6 @@ public class ModDevRunWorkflow {
                 spec.setDescription("Contains all dependencies of the " + run.getName() + " run that should not be considered boot classpath modules.");
                 spec.setCanBeResolved(true);
                 spec.setCanBeConsumed(false);
-                spec.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
                 spec.attributes(attributes -> {
                     attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
                         var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
@@ -346,8 +366,6 @@ public class ModDevRunWorkflow {
                     }));
                     setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
                 });
-                configureLegacyClasspath.accept(spec);
-                spec.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
             });
 
             var writeLcpTask = tasks.register(InternalModelHelper.nameOfRun(run, "write", "legacyClasspath"), WriteLegacyClasspath.class, writeLcp -> {
@@ -357,11 +375,37 @@ public class ModDevRunWorkflow {
                 writeLcp.addEntries(legacyClasspathConfiguration);
             });
             legacyClasspathFile = writeLcpTask.get().getLegacyClasspathFile();
+
+            project.afterEvaluate(ignored -> {
+                if (!shouldUseDedicatedVanillaRuntime(artifactsWorkflow, run)) {
+                    legacyClasspathConfiguration.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+                    configureLegacyClasspath.accept(legacyClasspathConfiguration);
+                    legacyClasspathConfiguration.extendsFrom(run.getAdditionalRuntimeClasspathConfiguration());
+                }
+            });
         } else {
             // Disallow adding dependencies to the additional classpath configuration since it would have no effect.
             forbidAdditionalRuntimeDependencies(run.getAdditionalRuntimeClasspathConfiguration(), versionCapabilities);
             legacyClasspathFile = null;
         }
+
+        project.afterEvaluate(ignored -> {
+            if (shouldUseDedicatedVanillaRuntime(artifactsWorkflow, run)) {
+                runtimeClasspath.from(getDedicatedVanillaRuntimeClasspath(
+                        project,
+                        artifactsWorkflow,
+                        run,
+                        type,
+                        devLaunchConfig));
+            } else {
+                runtimeClasspathConfig.get().extendsFrom(devLaunchConfig);
+                modulePathConfiguration.shouldResolveConsistentlyWith(runtimeClasspathConfig.get());
+                configureModulePath.accept(modulePathConfiguration);
+                // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
+                // This records a dependency on compiling and processing the resources of the source set.
+                runtimeClasspath.from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
+            }
+        });
 
         var prepareRunTask = tasks.register(InternalModelHelper.nameOfRun(run, "prepare", "run"), PrepareRun.class, task -> {
             task.setGroup(branding.internalTaskGroup());
@@ -388,6 +432,7 @@ public class ModDevRunWorkflow {
             task.getJvmArguments().set(run.getJvmArguments());
             task.getGameLogLevel().set(run.getLogLevel());
             task.getDevLogin().set(run.getDevLogin());
+            task.getUseVanillaRunTemplates().set(run.getUseVanillaRunTemplates());
             task.getVersionCapabilities().set(versionCapabilities);
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
@@ -397,9 +442,7 @@ public class ModDevRunWorkflow {
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
 
             task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
-            // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
-            // This records a dependency on compiling and processing the resources of the source set.
-            task.getRuntimeClasspath().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
+            task.getRuntimeClasspath().from(runtimeClasspath);
             task.getLaunchScript().set(RunUtils.getLaunchScript(argFileDir, run));
             task.getClasspathArgsFile().set(RunUtils.getArgFile(argFileDir, run, RunUtils.RunArgFile.CLASSPATH));
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
@@ -409,16 +452,14 @@ public class ModDevRunWorkflow {
         });
         createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
 
-        tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
+        var runTask = tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
             task.setGroup(branding.publicTaskGroup());
             task.setDescription("Runs the " + run.getName() + " Minecraft run configuration.");
 
             // Launch with the Java version used in the project
             var toolchainService = ExtensionUtils.findExtension(project, "javaToolchains", JavaToolchainService.class);
             task.getJavaLauncher().set(toolchainService.launcherFor(spec -> spec.getLanguageVersion().set(javaExtension.getToolchain().getLanguageVersion())));
-            // Note: this contains both the runtimeClasspath configuration and the sourceset's outputs.
-            // This records a dependency on compiling and processing the resources of the source set.
-            task.getClasspathProvider().from(run.getSourceSet().map(SourceSet::getRuntimeClasspath));
+            task.getClasspathProvider().from(runtimeClasspath);
             task.getGameDirectory().set(run.getGameDirectory());
 
             task.getEnvironmentProperty().set(run.getEnvironment());
@@ -432,7 +473,46 @@ public class ModDevRunWorkflow {
             task.getJvmArgumentProviders().add(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
         });
 
-        return prepareRunTask;
+        return new IdeRunConfiguration(
+                prepareRunTask,
+                runTask,
+                launchScriptTask,
+                project.provider(() -> shouldUseDedicatedVanillaRuntime(artifactsWorkflow, run)));
+    }
+
+    private static ConfigurableFileCollection getDedicatedVanillaRuntimeClasspath(
+            Project project,
+            @Nullable ModDevArtifactsWorkflow artifactsWorkflow,
+            RunModel run,
+            Provider<String> type,
+            Configuration devLaunchConfig) {
+        if (artifactsWorkflow == null) {
+            throw new IllegalStateException("A vanilla runtime classpath requires the ModDev artifacts workflow.");
+        }
+
+        var vanillaRuntimeClasspath = project.getConfigurations().create(InternalModelHelper.nameOfRun(run, "", "vanillaRuntimeClasspath"), spec -> {
+            spec.setDescription("Contains the vanilla runtime classpath for run " + run.getName() + ".");
+            spec.setCanBeResolved(true);
+            spec.setCanBeConsumed(false);
+            spec.getDependencies().addLater(artifactsWorkflow.requestVanillaMinecraftClassesDependency());
+            spec.extendsFrom(artifactsWorkflow.vanillaRuntimeDependencies());
+            spec.extendsFrom(devLaunchConfig);
+            spec.attributes(attributes -> {
+                attributes.attributeProvider(MinecraftDistribution.ATTRIBUTE, type.map(t -> {
+                    var name = t.equals("client") || t.equals("data") || t.equals("clientData") ? MinecraftDistribution.CLIENT : MinecraftDistribution.SERVER;
+                    return project.getObjects().named(MinecraftDistribution.class, name);
+                }));
+                setNamedAttribute(project, attributes, Usage.USAGE_ATTRIBUTE, Usage.JAVA_RUNTIME);
+            });
+        });
+
+        return project.files(vanillaRuntimeClasspath);
+    }
+
+    private static boolean shouldUseDedicatedVanillaRuntime(@Nullable ModDevArtifactsWorkflow artifactsWorkflow, RunModel run) {
+        return artifactsWorkflow != null
+                && artifactsWorkflow.dependencies().neoForgeDependency() != null
+                && run.getUseVanillaRunTemplates().getOrElse(false);
     }
 
     /**
@@ -540,3 +620,9 @@ public class ModDevRunWorkflow {
         attributes.attribute(attribute, project.getObjects().named(attribute.getType(), value));
     }
 }
+
+record IdeRunConfiguration(
+        TaskProvider<PrepareRun> prepareRunTask,
+        TaskProvider<RunGameTask> runTask,
+        TaskProvider<CreateLaunchScriptTask> launchScriptTask,
+        Provider<Boolean> usesDedicatedVanillaRuntime) {}
