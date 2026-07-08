@@ -243,29 +243,6 @@ public class ModDevRunWorkflow {
     public static void setupRuns(
             Project project,
             Branding branding,
-            Provider<Directory> argFileDir,
-            DomainObjectCollection<RunModel> runs,
-            Object runTemplatesSourceFile,
-            Consumer<Configuration> configureModulePath,
-            Consumer<Configuration> configureLegacyClasspath,
-            Provider<RegularFile> assetPropertiesFile,
-            VersionCapabilitiesInternal versionCapabilities) {
-        setupRuns(
-                project,
-                branding,
-                null,
-                argFileDir,
-                runs,
-                runTemplatesSourceFile,
-                configureModulePath,
-                configureLegacyClasspath,
-                assetPropertiesFile,
-                versionCapabilities);
-    }
-
-    public static void setupRuns(
-            Project project,
-            Branding branding,
             @Nullable ModDevArtifactsWorkflow artifactsWorkflow,
             Provider<Directory> argFileDir,
             DomainObjectCollection<RunModel> runs,
