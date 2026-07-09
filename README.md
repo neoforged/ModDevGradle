@@ -301,6 +301,7 @@ dependencies {
     jarJar(neoForge.dependencyTools.mapClassifierToFeature("org.example.group:module-name", "my-classifier")) {
         version { /* ... */ }
     }
+}
 ```
 
 Internally, this makes use of a component rule that modifies the metadata of your dependency during resolution. What this
