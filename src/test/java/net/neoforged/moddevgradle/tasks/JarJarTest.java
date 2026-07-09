@@ -3,7 +3,9 @@ package net.neoforged.moddevgradle.tasks;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -263,12 +265,12 @@ class JarJarTest extends AbstractFunctionalTest {
         assertThat(listFiles()).containsOnly(
                 "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar");
         assertEquals(new Metadata(
-                        List.of(
-                                new ContainedJarMetadata(
-                                        new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
-                                        new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
-                                        "META-INF/jarjar/slf4j-api-2.0.13.jar",
-                                        false))),
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
+                                "META-INF/jarjar/slf4j-api-2.0.13.jar",
+                                false))),
                 readMetadata());
     }
 
@@ -289,12 +291,12 @@ class JarJarTest extends AbstractFunctionalTest {
         assertThat(listFiles()).containsOnly(
                 "META-INF/jarjar/metadata.json", "META-INF/jarjar/webrtc-java-0.14.0-windows-x86_64.jar");
         assertEquals(new Metadata(
-                        List.of(
-                                new ContainedJarMetadata(
-                                        new ContainedJarIdentifier("dev.onvoid.webrtc", "webrtc-java-windows-x86_64"),
-                                        new ContainedVersion(VersionRange.createFromVersionSpec("[0.14.0,)"), new DefaultArtifactVersion("0.14.0")),
-                                        "META-INF/jarjar/webrtc-java-0.14.0-windows-x86_64.jar",
-                                        false))),
+                List.of(
+                        new ContainedJarMetadata(
+                                new ContainedJarIdentifier("dev.onvoid.webrtc", "webrtc-java-windows-x86_64"),
+                                new ContainedVersion(VersionRange.createFromVersionSpec("[0.14.0,)"), new DefaultArtifactVersion("0.14.0")),
+                                "META-INF/jarjar/webrtc-java-0.14.0-windows-x86_64.jar",
+                                false))),
                 readMetadata());
     }
 
@@ -307,7 +309,7 @@ class JarJarTest extends AbstractFunctionalTest {
                 """, true);
         var expectedFailure = """
                 [ERROR] jarjar:artifact-selector: Dependency DefaultExternalModuleDependency{group='dev.onvoid.webrtc', name='webrtc-java', version='0.14.0', configuration='default'} artifact extension 'jar', classifier 'windows-x86_64' has selectors that will not be reflected in jarJar metadata""";
-        assertTrue(result.getOutput().contains(expectedFailure), "Output does not contain expected failure: "+expectedFailure);
+        assertTrue(result.getOutput().contains(expectedFailure), "Output does not contain expected failure: " + expectedFailure);
     }
 
     /**

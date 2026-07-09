@@ -92,7 +92,7 @@ public abstract class JarJar extends DefaultTask {
         // as it has attributes, it could conflict with normal exposed configurations
         configuration.setCanBeResolved(true);
         configuration.setCanBeConsumed(false);
-        
+
         // Use of artifact selectors within jarJar configurations is ill-advised, as it can lead to incorrect metadata
         // being created (any selector for classifier/extension will not be respected in the JarJar ID)
         configuration.withDependencies(dependencies -> {
@@ -110,13 +110,11 @@ public abstract class JarJar extends DefaultTask {
                             var errorString = String.format(
                                     "Dependency %s artifact %s has selectors that will not be reflected in jarJar metadata",
                                     dependency,
-                                    String.join(", ", issues)
-                            );
+                                    String.join(", ", issues));
                             var builder = Problem.builder(ProblemId.create(
-                                            "artifact-selector",
-                                            "Artifact Selector in Dependency",
-                                            PROBLEM_GROUP
-                                    ))
+                                    "artifact-selector",
+                                    "Artifact Selector in Dependency",
+                                    PROBLEM_GROUP))
                                     .contextualLabel(errorString)
                                     .severity(ProblemSeverity.ERROR)
                                     .documentedAt("https://github.com/neoforged/ModDevGradle/#handling-classifiers");
@@ -126,13 +124,12 @@ public abstract class JarJar extends DefaultTask {
                             }
                             ProblemReportingUtil.report(
                                     project.getObjects().newInstance(ProblemCapturer.class).getProblems(),
-                                    builder.build()
-                            );
+                                    builder.build());
                             throw new RuntimeException(errorString);
                         }
                     }
                 }
-            });    
+            });
         });
 
         var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);

@@ -1,20 +1,19 @@
 package net.neoforged.moddevgradle.internal;
 
+import javax.inject.Inject;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.ComponentMetadataContext;
 import org.gradle.api.artifacts.ComponentMetadataRule;
 import org.gradle.api.artifacts.VariantMetadata;
 
-import javax.inject.Inject;
-
 public abstract class ClassifierToFeatureRule implements ComponentMetadataRule {
     private final String classifier;
-    
+
     @Inject
     public ClassifierToFeatureRule(String classifier) {
         this.classifier = classifier;
     }
-    
+
     @Override
     public void execute(ComponentMetadataContext context) {
         var details = context.getDetails();
@@ -32,9 +31,9 @@ public abstract class ClassifierToFeatureRule implements ComponentMetadataRule {
         };
         // Which of these exists depends on whether the module in question publishes Gradle module metadata or just a
         // maven pom. `maybeAddVariant` is lenient.
-        details.maybeAddVariant(classifier+"Runtime", "runtime", createdVariant);
-        details.maybeAddVariant(classifier+"RuntimeElements", "runtimeElements", createdVariant);
-        details.maybeAddVariant(classifier+"Compile", "compile", createdVariant);
-        details.maybeAddVariant(classifier+"ApiElements", "apiElements", createdVariant);
+        details.maybeAddVariant(classifier + "Runtime", "runtime", createdVariant);
+        details.maybeAddVariant(classifier + "RuntimeElements", "runtimeElements", createdVariant);
+        details.maybeAddVariant(classifier + "Compile", "compile", createdVariant);
+        details.maybeAddVariant(classifier + "ApiElements", "apiElements", createdVariant);
     }
 }

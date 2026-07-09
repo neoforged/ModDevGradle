@@ -1,7 +1,6 @@
 package net.neoforged.moddevgradle.internal;
 
 import java.net.URI;
-
 import net.neoforged.moddevgradle.dsl.ModDevSettingsExtension;
 import net.neoforged.moddevgradle.internal.generated.MojangRepositoryFilter;
 import org.gradle.api.GradleException;
@@ -30,8 +29,7 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
             settings.getExtensions().create(
                     ModDevSettingsExtension.NAME,
                     ModDevSettingsExtension.class,
-                    settings
-            );
+                    settings);
             applyRepositories(settings.getDependencyResolutionManagement().getRepositories());
             settings.getGradle().getPlugins().apply(getClass()); // Add a marker to Gradle
         } else if (target instanceof Gradle gradle) {

@@ -97,7 +97,7 @@ public abstract class ModDevExtension {
      * <b>Default</b> {@code false}<br>
      */
     public abstract Property<Boolean> getValidateAccessTransformers();
-    
+
     public DependencyTools getDependencyTools() {
         return dependencyTools;
     }
