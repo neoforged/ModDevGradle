@@ -24,6 +24,7 @@ public abstract class ModDevExtension {
     private final Project project;
     private final DataFileCollection accessTransformers;
     private final DataFileCollection interfaceInjectionData;
+    private final DependencyTools dependencyTools;
 
     @Inject
     public ModDevExtension(Project project,
@@ -32,6 +33,7 @@ public abstract class ModDevExtension {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
+        dependencyTools = project.getObjects().newInstance(DependencyTools.class, project.getDependencies().getComponents());
         this.project = project;
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
@@ -95,6 +97,10 @@ public abstract class ModDevExtension {
      * <b>Default</b> {@code false}<br>
      */
     public abstract Property<Boolean> getValidateAccessTransformers();
+    
+    public DependencyTools getDependencyTools() {
+        return dependencyTools;
+    }
 
     public NamedDomainObjectContainer<ModModel> getMods() {
         return mods;

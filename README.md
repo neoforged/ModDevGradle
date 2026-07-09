@@ -286,6 +286,35 @@ the [Maven version range format](https://cwiki.apache.org/confluence/display/MAV
 | (,1.0],[1.2,) | x <= 1.0 or x >= 1.2. Multiple sets are comma-separated                       |
 | (,1.1),(1.1,) | This excludes 1.1 if it is known not to work in combination with this library |
 
+#### Handling Classifiers
+
+Gradle's dependency management system does not treat classifiers (a maven feature) nicely, and prefers use of its
+first-party alternative, [feature variants](https://docs.gradle.org/current/userguide/how_to_create_feature_variants_of_a_library.html).
+`jarJar` supports these out of the box, so if possible you are encouraged to use them instead. However, this may not be
+possible when bundling existing dependencies that only publish Maven metadata. MDG provides utilities to map classifier
+dependencies to feature variants for use with `jarJar`:
+
+```gradle
+dependencies {
+    jarJar(neoForge.dependencyTools.mapClassifierToFeature("org.example.group:module-name:0.1.0", "my-classifier"))
+    // Or, to specify version ranges more explicitly:
+    jarJar(neoForge.dependencyTools.mapClassifierToFeature("org.example.group:module-name", "my-classifier")) {
+        version { /* ... */ }
+    }
+```
+
+Internally, this makes use of a component rule that modifies the metadata of your dependency during resolution. What this
+means is that if you publish a runtime dependency on that module, consumers will also need to apply the same mapping in
+their own buildscripts. If this is not desired, you can `jarJar` the mapped dependency but otherwise depend on the unmapped
+one:
+
+```gradle
+dependencies {
+    jarJar(neoForge.dependencyTools.mapClassifierToFeature("org.example.group:module-name:0.1.0", "my-classifier"))
+    implementation("org.example.group:module-name:0.1.0:my-classifier")
+}
+```
+
 #### Local Files
 
 You can also include files built by other tasks in your project, for example, jar tasks of other source sets.

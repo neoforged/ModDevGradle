@@ -3,8 +3,7 @@ package net.neoforged.moddevgradle.tasks;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.gradle.testkit.runner.TaskOutcome.NO_SOURCE;
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -139,7 +138,7 @@ class JarJarTest extends AbstractFunctionalTest {
                 version = "9.0.0"
                 """);
 
-        var result = run();
+        var result = run(false);
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
         assertEquals(new Metadata(
                 List.of(
@@ -180,7 +179,7 @@ class JarJarTest extends AbstractFunctionalTest {
                 group = "net.somegroup"
                 """);
 
-        var result = run();
+        var result = run(false);
         assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
         assertEquals(new Metadata(
                 List.of(
@@ -264,13 +263,51 @@ class JarJarTest extends AbstractFunctionalTest {
         assertThat(listFiles()).containsOnly(
                 "META-INF/jarjar/metadata.json", "META-INF/jarjar/slf4j-api-2.0.13.jar");
         assertEquals(new Metadata(
-                List.of(
-                        new ContainedJarMetadata(
-                                new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
-                                new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
-                                "META-INF/jarjar/slf4j-api-2.0.13.jar",
-                                false))),
+                        List.of(
+                                new ContainedJarMetadata(
+                                        new ContainedJarIdentifier("org.slf4j", "slf4j-api"),
+                                        new ContainedVersion(VersionRange.createFromVersionSpec("[2.0.13,)"), new DefaultArtifactVersion("2.0.13")),
+                                        "META-INF/jarjar/slf4j-api-2.0.13.jar",
+                                        false))),
                 readMetadata());
+    }
+
+    @Test
+    public void testMappedClassifier() throws Exception {
+        // See https://github.com/neoforged/ModDevGradle/issues/306
+        var result = runWithSource("""
+                dependencies {
+                    jarJar(neoForge.dependencyTools.mapClassifierToFeature("dev.onvoid.webrtc:webrtc-java", "windows-x86_64")) {
+                        version {
+                            require "0.14.0"
+                        }
+                    }
+                }
+                """);
+        assertEquals(SUCCESS, result.task(":jarJar").getOutcome());
+
+        assertThat(listFiles()).containsOnly(
+                "META-INF/jarjar/metadata.json", "META-INF/jarjar/webrtc-java-0.14.0-windows-x86_64.jar");
+        assertEquals(new Metadata(
+                        List.of(
+                                new ContainedJarMetadata(
+                                        new ContainedJarIdentifier("dev.onvoid.webrtc", "webrtc-java-windows-x86_64"),
+                                        new ContainedVersion(VersionRange.createFromVersionSpec("[0.14.0,)"), new DefaultArtifactVersion("0.14.0")),
+                                        "META-INF/jarjar/webrtc-java-0.14.0-windows-x86_64.jar",
+                                        false))),
+                readMetadata());
+    }
+
+    @Test
+    public void testDisallowsClassifierWithoutMapping() throws Exception {
+        var result = runWithSource("""
+                dependencies {
+                    jarJar(implementation("dev.onvoid.webrtc:webrtc-java:0.14.0:windows-x86_64"))
+                }
+                """, true);
+        var expectedFailure = """
+                [ERROR] jarjar:artifact-selector: Dependency DefaultExternalModuleDependency{group='dev.onvoid.webrtc', name='webrtc-java', version='0.14.0', configuration='default'} artifact extension 'jar', classifier 'windows-x86_64' has selectors that will not be reflected in jarJar metadata""";
+        assertTrue(result.getOutput().contains(expectedFailure), "Output does not contain expected failure: "+expectedFailure);
     }
 
     /**
@@ -359,6 +396,10 @@ class JarJarTest extends AbstractFunctionalTest {
     }
 
     private BuildResult runWithSource(String source) throws IOException {
+        return runWithSource(source, false);
+    }
+
+    private BuildResult runWithSource(String source, boolean expectFailure) throws IOException {
         writeProjectFile("settings.gradle", """
                 plugins {
                     id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
@@ -374,16 +415,19 @@ class JarJarTest extends AbstractFunctionalTest {
                 }
                 """ + source);
 
-        return run();
+        return run(expectFailure);
     }
 
-    private BuildResult run() {
-        return GradleRunner.create()
+    private BuildResult run(boolean expectFailure) {
+        var runner = GradleRunner.create()
                 .withPluginClasspath()
                 .withProjectDir(testProjectDir)
                 .withArguments("jarjar", "--stacktrace")
-                .withDebug(true)
-                .build();
+                .withDebug(true);
+        if (expectFailure) {
+            return runner.buildAndFail();
+        }
+        return runner.build();
     }
 
     private List<String> listFiles() throws IOException {
