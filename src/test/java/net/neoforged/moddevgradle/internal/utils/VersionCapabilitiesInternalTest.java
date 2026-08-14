@@ -87,7 +87,7 @@ public class VersionCapabilitiesInternalTest {
             "1.20.1-rc1,1.20.1-rc1",
             "1.99.1-20241017.134216,1.99.1",
             "1.99.0-20241017.134216,1.99.0",
-            "26.1-snapshot-1000-1,26.1-snapshot-1000",
+            "26.1-snapshot-1000-1,26.1", // 26.1 is released, and snapshot 1000 does not exist, so the version will be parsed as simply "26.1". This is a bit quirky, but it should not cause problems unless snapshots are released after the full release of a version, which is unlikely
             // Dynamic version
             "1.99.0-+,1.99.0",
     })
