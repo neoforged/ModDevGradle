@@ -41,6 +41,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("commons-codec", "commons-codec");
         filter.includeModule("commons-io", "commons-io");
         filter.includeModule("commons-logging", "commons-logging");
+        filter.includeModule("dev.onvoid.webrtc", "webrtc-java");
         filter.includeModule("io.netty", "netty-all");
         filter.includeModule("io.netty", "netty-buffer");
         filter.includeModule("io.netty", "netty-codec");
@@ -87,8 +88,13 @@ public class MojangRepositoryFilter {
         filter.includeModule("org.lwjgl", "lwjgl-jemalloc");
         filter.includeModule("org.lwjgl", "lwjgl-openal");
         filter.includeModule("org.lwjgl", "lwjgl-opengl");
+        filter.includeModule("org.lwjgl", "lwjgl-sdl");
+        filter.includeModule("org.lwjgl", "lwjgl-shaderc");
+        filter.includeModule("org.lwjgl", "lwjgl-spvc");
         filter.includeModule("org.lwjgl", "lwjgl-stb");
         filter.includeModule("org.lwjgl", "lwjgl-tinyfd");
+        filter.includeModule("org.lwjgl", "lwjgl-vma");
+        filter.includeModule("org.lwjgl", "lwjgl-vulkan");
         filter.includeModule("org.lwjgl.lwjgl", "lwjgl");
         filter.includeModule("org.lwjgl.lwjgl", "lwjgl-platform");
         filter.includeModule("org.lwjgl.lwjgl", "lwjgl_util");
