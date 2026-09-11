@@ -2,6 +2,7 @@ package net.neoforged.moddevgradle.functional;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -36,6 +37,15 @@ public abstract class AbstractFunctionalTest {
         var destination = testProjectDir.toPath().resolve(relativePath);
         Files.createDirectories(destination.getParent());
         Files.writeString(destination, content);
+    }
+
+    protected final String readTestResource(String resourcePath) throws IOException {
+        try (var stream = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+            if (stream == null) {
+                throw new IOException("Missing test resource: " + resourcePath);
+            }
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
     void writeGroovySettingsScript(@Language("gradle") String text, Object... args) throws IOException {

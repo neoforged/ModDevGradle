@@ -20,7 +20,6 @@ import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.provider.Provider;
-import org.gradle.api.tasks.TaskProvider;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.model.Classpath;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
@@ -70,13 +69,18 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
     }
 
     @Override
-    public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks,
+    public void configureRuns(Map<RunModel, IdeRunConfiguration> ideRunConfigurations,
             Iterable<RunModel> runs) {
         // Set up runs if running under buildship and in VS Code
         project.afterEvaluate(ignored -> {
             for (var run : runs) {
-                var prepareTask = prepareRunTasks.get(run).get();
-                addEclipseLaunchConfiguration(project, run, prepareTask);
+                var ideRunConfiguration = ideRunConfigurations.get(run);
+                var prepareTask = ideRunConfiguration.prepareRunTask().get();
+                if (ideRunConfiguration.usesDedicatedVanillaRuntime().get()) {
+                    addEclipseGradleLaunchConfiguration(project, run, prepareTask, ideRunConfiguration.runTask().get());
+                } else {
+                    addEclipseLaunchConfiguration(project, run, prepareTask);
+                }
             }
         });
     }
@@ -164,6 +168,27 @@ sealed class EclipseIntegration extends IdeIntegration permits VsCodeIntegration
                 .workingDirectory(run.getGameDirectory().get().getAsFile().getAbsolutePath())
                 .build(RunUtils.DEV_LAUNCH_MAIN_CLASS);
         writeEclipseLaunchConfig(project, launchConfigName, config);
+    }
+
+    private void addEclipseGradleLaunchConfiguration(Project project,
+            RunModel run,
+            PrepareRun prepareTask,
+            RunGameTask runTask) {
+        if (!prepareTask.getEnabled()) {
+            LOG.info("Not creating Eclipse run {} since its prepare task {} is disabled", run, prepareTask);
+            return;
+        }
+        if (!shouldGenerateConfigFor(run)) {
+            LOG.info("Not creating Eclipse run {} since it's explicitly disabled", run);
+            return;
+        }
+
+        var runIdeName = run.getIdeName().get();
+        var eclipseProjectName = Objects.requireNonNullElse(eclipseModel.getProject().getName(), project.getName());
+        var config = GradleLaunchConfig.builder(eclipseProjectName)
+                .tasks(runTask.getPath())
+                .build();
+        writeEclipseLaunchConfig(project, runIdeName, config);
     }
 
     protected static ModFoldersProvider getModFoldersProvider(Project project,
