@@ -41,7 +41,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 NeoForgeExtension.NAME,
                 NeoForgeExtension.class,
                 dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension());
+                dataFileCollections.interfaceInjectionData().extension(),
+                dataFileCollections.enumExtensionsData().extension());
     }
 
     public void enable(
@@ -97,6 +98,7 @@ public class ModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                configurations.getByName(DataFileCollections.CONFIGURATION_ENUM_EXTENSIONS_DATA),
                 versionCapabilities,
                 settings.isDisableRecompilation());
 

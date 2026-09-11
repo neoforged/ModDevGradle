@@ -24,17 +24,20 @@ public abstract class ModDevExtension {
     private final Project project;
     private final DataFileCollection accessTransformers;
     private final DataFileCollection interfaceInjectionData;
+    private final DataFileCollection enumExtensionsData;
 
     @Inject
     public ModDevExtension(Project project,
             DataFileCollection accessTransformers,
-            DataFileCollection interfaceInjectionData) {
+            DataFileCollection interfaceInjectionData,
+            DataFileCollection enumExtensionsData) {
         mods = project.container(ModModel.class);
         runs = project.container(RunModel.class, name -> project.getObjects().newInstance(RunModel.class, name, project, mods));
         parchment = project.getObjects().newInstance(Parchment.class);
         this.project = project;
         this.accessTransformers = accessTransformers;
         this.interfaceInjectionData = interfaceInjectionData;
+        this.enumExtensionsData = enumExtensionsData;
         getValidateAccessTransformers().convention(false);
 
         // Make sync tasks run
@@ -87,6 +90,28 @@ public abstract class ModDevExtension {
      */
     public void setInterfaceInjectionData(Object... paths) {
         getInterfaceInjectionData().getFiles().setFrom(paths);
+    }
+
+    /**
+     * The data-files describing additional enum extension declarations to be added to Minecraft enums.
+     * <p>
+     * <strong>This is an advanced property: Extending enums in your development environment using this property will not actually extend the enums in your published mod. You must register your enum extensions in your mod metadata for that.</strong>
+     *
+     * @see <a href="https://docs.neoforged.net/docs/advanced/extensibleenums/">Extensible Enums</a>
+     */
+    public void enumExtensionsData(Action<DataFileCollection> action) {
+        action.execute(enumExtensionsData);
+    }
+
+    public DataFileCollection getEnumExtensionsData() {
+        return enumExtensionsData;
+    }
+
+    /**
+     * Replaces current enum extensions data files.
+     */
+    public void setEnumExtensionsData(Object... paths) {
+        getEnumExtensionsData().getFiles().setFrom(paths);
     }
 
     /**

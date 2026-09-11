@@ -67,6 +67,7 @@ public record ModDevArtifactsWorkflow(
             ArtifactNamingStrategy artifactNamingStrategy,
             Configuration accessTransformers,
             Configuration interfaceInjectionData,
+            Configuration enumExtensionsData,
             VersionCapabilitiesInternal versionCapabilities,
             boolean disableRecompilation) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
@@ -147,6 +148,7 @@ public record ModDevArtifactsWorkflow(
                         }
                     }));
             task.getInterfaceInjectionData().from(interfaceInjectionData);
+            task.getEnumExtensionsData().from(enumExtensionsData);
             task.getParchmentData().from(parchmentData);
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());

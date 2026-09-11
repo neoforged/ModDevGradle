@@ -112,6 +112,34 @@ public class DataFileCollectionFunctionalTest extends AbstractFunctionalTest {
     }
 
     @Test
+    public void testPublishEnumExtensionsFile() throws IOException {
+        writeProjectFile("enumextensions.json", "{}");
+        writeProjectFile("subfolder/enumextensions.json", "{}");
+        Files.writeString(testProjectDir.toPath().resolve("enumextensions.json"), "{}");
+
+        publishDataFiles("test", "publish-if", "1.0", """
+                def generatedDataFile = tasks.register("generateDataFile") {
+                    outputs.file("build/generatedDataFile.json")
+                    doFirst {
+                        outputs.files.singleFile.text = '{}'
+                    }
+                }
+                neoForge {
+                    enumExtensionsData {
+                         publish(file('enumextensions.json'))
+                         publish(file('subfolder/enumextensions.json'))
+                         publish(generatedDataFile)
+                    }
+                }
+                """);
+
+        assertThat(consumeDataFilePublication("enumExtensionsData", "test:publish-if:1.0")).containsOnly(
+                entry("publish-if-1.0-enumextensions1.json", "{}"),
+                entry("publish-if-1.0-enumextensions2.json", "{}"),
+                entry("publish-if-1.0-enumextensions3.json", "{}"));
+    }
+
+    @Test
     public void testNoEmptyVariantsArePublished() throws IOException {
         publishDataFiles("test", "publish-empty", "1.0", "");
 
