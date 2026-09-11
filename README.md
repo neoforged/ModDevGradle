@@ -248,6 +248,30 @@ neoForge {
 }
 ```
 
+### Launch Metadata
+
+If you need to launch a configured run from another Gradle task or an external tool, you can use the launch metadata
+file generated for each run. This avoids depending on ModDevGradle's internal argument-file names.
+
+For each run, ModDevGradle registers a `create<RunName>LaunchMetadata` task of type
+`CreateLaunchMetadata`, which exposes the metadata file as an output:
+
+```groovy
+import net.neoforged.moddevgradle.tasks.CreateLaunchMetadata
+
+def serverLaunchMetadata = tasks.named("createServerLaunchMetadata", CreateLaunchMetadata).flatMap {
+    it.metadataFile
+}
+```
+
+The file is written to `build/moddev/<runName>LaunchMetadata.properties` and contains the Java executable, working
+directory, DevLaunch main class, argument-file paths, mod-folder argument, and `environment.<name>` entries for run
+environment variables.
+
+Launchers should use the `workingDirectory` from the metadata. If a launcher needs disposable or test-specific state,
+configure the run's `gameDirectory` to point at that directory instead of replacing the metadata working directory at
+launch time.
+
 ### Jar-in-Jar
 
 To embed external Jar-files into your mod file, you can use the `jarJar` configuration added by the plugin.
