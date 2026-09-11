@@ -42,6 +42,8 @@ public class ModDevPlugin implements Plugin<Project> {
                 NeoForgeExtension.class,
                 dataFileCollections.accessTransformers().extension(),
                 dataFileCollections.interfaceInjectionData().extension());
+
+        project.getDependencies().getComponents().withModule("net.neoforged:neoforge", NeoForgeMetadataRule.class);
     }
 
     public void enable(
