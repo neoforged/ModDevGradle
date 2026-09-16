@@ -26,11 +26,22 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
             applyRepositories(project.getRepositories());
         } else if (target instanceof Settings settings) {
             applyRepositories(settings.getDependencyResolutionManagement().getRepositories());
-            settings.getGradle().getPlugins().apply(getClass()); // Add a marker to Gradle
+
+            // Apply our marker plugin to all projects.
+            settings.getGradle().beforeProject(project -> project.getPluginManager().apply(DeclaredInSettingsPlugin.class));
         } else if (target instanceof Gradle gradle) {
             // Do nothing
         } else {
             throw new GradleException("This plugin does not support being applied to " + target);
+        }
+    }
+
+    /**
+     * A marker plugin applied to each project, indicating this plugin was applied on the settings level.
+     */
+    public static final class DeclaredInSettingsPlugin implements Plugin<Project> {
+        @Override
+        public void apply(Project target) {
         }
     }
 
