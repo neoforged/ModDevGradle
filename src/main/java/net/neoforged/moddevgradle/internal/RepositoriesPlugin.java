@@ -41,8 +41,7 @@ public class RepositoriesPlugin implements Plugin<PluginAware> {
      */
     public static final class DeclaredInSettingsPlugin implements Plugin<Project> {
         @Override
-        public void apply(Project target) {
-        }
+        public void apply(Project target) {}
     }
 
     private void applyRepositories(RepositoryHandler repositories) {

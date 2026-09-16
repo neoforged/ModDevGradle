@@ -55,16 +55,16 @@ public class GroovyScriptTest extends AbstractFunctionalTest {
     @Test
     public void testApplyInSettings() throws IOException {
         writeFile(settingsFile, """
-            plugins {
-                id "net.neoforged.moddev.repositories"
-            }
+                plugins {
+                    id "net.neoforged.moddev.repositories"
+                }
 
-            rootProject.name = 'hello-world'
+                rootProject.name = 'hello-world'
 
-            dependencyResolutionManagement {
-                repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
-            }
-            """);
+                dependencyResolutionManagement {
+                    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+                }
+                """);
         String buildFileContent = """
                 plugins {
                     id "net.neoforged.moddev"
@@ -73,10 +73,10 @@ public class GroovyScriptTest extends AbstractFunctionalTest {
         writeFile(buildFile, buildFileContent);
 
         BuildResult result = GradleRunner.create()
-            .withPluginClasspath()
-            .withProjectDir(testProjectDir)
-            .withArguments("tasks", "--all", "-i")
-            .build();
+                .withPluginClasspath()
+                .withProjectDir(testProjectDir)
+                .withArguments("tasks", "--all", "-i")
+                .build();
 
         assertThat(result.getOutput()).contains("Not enabling NeoForged repositories since they were applied at the settings level");
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
