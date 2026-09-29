@@ -18,8 +18,9 @@ public abstract class LegacyForgeExtension extends ModDevExtension {
     @Inject
     public LegacyForgeExtension(Project project,
             DataFileCollection accessTransformers,
-            DataFileCollection interfaceInjectionData) {
-        super(project, accessTransformers, interfaceInjectionData);
+            DataFileCollection interfaceInjectionData,
+            DataFileCollection enumExtensionsData) {
+        super(project, accessTransformers, interfaceInjectionData, enumExtensionsData);
         this.project = project;
     }
 

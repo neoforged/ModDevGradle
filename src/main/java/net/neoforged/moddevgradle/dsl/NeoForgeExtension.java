@@ -17,8 +17,8 @@ public abstract class NeoForgeExtension extends ModDevExtension {
     private final UnitTest unitTest;
 
     @Inject
-    public NeoForgeExtension(Project project, DataFileCollection accessTransformers, DataFileCollection interfaceInjectionData) {
-        super(project, accessTransformers, interfaceInjectionData);
+    public NeoForgeExtension(Project project, DataFileCollection accessTransformers, DataFileCollection interfaceInjectionData, DataFileCollection enumExtensionsData) {
+        super(project, accessTransformers, interfaceInjectionData, enumExtensionsData);
         this.project = project;
         unitTest = project.getObjects().newInstance(UnitTest.class);
         unitTest.getLoadedMods().convention(getMods());
