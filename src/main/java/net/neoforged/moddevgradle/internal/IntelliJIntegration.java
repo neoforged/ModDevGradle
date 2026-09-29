@@ -256,19 +256,37 @@ final class IntelliJIntegration extends IdeIntegration {
      * Convert a project and source set to an IntelliJ module name.
      * Do not use {@link ModuleRef} as it does not correctly handle projects with a space in their name!
      */
-    private static String getIntellijModuleName(Project project, SourceSet sourceSet) {
+    static String getIntellijModuleName(Project project, SourceSet sourceSet) {
+        // IntelliJ escapes each element of the Gradle path on its own and joins them with '.',
+        // so an element that itself contains a '.' (a subproject named "1.21.1-neoforge", say)
+        // becomes "1_21_1-neoforge". Joining the raw path with '.' instead produces a module
+        // name that does not exist, and the generated run configuration ends up without a module.
+        // See GradleProjectResolverUtil#getHolderModuleName and #escapeModuleNameElement:
+        // https://github.com/JetBrains/intellij-community/blob/711ef1fbda55f43c3943d379f3f16dccfa6760eb/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java
         var moduleName = new StringBuilder();
-        // The `replace` call here is our bug fix compared to ModuleRef!
-        // The actual IDEA logic is more complicated, but this should cover the majority of use cases.
-        // See https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/plugins/gradle/src/org/jetbrains/plugins/gradle/service/project/GradleProjectResolverUtil.java#L205
-        // which calls https://github.com/JetBrains/intellij-community/blob/a32fd0c588a6da11fd6d5d2fb0362308da3206f3/platform/util-rt/src/com/intellij/util/PathUtilRt.java#L120
-        moduleName.append(project.getRootProject().getName().replace(" ", "_"));
+        moduleName.append(escapeModuleNameElement(project.getRootProject().getName()));
         if (project != project.getRootProject()) {
-            moduleName.append(project.getPath().replaceAll(":", "."));
+            for (var element : project.getPath().split(":")) {
+                if (!element.isEmpty()) {
+                    moduleName.append(".").append(escapeModuleNameElement(element));
+                }
+            }
         }
         moduleName.append(".");
-        moduleName.append(sourceSet.getName());
+        moduleName.append(escapeModuleNameElement(sourceSet.getName()));
         return moduleName.toString();
+    }
+
+    /**
+     * Escapes a single element of an IntelliJ module name, mirroring
+     * {@code GradleProjectResolverUtil#escapeModuleNameElement}.
+     */
+    static String escapeModuleNameElement(String element) {
+        return element
+                .replace(" ", "_")
+                .replace("/", "_")
+                .replace("\\", "_")
+                .replace(".", "_");
     }
 
     private static Map<String, Object> getExtraIntelijRunProperties(RunModel run) {
