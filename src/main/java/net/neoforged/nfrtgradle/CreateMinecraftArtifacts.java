@@ -183,6 +183,20 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract RegularFileProperty getGameJarWithSourcesArtifact();
 
     /**
+     * This retrieves the common classes equivalent of {@link #getGameJarWithSourcesArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameCommonJarWithSourcesArtifact();
+
+    /**
+     * This retrieves the client-only classes equivalent of {@link #getGameJarWithSourcesArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameClientJarWithSourcesArtifact();
+
+    /**
      * This retrieves the same as {@link #getGameJarWithSourcesArtifact()}, but doesn't include the sources in the
      * Jar file.
      */
@@ -191,11 +205,39 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
     public abstract RegularFileProperty getGameJarArtifact();
 
     /**
+     * This retrieves the common classes equivalent of {@link #getGameJarArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameCommonJarArtifact();
+
+    /**
+     * This retrieves the client-only classes equivalent of {@link #getGameJarArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameClientJarArtifact();
+
+    /**
      * This retrieves a Zip-File containing the sources used to compile {@link #getGameJarArtifact()}.
      */
     @OutputFile
     @Optional
     public abstract RegularFileProperty getGameSourcesArtifact();
+
+    /**
+     * This retrieves a Zip-File containing the common sources used to compile {@link #getGameCommonJarArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameCommonSourcesArtifact();
+
+    /**
+     * This retrieves a Zip-File containing the client-only sources used to compile {@link #getGameClientJarArtifact()}.
+     */
+    @OutputFile
+    @Optional
+    public abstract RegularFileProperty getGameClientSourcesArtifact();
 
     /**
      * Also known as "client-extra". Contains the non-class files from the original Minecraft jar (excluding META-INF).
@@ -348,39 +390,41 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
 
         boolean includeNeoForgeInGameJar = getIncludeNeoForgeInGameJar().get();
         if (getDisableRecompilation().get()) {
-            if (getGameJarArtifact().isPresent()) {
-                if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
-                    requestedResults.add(new RequestedResult("gameJarNoRecompWithNeoForge", getGameJarArtifact().get().getAsFile()));
-                } else {
-                    requestedResults.add(new RequestedResult("gameJarNoRecomp", getGameJarArtifact().get().getAsFile()));
-                }
+            if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
+                requestIfPresent(requestedResults, "gameJarNoRecompWithNeoForge", getGameJarArtifact());
+                requestIfPresent(requestedResults, "gameCommonJarNoRecompWithNeoForge", getGameCommonJarArtifact());
+                requestIfPresent(requestedResults, "gameClientJarNoRecompWithNeoForge", getGameClientJarArtifact());
+            } else {
+                requestIfPresent(requestedResults, "gameJarNoRecomp", getGameJarArtifact());
+                requestIfPresent(requestedResults, "gameCommonJarNoRecomp", getGameCommonJarArtifact());
+                requestIfPresent(requestedResults, "gameClientJarNoRecomp", getGameClientJarArtifact());
             }
-            if (getGameSourcesArtifact().isPresent()) {
-                throw new IllegalArgumentException("Cannot request game sources if recompilation is disabled.");
-            }
-            if (getGameJarWithSourcesArtifact().isPresent()) {
-                throw new IllegalArgumentException("Cannot request game jar with sources if recompilation is disabled.");
-            }
+            rejectIfPresent(getGameSourcesArtifact(), "Cannot request game sources if recompilation is disabled.");
+            rejectIfPresent(getGameCommonSourcesArtifact(), "Cannot request game common sources if recompilation is disabled.");
+            rejectIfPresent(getGameClientSourcesArtifact(), "Cannot request game client sources if recompilation is disabled.");
+            rejectIfPresent(getGameJarWithSourcesArtifact(), "Cannot request game jar with sources if recompilation is disabled.");
+            rejectIfPresent(getGameCommonJarWithSourcesArtifact(), "Cannot request game common jar with sources if recompilation is disabled.");
+            rejectIfPresent(getGameClientJarWithSourcesArtifact(), "Cannot request game client jar with sources if recompilation is disabled.");
         } else if (getNeoForgeArtifact().isPresent() && includeNeoForgeInGameJar) {
-            if (getGameJarArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameJarWithNeoForge", getGameJarArtifact().get().getAsFile()));
-            }
-            if (getGameSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameSourcesWithNeoForge", getGameSourcesArtifact().get().getAsFile()));
-            }
-            if (getGameJarWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameJarWithSourcesAndNeoForge", getGameJarWithSourcesArtifact().get().getAsFile()));
-            }
+            requestIfPresent(requestedResults, "gameJarWithNeoForge", getGameJarArtifact());
+            requestIfPresent(requestedResults, "gameCommonJarWithNeoForge", getGameCommonJarArtifact());
+            requestIfPresent(requestedResults, "gameClientJarWithNeoForge", getGameClientJarArtifact());
+            requestIfPresent(requestedResults, "gameSourcesWithNeoForge", getGameSourcesArtifact());
+            requestIfPresent(requestedResults, "gameCommonSourcesWithNeoForge", getGameCommonSourcesArtifact());
+            requestIfPresent(requestedResults, "gameClientSourcesWithNeoForge", getGameClientSourcesArtifact());
+            requestIfPresent(requestedResults, "gameJarWithSourcesAndNeoForge", getGameJarWithSourcesArtifact());
+            requestIfPresent(requestedResults, "gameCommonJarWithSourcesAndNeoForge", getGameCommonJarWithSourcesArtifact());
+            requestIfPresent(requestedResults, "gameClientJarWithSourcesAndNeoForge", getGameClientJarWithSourcesArtifact());
         } else {
-            if (getGameJarArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameJar", getGameJarArtifact().get().getAsFile()));
-            }
-            if (getGameSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameSources", getGameSourcesArtifact().get().getAsFile()));
-            }
-            if (getGameJarWithSourcesArtifact().isPresent()) {
-                requestedResults.add(new RequestedResult("gameJarWithSources", getGameJarWithSourcesArtifact().get().getAsFile()));
-            }
+            requestIfPresent(requestedResults, "gameJar", getGameJarArtifact());
+            requestIfPresent(requestedResults, "gameCommonJar", getGameCommonJarArtifact());
+            requestIfPresent(requestedResults, "gameClientJar", getGameClientJarArtifact());
+            requestIfPresent(requestedResults, "gameSources", getGameSourcesArtifact());
+            requestIfPresent(requestedResults, "gameCommonSources", getGameCommonSourcesArtifact());
+            requestIfPresent(requestedResults, "gameClientSources", getGameClientSourcesArtifact());
+            requestIfPresent(requestedResults, "gameJarWithSources", getGameJarWithSourcesArtifact());
+            requestIfPresent(requestedResults, "gameCommonJarWithSources", getGameCommonJarWithSourcesArtifact());
+            requestIfPresent(requestedResults, "gameClientJarWithSources", getGameClientJarWithSourcesArtifact());
         }
 
         // Request that NFRT write all these results where we want them to be written to
@@ -415,6 +459,18 @@ public abstract class CreateMinecraftArtifacts extends NeoFormRuntimeTask {
 
         for (Problem problem : problems) {
             ProblemReportingUtil.report(getProblems(), problem);
+        }
+    }
+
+    private static void requestIfPresent(List<RequestedResult> requestedResults, String id, RegularFileProperty property) {
+        if (property.isPresent()) {
+            requestedResults.add(new RequestedResult(id, property.get().getAsFile()));
+        }
+    }
+
+    private static void rejectIfPresent(RegularFileProperty property, String message) {
+        if (property.isPresent()) {
+            throw new IllegalArgumentException(message);
         }
     }
 

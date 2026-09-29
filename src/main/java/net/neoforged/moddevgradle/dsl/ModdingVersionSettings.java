@@ -15,6 +15,8 @@ public abstract class ModdingVersionSettings {
     @Nullable
     private String neoFormVersion;
 
+    private boolean splitDist = false;
+
     private Set<SourceSet> enabledSourceSets = new HashSet<>();
 
     private boolean disableRecompilation = "true".equals(System.getenv("CI"));
@@ -76,5 +78,17 @@ public abstract class ModdingVersionSettings {
 
     public void setDisableRecompilation(boolean disableRecompilation) {
         this.disableRecompilation = disableRecompilation;
+    }
+
+    /**
+     * Enables the split-distribution source set layout. This creates a {@code client}
+     * source set and wires it for client-only mod classes.
+     */
+    public boolean isSplitDist() {
+        return splitDist;
+    }
+
+    public void setSplitDist(boolean splitDist) {
+        this.splitDist = splitDist;
     }
 }

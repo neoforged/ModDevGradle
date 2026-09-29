@@ -1,0 +1,21 @@
+license="CC0"
+
+[[mods]]
+modId="splittest"
+version="0.0.0"
+displayName="Test Split Project"
+description='''A test project.'''
+
+[[dependencies.splittest]]
+modId="neoforge"
+type="required"
+versionRange="[21.10.0-beta,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.splittest]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.10]"
+ordering="NONE"
+side="BOTH"
