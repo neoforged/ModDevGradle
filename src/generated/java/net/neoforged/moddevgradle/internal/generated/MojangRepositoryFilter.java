@@ -90,6 +90,7 @@ public class MojangRepositoryFilter {
         filter.includeModule("org.lwjgl", "lwjgl-opengl");
         filter.includeModule("org.lwjgl", "lwjgl-sdl");
         filter.includeModule("org.lwjgl", "lwjgl-shaderc");
+        filter.includeModule("org.lwjgl", "lwjgl-spng");
         filter.includeModule("org.lwjgl", "lwjgl-spvc");
         filter.includeModule("org.lwjgl", "lwjgl-stb");
         filter.includeModule("org.lwjgl", "lwjgl-tinyfd");
