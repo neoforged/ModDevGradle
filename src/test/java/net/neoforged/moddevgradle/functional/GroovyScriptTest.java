@@ -51,4 +51,34 @@ public class GroovyScriptTest extends AbstractFunctionalTest {
         assertThat(result.getOutput()).contains("createMinecraftArtifacts");
         assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
     }
+
+    @Test
+    public void testApplyInSettings() throws IOException {
+        writeFile(settingsFile, """
+                plugins {
+                    id "net.neoforged.moddev.repositories"
+                }
+
+                rootProject.name = 'hello-world'
+
+                dependencyResolutionManagement {
+                    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+                }
+                """);
+        String buildFileContent = """
+                plugins {
+                    id "net.neoforged.moddev"
+                }
+                """;
+        writeFile(buildFile, buildFileContent);
+
+        BuildResult result = GradleRunner.create()
+                .withPluginClasspath()
+                .withProjectDir(testProjectDir)
+                .withArguments("tasks", "--all", "-i")
+                .build();
+
+        assertThat(result.getOutput()).contains("Not enabling NeoForged repositories since they were applied at the settings level");
+        assertEquals(TaskOutcome.SUCCESS, result.task(":tasks").getOutcome());
+    }
 }
