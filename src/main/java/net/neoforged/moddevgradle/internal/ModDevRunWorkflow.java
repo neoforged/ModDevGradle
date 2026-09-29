@@ -13,6 +13,7 @@ import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
 import net.neoforged.moddevgradle.internal.utils.VersionCapabilitiesInternal;
+import net.neoforged.moddevgradle.tasks.CreateLaunchMetadata;
 import net.neoforged.nfrtgradle.CreateMinecraftArtifacts;
 import net.neoforged.nfrtgradle.DownloadAssets;
 import org.gradle.api.DomainObjectCollection;
@@ -266,6 +267,10 @@ public class ModDevRunWorkflow {
             task.setGroup(branding.publicTaskGroup());
             task.setDescription("Creates batch files/shell scripts to launch the game from outside of Gradle (i.e. Renderdoc, NVidia Nsight, etc.)");
         });
+        var createLaunchMetadataTask = project.getTasks().register("createLaunchMetadata", Task.class, task -> {
+            task.setGroup(branding.publicTaskGroup());
+            task.setDescription("Creates metadata files to launch the game from outside of Gradle or your IDE.");
+        });
 
         Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks = new IdentityHashMap<>();
         runs.all(run -> {
@@ -285,7 +290,8 @@ public class ModDevRunWorkflow {
                     assetPropertiesFile,
                     devLaunchConfig,
                     versionCapabilities,
-                    createLaunchScriptsTask);
+                    createLaunchScriptsTask,
+                    createLaunchMetadataTask);
             prepareRunTasks.put(run, prepareRunTask);
         });
         ideIntegration.configureRuns(prepareRunTasks, runs);
@@ -308,7 +314,8 @@ public class ModDevRunWorkflow {
             Provider<RegularFile> assetPropertiesFile,
             Configuration devLaunchConfig,
             VersionCapabilitiesInternal versionCapabilities,
-            TaskProvider<Task> createLaunchScriptsTask) {
+            TaskProvider<Task> createLaunchScriptsTask,
+            TaskProvider<Task> createLaunchMetadataTask) {
         var ideIntegration = IdeIntegration.of(project, branding);
         var configurations = project.getConfigurations();
         var javaExtension = ExtensionUtils.getExtension(project, "java", JavaPluginExtension.class);
@@ -392,6 +399,8 @@ public class ModDevRunWorkflow {
         });
         ideIntegration.runTaskOnProjectSync(prepareRunTask);
 
+        var modFoldersProvider = RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null);
+
         var launchScriptTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchScript"), CreateLaunchScriptTask.class, task -> {
             task.setGroup(branding.internalTaskGroup());
             task.setDescription("Creates a bash/shell-script to launch the " + run.getName() + " Minecraft run from outside Gradle or your IDE.");
@@ -405,9 +414,28 @@ public class ModDevRunWorkflow {
             task.getVmArgsFile().set(prepareRunTask.get().getVmArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getProgramArgsFile().set(prepareRunTask.get().getProgramArgsFile().map(d -> d.getAsFile().getAbsolutePath()));
             task.getEnvironment().set(run.getEnvironment());
-            task.getModFolders().set(RunUtils.getGradleModFoldersProvider(project, run.getLoadedMods(), null));
+            task.getModFolders().set(modFoldersProvider);
         });
         createLaunchScriptsTask.configure(task -> task.dependsOn(launchScriptTask));
+
+        var launchMetadataTask = tasks.register(InternalModelHelper.nameOfRun(run, "create", "launchMetadata"), CreateLaunchMetadata.class, task -> {
+            task.setGroup(branding.internalTaskGroup());
+            task.setDescription("Creates launch metadata for the " + run.getName() + " Minecraft run.");
+
+            task.getWorkingDirectory().set(run.getGameDirectory().map(d -> d.getAsFile().getAbsolutePath()));
+            task.getJavaExecutable().set(launchScriptTask.flatMap(CreateLaunchScriptTask::getJavaExecutable));
+            task.getClasspathArgsFile().set(launchScriptTask.flatMap(CreateLaunchScriptTask::getClasspathArgsFile));
+            task.getVmArgsFile().set(prepareRunTask.flatMap(PrepareRun::getVmArgsFile));
+            task.getProgramArgsFile().set(prepareRunTask.flatMap(PrepareRun::getProgramArgsFile));
+            task.getMainClass().set(RunUtils.DEV_LAUNCH_MAIN_CLASS);
+            task.getModFoldersArgument().set(modFoldersProvider
+                    .getClassesArgument()
+                    .map(RunUtils::getModFoldersArgument));
+            task.getEnvironment().set(run.getEnvironment());
+            task.getMetadataFile().set(RunUtils.getLaunchMetadata(argFileDir, run));
+            task.dependsOn(launchScriptTask);
+        });
+        createLaunchMetadataTask.configure(task -> task.dependsOn(launchMetadataTask));
 
         tasks.register(InternalModelHelper.nameOfRun(run, "run", ""), RunGameTask.class, task -> {
             task.setGroup(branding.publicTaskGroup());
