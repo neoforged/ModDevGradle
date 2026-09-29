@@ -16,10 +16,17 @@ import net.neoforged.jarjar.metadata.MetadataIOHandler;
 import net.neoforged.moddevgradle.internal.jarjar.JarJarArtifacts;
 import net.neoforged.moddevgradle.internal.jarjar.ResolvedJarJarArtifact;
 import net.neoforged.moddevgradle.internal.utils.FileUtils;
+import net.neoforged.moddevgradle.internal.utils.ProblemCapturer;
+import net.neoforged.moddevgradle.internal.utils.ProblemReportingUtil;
+import net.neoforged.problems.Problem;
+import net.neoforged.problems.ProblemGroup;
+import net.neoforged.problems.ProblemId;
+import net.neoforged.problems.ProblemSeverity;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.ModuleDependency;
 import org.gradle.api.attributes.Bundling;
 import org.gradle.api.attributes.Category;
 import org.gradle.api.attributes.LibraryElements;
@@ -42,6 +49,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 public abstract class JarJar extends DefaultTask {
     private static final String DEFAULT_GROUP = "jarjar";
+    private static final ProblemGroup PROBLEM_GROUP = ProblemGroup.create("jarjar", "JarJar");
 
     @Nested
     @ApiStatus.Internal
@@ -84,6 +92,45 @@ public abstract class JarJar extends DefaultTask {
         // as it has attributes, it could conflict with normal exposed configurations
         configuration.setCanBeResolved(true);
         configuration.setCanBeConsumed(false);
+
+        // Use of artifact selectors within jarJar configurations is ill-advised, as it can lead to incorrect metadata
+        // being created (any selector for classifier/extension will not be respected in the JarJar ID)
+        configuration.withDependencies(dependencies -> {
+            dependencies.configureEach(dependency -> {
+                if (dependency instanceof ModuleDependency moduleDependency) {
+                    for (var artifact : moduleDependency.getArtifacts()) {
+                        if (artifact.getExtension() != null || artifact.getClassifier() != null) {
+                            List<String> issues = new ArrayList<>();
+                            if (artifact.getExtension() != null) {
+                                issues.add(String.format("extension '%s'", artifact.getExtension()));
+                            }
+                            if (artifact.getClassifier() != null) {
+                                issues.add(String.format("classifier '%s'", artifact.getClassifier()));
+                            }
+                            var errorString = String.format(
+                                    "Dependency %s artifact %s has selectors that will not be reflected in jarJar metadata",
+                                    dependency,
+                                    String.join(", ", issues));
+                            var builder = Problem.builder(ProblemId.create(
+                                    "artifact-selector",
+                                    "Artifact Selector in Dependency",
+                                    PROBLEM_GROUP))
+                                    .contextualLabel(errorString)
+                                    .severity(ProblemSeverity.ERROR)
+                                    .documentedAt("https://github.com/neoforged/ModDevGradle/#handling-classifiers");
+                            if (artifact.getExtension() == null) {
+                                // Only applicable if a classifier is the only issue
+                                builder.solution("Use DependencyTools#mapClassifierToFeature");
+                            }
+                            ProblemReportingUtil.report(
+                                    project.getObjects().newInstance(ProblemCapturer.class).getProblems(),
+                                    builder.build());
+                            throw new RuntimeException(errorString);
+                        }
+                    }
+                }
+            });
+        });
 
         var javaPlugin = project.getExtensions().getByType(JavaPluginExtension.class);
 
