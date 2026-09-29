@@ -1,0 +1,65 @@
+import org.gradle.api.artifacts.ExternalModuleDependency
+
+plugins {
+    id "net.neoforged.moddev"
+}
+
+neoForge {
+    version = "{DEFAULT_NEOFORGE_VERSION}"
+
+    mods {
+        testmod {
+            sourceSet sourceSets.main
+        }
+    }
+
+    runs {
+        regularServer {
+            server()
+            sourceSet = sourceSets.test
+        }
+        vanillaClient {
+            vanillaClient()
+        }
+        vanillaServer {
+            vanillaServer()
+        }
+    }
+}
+
+def assertNoNeoForgeDependencies = { dependencies ->
+    def neoForgeDependencies = dependencies.findAll { dependency ->
+        dependency instanceof ExternalModuleDependency
+                && (dependency.name == "neoforge"
+                || dependency.requestedCapabilities.any { it.name.startsWith("neoforge-") })
+    }
+    if (!neoForgeDependencies.empty) {
+        throw new GradleException("Unexpected NeoForge dependencies: ${neoForgeDependencies}")
+    }
+}
+
+tasks.register("assertVanillaRuns") {
+    doLast {
+        assert configurations.modDevVanillaRuntimeDependencies.allDependencies*.name == ["minecraft-dependencies"]
+        assertNoNeoForgeDependencies(configurations.modDevVanillaRuntimeDependencies.allDependencies)
+
+        ["vanillaClient", "vanillaServer"].each { runName ->
+            def run = neoForge.runs.named(runName).get()
+            assert run.loadedMods.get().empty
+
+            def vanillaRuntimeClasspath = configurations.getByName("${runName}VanillaRuntimeClasspath")
+            assert vanillaRuntimeClasspath.extendsFrom*.name.contains("modDevVanillaRuntimeDependencies")
+            assert vanillaRuntimeClasspath.extendsFrom*.name.contains("devLaunchConfig")
+            assert !vanillaRuntimeClasspath.extendsFrom*.name.contains("modDevRuntimeDependencies")
+            assert !vanillaRuntimeClasspath.extendsFrom*.name.contains("${runName}AdditionalRuntimeClasspath")
+            assertNoNeoForgeDependencies(vanillaRuntimeClasspath.allDependencies)
+
+            def legacyClasspath = configurations.getByName("${runName}LegacyClasspath")
+            assert legacyClasspath.dependencies.empty
+            assert legacyClasspath.extendsFrom.empty
+        }
+
+        def regularRuntimeClasspath = configurations.getByName(sourceSets.test.runtimeClasspathConfigurationName)
+        assert regularRuntimeClasspath.extendsFrom*.name.contains("devLaunchConfig")
+    }
+}

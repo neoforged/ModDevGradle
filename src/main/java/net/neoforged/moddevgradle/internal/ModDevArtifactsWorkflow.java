@@ -44,13 +44,16 @@ public record ModDevArtifactsWorkflow(
         VersionCapabilitiesInternal versionCapabilities,
         TaskProvider<CreateMinecraftArtifacts> createArtifacts,
         Provider<? extends Dependency> minecraftClassesDependency,
+        Provider<RegularFile> vanillaMinecraftClassesArtifact,
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
+        Configuration vanillaRuntimeDependencies,
         Provider<Directory> modDevBuildDir,
         Provider<Directory> artifactsBuildDir) {
 
     private static final String EXTENSION_NAME = "__internal_modDevArtifactsWorkflow";
+    private static final String VANILLA_CLASSES_RESULT_ID = "vanillaDeobfuscated";
     public static ModDevArtifactsWorkflow get(Project project) {
         var result = ExtensionUtils.findExtension(project, EXTENSION_NAME, ModDevArtifactsWorkflow.class);
         if (result == null) {
@@ -193,6 +196,7 @@ public record ModDevArtifactsWorkflow(
         } else {
             minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameJarArtifact())).map(dependencyFactory::create);
         }
+        var vanillaMinecraftClassesArtifact = artifactsBuildDir.map(dir -> dir.file("vanilla-runtime-" + versionCapabilities.minecraftVersion() + ".jar"));
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
         // We cannot use "runtimeOnly", since the contents of that are published.
@@ -225,6 +229,18 @@ public record ModDevArtifactsWorkflow(
             }
         });
 
+        var vanillaRuntimeDependencies = configurations.create("modDevVanillaRuntimeDependencies", config -> {
+            config.setDescription("The runtime dependencies to run vanilla Minecraft.");
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+            if (moddingDependencies.neoFormDependency() != null) {
+                config.getDependencies().add(moddingDependencies.neoFormDependency().copy()
+                        .capabilities(c -> c.requireCapability("net.neoforged:neoform-dependencies")));
+            } else {
+                config.getDependencies().add(dependencyFactory.create("net.neoforged:minecraft-dependencies:" + versionCapabilities.minecraftVersion()));
+            }
+        });
+
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
         if (!disableRecompilation && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             ideIntegration.attachSources(
@@ -239,9 +255,11 @@ public record ModDevArtifactsWorkflow(
                 versionCapabilities,
                 createArtifacts,
                 minecraftClassesDependency,
+                vanillaMinecraftClassesArtifact,
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,
+                vanillaRuntimeDependencies,
                 modDevBuildDir,
                 artifactsBuildDir);
 
@@ -369,6 +387,11 @@ public record ModDevArtifactsWorkflow(
         createArtifacts.configure(task -> task.getAdditionalResults().put(id, path.map(RegularFile::getAsFile)));
         return project.getLayout().file(
                 createArtifacts.flatMap(task -> task.getAdditionalResults().getting(id)));
+    }
+
+    public Provider<? extends Dependency> requestVanillaMinecraftClassesDependency() {
+        createArtifacts.configure(task -> task.getAdditionalResults().put(VANILLA_CLASSES_RESULT_ID, vanillaMinecraftClassesArtifact.map(RegularFile::getAsFile)));
+        return vanillaMinecraftClassesArtifact.map(path -> project.getDependencyFactory().create(project.files(path).builtBy(createArtifacts)));
     }
 
     private static <T extends Named> void setNamedAttribute(Project project, AttributeContainer attributes, Attribute<T> attribute, String value) {

@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.dsl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -57,6 +58,7 @@ public abstract class RunModel implements Named, Dependencies {
 
         getLogLevel().convention(Level.INFO);
         getDevLogin().convention(false);
+        getUseVanillaRunTemplates().convention(false);
 
         // Build a nicer name for the IDE run configuration
         boolean isSubProject = project.getRootProject() != project;
@@ -165,6 +167,15 @@ public abstract class RunModel implements Named, Dependencies {
     }
 
     /**
+     * Equivalent to setting {@code type = "client"} and using the vanilla client run template.
+     */
+    public void vanillaClient() {
+        getType().set("client");
+        getUseVanillaRunTemplates().set(true);
+        getLoadedMods().set(Collections.emptySet());
+    }
+
+    /**
      * Equivalent to setting {@code type = "clientData"}.
      *
      * <p>Should only be used for Minecraft versions starting from 1.21.4.
@@ -189,6 +200,15 @@ public abstract class RunModel implements Named, Dependencies {
      */
     public void server() {
         getType().set("server");
+    }
+
+    /**
+     * Equivalent to setting {@code type = "server"} and using the vanilla server run template.
+     */
+    public void vanillaServer() {
+        getType().set("server");
+        getUseVanillaRunTemplates().set(true);
+        getLoadedMods().set(Collections.emptySet());
     }
 
     /**
@@ -272,6 +292,11 @@ public abstract class RunModel implements Named, Dependencies {
      * official Minecraft account in development environments.
      */
     public abstract Property<Boolean> getDevLogin();
+
+    /**
+     * Use ModDevGradle's built-in vanilla run templates instead of the configured loader's run templates.
+     */
+    public abstract Property<Boolean> getUseVanillaRunTemplates();
 
     @Override
     public String toString() {
