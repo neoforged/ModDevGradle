@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
+import net.neoforged.moddevgradle.dsl.InternalModelHelper;
 import net.neoforged.moddevgradle.dsl.ModModel;
 import net.neoforged.moddevgradle.dsl.RunModel;
 import net.neoforged.moddevgradle.internal.utils.ExtensionUtils;
@@ -31,6 +32,7 @@ import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.BeforeRunTask;
+import org.jetbrains.gradle.ext.Gradle;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ModuleRef;
@@ -84,7 +86,6 @@ final class IntelliJIntegration extends IdeIntegration {
     public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
-
             var runConfigurations = getIntelliJRunConfigurations();
 
             if (runConfigurations == null) {
@@ -102,7 +103,12 @@ final class IntelliJIntegration extends IdeIntegration {
                         LOG.info("Not creating IntelliJ run {} since it's explicitly disabled", run);
                         continue;
                     }
-                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                    if (shouldPreferGradleTask(run)) {
+                        LOG.info("Creating a Gradle based IntelliJ run {} since preferGradleTask = true", run);
+                        addGradleTaskIntelliJRunConfiguration(project, runConfigurations, run);
+                    } else {
+                        addApplicationIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                    }
                 }
             }
         });
@@ -171,12 +177,31 @@ final class IntelliJIntegration extends IdeIntegration {
         return ExtensionUtils.findExtension((ExtensionAware) projectSettings, "runConfigurations", RunConfigurationContainer.class);
     }
 
-    private static void addIntelliJRunConfiguration(Project project,
+    private static void addGradleTaskIntelliJRunConfiguration(Project project,
+            RunConfigurationContainer runConfigurations,
+            RunModel run) {
+        var gradleRun = new ExtendedGradle(run.getIdeName().get(), getExtraIntelliJRunProperties(run));
+        var sourceSets = ExtensionUtils.getSourceSets(project);
+        var sourceSet = run.getSourceSet().get();
+        // Validate that the source set is part of this project
+        if (!sourceSets.contains(sourceSet)) {
+            throw new GradleException("Cannot use source set from another project for run " + run.getName());
+        }
+
+        gradleRun.setProject(project);
+
+        var taskName = InternalModelHelper.nameOfRun(run, "run", "");
+        gradleRun.setTaskNames(Set.of(taskName));
+
+        runConfigurations.add(gradleRun);
+    }
+
+    private static void addApplicationIntelliJRunConfiguration(Project project,
             RunConfigurationContainer runConfigurations,
             @Nullable Function<Project, File> outputDirectory,
             RunModel run,
             PrepareRun prepareTask) {
-        var appRun = new ExtendedApplication(run.getIdeName().get(), project, getExtraIntelijRunProperties(run));
+        var appRun = new ExtendedApplication(run.getIdeName().get(), project, getExtraIntelliJRunProperties(run));
         var sourceSets = ExtensionUtils.getSourceSets(project);
         var sourceSet = run.getSourceSet().get();
         // Validate that the source set is part of this project
@@ -271,12 +296,29 @@ final class IntelliJIntegration extends IdeIntegration {
         return moduleName.toString();
     }
 
-    private static Map<String, Object> getExtraIntelijRunProperties(RunModel run) {
+    private static Map<String, Object> getExtraIntelliJRunProperties(RunModel run) {
         var extraProperties = new HashMap<String, Object>();
         if (!run.getIdeFolderName().get().isEmpty()) {
             extraProperties.put("folderName", run.getIdeFolderName().get());
         }
         return extraProperties;
+    }
+
+    private static class ExtendedGradle extends Gradle {
+        private final Map<String, Object> extraProperties;
+
+        public ExtendedGradle(String name, Map<String, Object> extraProperties) {
+            super(name);
+            this.extraProperties = extraProperties;
+        }
+
+        @Override
+        public Map<String, ?> toMap() {
+            @SuppressWarnings("unchecked")
+            var m = (Map<String, Object>) super.toMap();
+            m.putAll(extraProperties);
+            return m;
+        }
     }
 
     private static class ExtendedApplication extends Application {
