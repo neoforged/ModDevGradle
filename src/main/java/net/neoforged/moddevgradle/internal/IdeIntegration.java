@@ -102,4 +102,8 @@ public sealed abstract class IdeIntegration permits IntelliJIntegration, Eclipse
         var ideName = run.getIdeName().get();
         return !ideName.isBlank();
     }
+
+    protected boolean shouldPreferGradleTask(RunModel run) {
+        return run.getPreferGradleTask().get();
+    }
 }

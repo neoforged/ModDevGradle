@@ -67,6 +67,8 @@ public abstract class RunModel implements Named, Dependencies {
         getIdeName().convention(ideName);
         getIdeFolderName().convention("");
 
+        getPreferGradleTask().convention(false);
+
         getSourceSet().convention(ExtensionUtils.getSourceSets(project).getByName(SourceSet.MAIN_SOURCE_SET_NAME));
     }
 
@@ -86,6 +88,13 @@ public abstract class RunModel implements Named, Dependencies {
      * If this is set to {@code ""}, no folder will be used.
      */
     public abstract Property<String> getIdeFolderName();
+
+    /**
+     * Used to determine if generated runs invoke the matching gradle task instead of launching the game directly.
+     * The benefit here is that with the gradle task you get proper config-cache support unlike IDE-runs.
+     * If this is set to {@code true} then the generated runs will invoke the normal gradle tasks.
+     */
+    public abstract Property<Boolean> getPreferGradleTask();
 
     /**
      * Directory that the game will run in. Defaults to {@code run/}.
