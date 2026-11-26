@@ -57,6 +57,16 @@ neoForge {
             client()
             ideFolderName = "Neo Test Folder"
         }
+        preferGradleClient {
+            client()
+            preferGradleTask = true
+            programArguments.addAll('--username', 'DevGradle')
+        }
+        preferGradleFolderedClient {
+            client()
+            preferGradleTask = true
+            ideFolderName = "Neo Test Folder"
+        }
         clientAuth {
             client()
             devLogin = true
