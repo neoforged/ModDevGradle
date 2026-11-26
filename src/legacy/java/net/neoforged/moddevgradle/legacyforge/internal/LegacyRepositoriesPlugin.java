@@ -1,6 +1,7 @@
 package net.neoforged.moddevgradle.legacyforge.internal;
 
 import java.net.URI;
+import net.neoforged.moddevgradle.dsl.ModDevSettingsExtension;
 import net.neoforged.moddevgradle.internal.RepositoriesPlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
@@ -21,6 +22,10 @@ public class LegacyRepositoriesPlugin implements Plugin<PluginAware> {
         if (target instanceof Project project) {
             applyRepositories(project.getRepositories());
         } else if (target instanceof Settings settings) {
+            settings.getExtensions().create(
+                    ModDevSettingsExtension.NAME,
+                    ModDevSettingsExtension.class,
+                    settings);
             applyRepositories(settings.getDependencyResolutionManagement().getRepositories());
             settings.getGradle().getPlugins().apply(getClass()); // Add a marker to Gradle
         } else if (target instanceof Gradle gradle) {
