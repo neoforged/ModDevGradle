@@ -181,8 +181,10 @@ neoForge {
             type = "gameTestServer"
             // Client, data and server runs can use a shorthand instead:
             // client()
+            // vanillaClient()
             // data()
             // server()
+            // vanillaServer()
         
             // Changes the working directory used for this run.
             // The default is the 'run' subdirectory of your project

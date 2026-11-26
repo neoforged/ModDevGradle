@@ -124,12 +124,19 @@ abstract class PrepareRunOrTest extends DefaultTask {
     @Input
     public abstract Property<Boolean> getDevLogin();
 
+    /**
+     * Use the built-in vanilla run templates even when loader-specific templates are available.
+     */
+    @Input
+    public abstract Property<Boolean> getUseVanillaRunTemplates();
+
     private final ProgramArgsFormat programArgsFormat;
 
     protected PrepareRunOrTest(ProgramArgsFormat programArgsFormat) {
         this.programArgsFormat = programArgsFormat;
         getVersionCapabilities().convention(VersionCapabilitiesInternal.latest());
         getDevLogin().convention(false);
+        getUseVanillaRunTemplates().convention(false);
     }
 
     protected abstract UserDevRunType resolveRunType(UserDevConfig userDevConfig);
@@ -167,7 +174,7 @@ abstract class PrepareRunOrTest extends DefaultTask {
 
         // If no NeoForge userdev config is set, we only support Vanilla run types
         UserDevRunType runConfig;
-        if (getRunTypeTemplatesSource().isEmpty()) {
+        if (getUseVanillaRunTemplates().get() || getRunTypeTemplatesSource().isEmpty()) {
             runConfig = resolveRunType(getSimulatedUserDevConfigForVanilla());
         } else {
             var userDevConfig = loadUserDevConfig(getRunTypeTemplatesSource().getSingleFile());

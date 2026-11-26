@@ -89,7 +89,7 @@ public sealed abstract class IdeIntegration permits IntelliJIntegration, Eclipse
         ideSyncTask.configure(ideSyncTask -> ideSyncTask.dependsOn(task));
     }
 
-    void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {}
+    void configureRuns(Map<RunModel, IdeRunConfiguration> ideRunConfigurations, Iterable<RunModel> runs) {}
 
     void configureTesting(Provider<Set<ModModel>> loadedMods,
             Provider<ModModel> testedMod,

@@ -24,13 +24,13 @@ import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.ExtensionAware;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskProvider;
 import org.gradle.internal.DefaultTaskExecutionRequest;
 import org.gradle.plugins.ide.idea.IdeaPlugin;
 import org.gradle.plugins.ide.idea.model.IdeaModel;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.gradle.ext.Application;
 import org.jetbrains.gradle.ext.BeforeRunTask;
+import org.jetbrains.gradle.ext.Gradle;
 import org.jetbrains.gradle.ext.IdeaExtPlugin;
 import org.jetbrains.gradle.ext.JUnit;
 import org.jetbrains.gradle.ext.ModuleRef;
@@ -81,7 +81,7 @@ final class IntelliJIntegration extends IdeIntegration {
     }
 
     @Override
-    public void configureRuns(Map<RunModel, TaskProvider<PrepareRun>> prepareRunTasks, Iterable<RunModel> runs) {
+    public void configureRuns(Map<RunModel, IdeRunConfiguration> ideRunConfigurations, Iterable<RunModel> runs) {
         // IDEA Sync has no real notion of tasks or providers or similar
         project.afterEvaluate(ignored -> {
 
@@ -93,7 +93,8 @@ final class IntelliJIntegration extends IdeIntegration {
                 var outputDirectory = IntelliJOutputDirectoryValueSource.getIntellijOutputDirectory(project);
 
                 for (var run : runs) {
-                    var prepareTask = prepareRunTasks.get(run).get();
+                    var ideRunConfiguration = ideRunConfigurations.get(run);
+                    var prepareTask = ideRunConfiguration.prepareRunTask().get();
                     if (!prepareTask.getEnabled()) {
                         LOG.info("Not creating IntelliJ run {} since its prepare task {} is disabled", run, prepareTask);
                         continue;
@@ -102,7 +103,11 @@ final class IntelliJIntegration extends IdeIntegration {
                         LOG.info("Not creating IntelliJ run {} since it's explicitly disabled", run);
                         continue;
                     }
-                    addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                    if (ideRunConfiguration.usesDedicatedVanillaRuntime().get()) {
+                        addIntelliJGradleRunConfiguration(project, runConfigurations, run, ideRunConfiguration.runTask().get());
+                    } else {
+                        addIntelliJRunConfiguration(project, runConfigurations, outputDirectory, run, prepareTask);
+                    }
                 }
             }
         });
@@ -220,6 +225,16 @@ final class IntelliJIntegration extends IdeIntegration {
         runConfigurations.add(appRun);
     }
 
+    private static void addIntelliJGradleRunConfiguration(Project project,
+            RunConfigurationContainer runConfigurations,
+            RunModel run,
+            RunGameTask runTask) {
+        var gradleRun = new ExtendedGradle(run.getIdeName().get(), getExtraIntelijRunProperties(run));
+        gradleRun.setProjectPath(project.getProjectDir().getAbsolutePath());
+        gradleRun.setTaskNames(List.of(runTask.getPath()));
+        runConfigurations.add(gradleRun);
+    }
+
     private static String buildRelativePath(Provider<RegularFile> file, File workingDirectory) {
         return workingDirectory.toPath().relativize(file.get().getAsFile().toPath()).toString().replace("\\", "/");
     }
@@ -284,6 +299,23 @@ final class IntelliJIntegration extends IdeIntegration {
 
         public ExtendedApplication(String name, Project project, Map<String, Object> extraProperties) {
             super(name, project);
+            this.extraProperties = extraProperties;
+        }
+
+        @Override
+        public Map<String, ?> toMap() {
+            @SuppressWarnings("unchecked")
+            var m = (Map<String, Object>) super.toMap();
+            m.putAll(extraProperties);
+            return m;
+        }
+    }
+
+    private static class ExtendedGradle extends Gradle {
+        private final Map<String, Object> extraProperties;
+
+        public ExtendedGradle(String name, Map<String, Object> extraProperties) {
+            super(name);
             this.extraProperties = extraProperties;
         }
 
