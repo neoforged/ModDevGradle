@@ -72,7 +72,6 @@ public abstract class NeoFormRuntimeTask extends DefaultTask {
      * Path to the Java executable to launch NFRT with. This is by default set to a Java 21 launcher.
      */
     @Input
-    @ApiStatus.Internal
     public abstract Property<String> getJavaExecutable();
 
     @Inject
