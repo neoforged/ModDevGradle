@@ -104,7 +104,8 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 LegacyForgeExtension.class,
                 project,
                 dataFileCollections.accessTransformers().extension(),
-                dataFileCollections.interfaceInjectionData().extension());
+                dataFileCollections.interfaceInjectionData().extension(),
+                dataFileCollections.enumExtensionsData().extension());
     }
 
     public void enable(Project project, LegacyForgeModdingSettings settings, LegacyForgeExtension extension) {
@@ -153,6 +154,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
                 artifactNamingStrategy,
                 configurations.getByName(DataFileCollections.CONFIGURATION_ACCESS_TRANSFORMERS),
                 configurations.getByName(DataFileCollections.CONFIGURATION_INTERFACE_INJECTION_DATA),
+                configurations.getByName(DataFileCollections.CONFIGURATION_ENUM_EXTENSIONS_DATA),
                 versionCapabilities,
                 settings.isDisableRecompilation());
 
