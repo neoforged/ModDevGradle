@@ -15,6 +15,8 @@ public abstract class ModModel implements Named {
         // TODO: We could potentially do a bit of name validation
         getModSourceSets().convention(List.of());
         getModSourceSets().finalizeValueOnRead();
+        getModClientSourceSets().convention(List.of());
+        getModClientSourceSets().finalizeValueOnRead();
     }
 
     @Override
@@ -23,7 +25,13 @@ public abstract class ModModel implements Named {
     // Do not name getSourceSets or it will conflict with project.sourceSets in scripts.
     public abstract ListProperty<SourceSet> getModSourceSets();
 
+    public abstract ListProperty<SourceSet> getModClientSourceSets();
+
     public void sourceSet(SourceSet sourceSet) {
         getModSourceSets().add(sourceSet);
+    }
+
+    public void clientSourceSet(SourceSet sourceSet) {
+        getModClientSourceSets().add(sourceSet);
     }
 }

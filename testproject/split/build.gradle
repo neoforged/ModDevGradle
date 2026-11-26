@@ -1,0 +1,36 @@
+plugins {
+    id 'net.neoforged.moddev'
+    id 'maven-publish'
+    id 'java'
+}
+
+repositories {
+    mavenLocal()
+}
+
+neoForge {
+    enable {
+        version = project.neoforge_version
+        splitDist = true
+    }
+    runs {
+        client {
+            client()
+        }
+
+        server {
+            server()
+        }
+    }
+    mods {
+        splittest {
+            sourceSet sourceSets.main
+            clientSourceSet sourceSets.client
+        }
+    }
+}
+
+
+neoFormRuntime {
+    version = "2.0.19-split-dist"
+}

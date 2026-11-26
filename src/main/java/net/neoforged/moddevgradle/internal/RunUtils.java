@@ -171,9 +171,12 @@ final class RunUtils {
         return "@" + argFile.getAsFile().getAbsolutePath();
     }
 
-    public static ModFoldersProvider getGradleModFoldersProvider(Project project, Provider<Set<ModModel>> modsProvider, Provider<ModModel> testedMod) {
+    public static ModFoldersProvider getGradleModFoldersProvider(Project project,
+            Provider<Set<ModModel>> modsProvider,
+            Provider<ModModel> testedMod,
+            Provider<String> runType) {
         var modFoldersProvider = project.getObjects().newInstance(ModFoldersProvider.class);
-        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod));
+        modFoldersProvider.getModFolders().set(getModFoldersForGradle(project, modsProvider, testedMod, runType));
         return modFoldersProvider;
     }
 
@@ -215,16 +218,18 @@ final class RunUtils {
 
     public static Provider<Map<String, ModFolder>> getModFoldersForGradle(Project project,
             Provider<Set<ModModel>> modsProvider,
-            @Nullable Provider<ModModel> testedMod) {
+            @Nullable Provider<ModModel> testedMod,
+            Provider<String> runType) {
         return buildModFolders(project, modsProvider, testedMod, (sourceSet, output) -> {
             output.from(sourceSet.getOutput());
-        });
+        }, runType);
     }
 
     public static Provider<Map<String, ModFolder>> buildModFolders(Project project,
             Provider<Set<ModModel>> modsProvider,
             @Nullable Provider<ModModel> testedModProvider,
-            BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver) {
+            BiConsumer<SourceSet, ConfigurableFileCollection> outputFolderResolver,
+            Provider<String> runType) {
         // Convert it to optional to ensure zip will be called even if no mod under test is present.
         if (testedModProvider == null) {
             testedModProvider = project.provider(() -> null);
@@ -253,6 +258,17 @@ final class RunUtils {
                             outputFolderResolver.accept(sourceSet, modFolder.getFolders());
                         }
 
+                        if (isClientRunType(runType.get())) {
+                            var clientSourceSets = mod.getModClientSourceSets().get();
+                            for (int i = 0; i < clientSourceSets.size(); ++i) {
+                                var sourceSet = clientSourceSets.get(i);
+                                if (clientSourceSets.subList(0, i).contains(sourceSet)) {
+                                    throw new InvalidUserCodeException("Duplicate source set '%s' in mod '%s'".formatted(sourceSet.getName(), mod.getName()));
+                                }
+                                outputFolderResolver.accept(sourceSet, modFolder.getFolders());
+                            }
+                        }
+
                         // Add the test source set to the mod under test and if unit tests are enabled
                         if (testedMod.isPresent() && testedMod.get() == mod) {
                             var testSourceSet = ExtensionUtils.getSourceSets(project).findByName(SourceSet.TEST_SOURCE_SET_NAME);
@@ -264,6 +280,10 @@ final class RunUtils {
                         return modFolder;
                     }));
         }));
+    }
+
+    static boolean isClientRunType(String runType) {
+        return runType.equals("client") || runType.equals("clientData") || runType.equals("data");
     }
 }
 

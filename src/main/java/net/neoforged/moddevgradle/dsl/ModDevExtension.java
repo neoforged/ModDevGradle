@@ -157,6 +157,10 @@ public abstract class ModDevExtension {
         ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet);
     }
 
+    public void addModdingDependenciesTo(SourceSet sourceSet,boolean includeClient) {
+        ModDevArtifactsWorkflow.get(project).addToSourceSet(sourceSet, includeClient);
+    }
+
     /**
      * After enabling modding, you can retrieve the version of the modding platform you picked using this getter.
      * I.e. the NeoForge or Forge version. If you chose to enable vanilla-only mode, this getter will throw.

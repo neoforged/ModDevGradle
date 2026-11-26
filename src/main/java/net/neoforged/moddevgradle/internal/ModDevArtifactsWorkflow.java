@@ -28,6 +28,7 @@ import org.gradle.api.file.RegularFile;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.SourceSet;
+import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.jvm.toolchain.JavaLanguageVersion;
 import org.gradle.jvm.toolchain.JavaToolchainService;
@@ -47,6 +48,9 @@ public record ModDevArtifactsWorkflow(
         TaskProvider<DownloadAssets> downloadAssets,
         Configuration runtimeDependencies,
         Configuration compileDependencies,
+        Configuration clientRuntimeDependencies,
+        Configuration clientCompileDependencies,
+        @Nullable SourceSet splitClientSourceSet,
         Provider<Directory> modDevBuildDir,
         Provider<Directory> artifactsBuildDir) {
 
@@ -68,7 +72,8 @@ public record ModDevArtifactsWorkflow(
             Configuration accessTransformers,
             Configuration interfaceInjectionData,
             VersionCapabilitiesInternal versionCapabilities,
-            boolean disableRecompilation) {
+            boolean disableRecompilation,
+            boolean splitDist) {
         if (project.getExtensions().findByName(EXTENSION_NAME) != null) {
             throw new InvalidUserCodeException("You cannot enable modding in the same project twice.");
         }
@@ -115,6 +120,8 @@ public record ModDevArtifactsWorkflow(
             spec.getDependencies().addLater(parchment.getParchmentArtifact().map(dependencyFactory::create));
         });
 
+        Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
+
         // it has to contain client-extra to be loaded by FML, and it must be added to the legacy CP
         var createArtifacts = tasks.register("createMinecraftArtifacts", CreateMinecraftArtifacts.class, task -> {
             task.setGroup(branding.internalTaskGroup());
@@ -151,15 +158,26 @@ public record ModDevArtifactsWorkflow(
             task.getParchmentEnabled().set(parchment.getEnabled());
             task.getParchmentConflictResolutionPrefix().set(parchment.getConflictResolutionPrefix());
 
-            Function<WorkflowArtifact, Provider<RegularFile>> artifactPathStrategy = artifact -> artifactsBuildDir.map(dir -> dir.file(artifactNamingStrategy.getFilename(artifact)));
-
             task.getIncludeNeoForgeInGameJar().set(versionCapabilities.needsNeoForgeInMinecraftJar());
-            task.getGameJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
-            if (disableRecompilation) {
-                task.getDisableRecompilation().set(true);
+            if (splitDist) {
+                task.getGameCommonJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMMON));
+                task.getGameClientJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT));
+                if (disableRecompilation) {
+                    task.getDisableRecompilation().set(true);
+                } else {
+                    task.getGameCommonJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMMON_WITH_SOURCES));
+                    task.getGameClientJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_WITH_SOURCES));
+                    task.getGameCommonSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMMON_SOURCES));
+                    task.getGameClientSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_SOURCES));
+                }
             } else {
-                task.getGameJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
-                task.getGameSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+                task.getGameJarArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED));
+                if (disableRecompilation) {
+                    task.getDisableRecompilation().set(true);
+                } else {
+                    task.getGameJarWithSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.COMPILED_WITH_SOURCES));
+                    task.getGameSourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.SOURCES));
+                }
             }
             if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
                 task.getResourcesArtifact().set(artifactPathStrategy.apply(WorkflowArtifact.CLIENT_RESOURCES));
@@ -188,10 +206,19 @@ public record ModDevArtifactsWorkflow(
         // For IntelliJ, we attach a combined sources+classes artifact which enables an "Attach Sources..." link for IJ users
         // Otherwise, attaching sources is a pain for IJ users.
         Provider<? extends Dependency> minecraftClassesDependency;
-        if (!disableRecompilation && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+        Provider<? extends Dependency> minecraftClientClassesDependency;
+        if (splitDist && !disableRecompilation && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameCommonJarWithSourcesArtifact())).map(dependencyFactory::create);
+            minecraftClientClassesDependency = createArtifacts.map(task -> project.files(task.getGameClientJarWithSourcesArtifact())).map(dependencyFactory::create);
+        } else if (splitDist) {
+            minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameCommonJarArtifact())).map(dependencyFactory::create);
+            minecraftClientClassesDependency = createArtifacts.map(task -> project.files(task.getGameClientJarArtifact())).map(dependencyFactory::create);
+        } else if (!disableRecompilation && ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
             minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameJarWithSourcesArtifact())).map(dependencyFactory::create);
+            minecraftClientClassesDependency = null;
         } else {
             minecraftClassesDependency = createArtifacts.map(task -> project.files(task.getGameJarArtifact())).map(dependencyFactory::create);
+            minecraftClientClassesDependency = null;
         }
 
         // Name of the configuration in which we place the required dependencies to develop mods for use in the runtime-classpath.
@@ -202,14 +229,26 @@ public record ModDevArtifactsWorkflow(
             config.setCanBeConsumed(false);
 
             config.getDependencies().addLater(minecraftClassesDependency);
-            if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
+            if (!splitDist && versionCapabilities.needsNeoForgeInMinecraftJar()) {
                 config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
-            } else if (moddingDependencies.neoForgeDependency() != null) {
+            } else if (!versionCapabilities.needsNeoForgeInMinecraftJar() && moddingDependencies.neoForgeDependency() != null) {
                 config.getDependencies().add(moddingDependencies.neoForgeDependency());
             }
             // Technically, the Minecraft dependencies do not strictly need to be on the classpath because they are pulled from the legacy class path.
             // However, we do it anyway because this matches production environments, and allows launch proxies such as DevLogin to use Minecraft's libraries.
             config.getDependencies().add(moddingDependencies.gameLibrariesDependency());
+        });
+
+        var clientRuntimeDependencies = configurations.create("modDevClientRuntimeDependencies", config -> {
+            config.setDescription("The client-only runtime dependencies to develop a split-distribution mod.");
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+            if (splitDist) {
+                config.getDependencies().addLater(minecraftClientClassesDependency);
+                if (versionCapabilities.needsNeoForgeInMinecraftJar()) {
+                    config.getDependencies().addLater(createArtifacts.map(task -> project.files(task.getResourcesArtifact())).map(dependencyFactory::create));
+                }
+            }
         });
 
         // Configuration in which we place the required dependencies to develop mods for use in the compile-classpath.
@@ -225,12 +264,39 @@ public record ModDevArtifactsWorkflow(
             }
         });
 
+        var clientCompileDependencies = configurations.create("modDevClientCompileDependencies", config -> {
+            config.setDescription("The client-only compile-time dependencies to develop a split-distribution mod.");
+            config.setCanBeResolved(false);
+            config.setCanBeConsumed(false);
+            if (splitDist) {
+                config.getDependencies().addLater(minecraftClientClassesDependency);
+            }
+        });
+
         // For IDEs that support it, link the source/binary artifacts if we use separated ones
         if (!disableRecompilation && !ideIntegration.shouldUseCombinedSourcesAndClassesArtifact()) {
-            ideIntegration.attachSources(
-                    Map.of(
-                            createArtifacts.get().getGameJarArtifact(),
-                            createArtifacts.get().getGameSourcesArtifact()));
+            if (splitDist) {
+                ideIntegration.attachSources(
+                        Map.of(
+                                createArtifacts.get().getGameCommonJarArtifact(),
+                                createArtifacts.get().getGameCommonSourcesArtifact(),
+                                createArtifacts.get().getGameClientJarArtifact(),
+                                createArtifacts.get().getGameClientSourcesArtifact()));
+            } else {
+                ideIntegration.attachSources(
+                        Map.of(
+                                createArtifacts.get().getGameJarArtifact(),
+                                createArtifacts.get().getGameSourcesArtifact()));
+            }
+        }
+
+        SourceSet clientSourceSet = null;
+        if (splitDist) {
+            SourceSetContainer sourceSets = ExtensionUtils.getSourceSets(project);
+            var main = sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+            clientSourceSet = sourceSets.maybeCreate("client");
+            clientSourceSet.setCompileClasspath(clientSourceSet.getCompileClasspath().plus(main.getOutput()));
+            clientSourceSet.setRuntimeClasspath(clientSourceSet.getRuntimeClasspath().plus(main.getOutput()));
         }
 
         var result = new ModDevArtifactsWorkflow(
@@ -242,13 +308,20 @@ public record ModDevArtifactsWorkflow(
                 downloadAssets,
                 runtimeDependencies,
                 compileDependencies,
+                clientRuntimeDependencies,
+                clientCompileDependencies,
+                clientSourceSet,
                 modDevBuildDir,
                 artifactsBuildDir);
 
         project.getExtensions().add(ModDevArtifactsWorkflow.class, EXTENSION_NAME, result);
 
         for (var sourceSets : enabledSourceSets) {
-            result.addToSourceSet(sourceSets);
+            result.addToSourceSet(sourceSets, !splitDist);
+        }
+
+        if (clientSourceSet != null) {
+            result.addToSourceSet(clientSourceSet, true);
         }
 
         return result;
@@ -351,14 +424,24 @@ public record ModDevArtifactsWorkflow(
      * Adds the compile-time and runtime-dependencies needed to compile mod code to the source-set of the given name.
      */
     public void addToSourceSet(SourceSet sourceSet) {
+        addToSourceSet(sourceSet, true);
+    }
+
+    public void addToSourceSet(SourceSet sourceSet, boolean includeClient) {
         var configurations = project.getConfigurations();
         var sourceSets = ExtensionUtils.getSourceSets(project);
         if (!sourceSets.contains(sourceSet)) {
             throw new GradleException("Cannot add to the source set in another project: " + sourceSet);
         }
 
-        configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName()).extendsFrom(runtimeDependencies);
-        configurations.getByName(sourceSet.getCompileClasspathConfigurationName()).extendsFrom(compileDependencies);
+        var runtimeClasspath = configurations.getByName(sourceSet.getRuntimeClasspathConfigurationName());
+        runtimeClasspath.extendsFrom(runtimeDependencies);
+        var compileClasspath = configurations.getByName(sourceSet.getCompileClasspathConfigurationName());
+        compileClasspath.extendsFrom(compileDependencies);
+        if (includeClient) {
+            runtimeClasspath.extendsFrom(clientRuntimeDependencies);
+            compileClasspath.extendsFrom(clientCompileDependencies);
+        }
     }
 
     public Provider<RegularFile> requestAdditionalMinecraftArtifact(String id, String filename) {
