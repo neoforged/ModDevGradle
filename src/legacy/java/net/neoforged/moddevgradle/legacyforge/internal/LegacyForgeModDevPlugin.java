@@ -61,7 +61,7 @@ public class LegacyForgeModDevPlugin implements Plugin<Project> {
 
         // Do not apply the repositories automatically if they have been applied at the settings-level.
         // It's still possible to apply them manually, though.
-        if (!project.getGradle().getPlugins().hasPlugin(LegacyRepositoriesPlugin.class)) {
+        if (!project.getPlugins().hasPlugin(LegacyRepositoriesPlugin.DeclaredInSettingsPlugin.class)) {
             project.getPlugins().apply(LegacyRepositoriesPlugin.class);
         } else {
             LOG.info("Not enabling legacy repositories since they were applied at the settings level");
